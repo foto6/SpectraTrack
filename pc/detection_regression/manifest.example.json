@@ -1,0 +1,11 @@
+{
+  "samples": [
+    {
+      "image": "frames/example-frame.jpg",
+      "persons": [
+        [100, 120, 130, 200]
+      ],
+      "tags": ["replace-with-real-annotated-frame"]
+    }
+  ]
+}
