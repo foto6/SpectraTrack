@@ -1,66 +1,407 @@
-# A3 — vNext Enhancement Research
+# A3 — vNext Enhancement Efficiency Research
 
 Branch:
 
 `agent/vnext-enhancement`
 
-Start from the exact `vnext-base` SHA in the architect handoff.
+Exact research base:
 
-## Immediate objective
+`vnext-base @ d03af3ae6425d3ea2e4d52e25389fecc09957394`
 
-Quantify whether current adaptive enhancement provides enough real detection benefit to justify its cost.
+Immutable product baseline:
 
-Profile each operation separately:
+`integration @ 3ebc4d50213593cac62b97399447fccf6bbc1755`
 
-- low-light;
-- bilateral denoise/deblock;
-- mild sharpen;
-- supported combinations.
+Tested code HEAD before this handoff-only documentation update:
 
-For each operation record:
+`46979da7f1e048060588d5ab0ba3c35004b3aa55`
 
-- operation cost;
-- tiles/ROIs on which it activates;
-- activation reason/quality signal;
-- detector-output delta;
-- GT detections recovered;
-- FP introduced;
-- extra inference calls caused downstream;
-- wall-time impact.
+The final branch HEAD is the documentation commit containing this handoff and is reported in the final agent response.
 
-## Selective enhancement research
+## 1. Objective and decision status
 
-Design experiments for:
+The field observation remains:
 
-- enhancement only on suspect ROIs;
-- no enhancement on already-good regions;
-- raw-evidence preservation;
-- enhanced-only person detections without raw corroboration remaining forbidden.
+`people-recall + adaptive: about 1 second source video ~= 2 minutes processing`
 
-Do not apply enhancement everywhere simply because adaptive mode is enabled.
+That observation does **not** contain enough run provenance to attribute the approximately 120x cost to OpenCV preprocessing, ONNX inference, a particular resolution/model/provider, or a specific enhancement gate.
 
-## Evidence requirements
+This branch therefore does not optimize production OpenCV and does not claim that "enhancement" itself is the bottleneck.
 
-Before claiming quality improvement:
+Current decision:
 
-- use the same frozen corpus revision;
-- report recall/precision/FP/FN deltas;
-- report compute cost and actual inference calls;
-- separate per-operation effects from combinations.
+**continue research; not a production candidate yet.**
 
-## Ownership boundaries
+The branch adds research-only tooling that separates:
 
-A3 owns:
+- quality-router cost;
+- individual image-operation cost;
+- raw weak-person probe detector cost;
+- enhanced follow-up detector cost;
+- actual low-level ONNX call counts;
+- optional GT quality effects after an A5 frozen corpus exists.
 
-- enhancement transforms;
-- quality/operation profiling;
-- selective-enhancement candidate logic at research level.
+No production behavior was changed.
 
-A3 does not own:
+## 2. Changed files
 
-- tile-grid geometry;
-- final NMS/fusion;
-- tracker association;
-- runtime scheduling/global budgets.
+- `pc/spectratrack/research/__init__.py`
+- `pc/spectratrack/research/enhancement_efficiency.py`
+- `pc/tests/test_vnext_enhancement_efficiency.py`
+- `pc/benchmarks/vnext/enhancement/README.md`
+- `pc/benchmarks/vnext/enhancement/roi_manifest.example.jsonl`
+- `docs/agents/vnext/enhancement.md` — this handoff only
 
-Do not change production enhancement behavior before evidence and architect review.
+Not changed:
+
+- detector production policy;
+- tile geometry;
+- final NMS/NMM/fusion;
+- app/runtime scheduler;
+- tracker;
+- integration/main/RC;
+- other agent role files.
+
+## 3. Current adaptive compute structure
+
+Inspection of the production path shows that adaptive people-recall performs:
+
+1. one A1-owned full-frame detector call;
+2. one raw low-confidence probe on every detector-owned region;
+3. one additional enhanced detector call for every region where the quality router activates at least one operation.
+
+For A3's ROI-level experiment, therefore:
+
+`raw probe calls = ROI count`
+
+`enhanced follow-up calls = affected ROI count`
+
+`A3 isolated candidate calls = ROI count + affected ROI count`
+
+The A3 profiler intentionally does not execute or attribute the A1-owned full-frame pass or final fusion. A4 must add those costs for end-to-end scheduler estimates.
+
+A4 independently documented the full production formula as:
+
+`total ONNX calls/detector frame = 1 + tile_count + enhanced_tile_count`
+
+and verified 1080p / tile 640 / overlap 0.20 as 8 detector-owned tiles, hence 9..17 ONNX calls per detector frame depending on enhancement activation. That is an A4 structural result, not an A3 target-hardware latency measurement.
+
+## 4. Operation cost table
+
+No real A5 corpus + exact target-model/provider experiment is available yet, so image-operation milliseconds below are deliberately **not fabricated**.
+
+| Candidate | Current gate | Image preprocessing ms on frozen real corpus | Extra ONNX calls per affected ROI | Raw corroboration | Real GT quality result |
+| --- | --- | ---: | ---: | --- | --- |
+| gamma | darkness >= 0.22 | pending A5/target run | 1 | required | pending |
+| CLAHE | darkness >= 0.22 | pending A5/target run | 1 | required | pending |
+| gamma + CLAHE | darkness >= 0.22 | pending A5/target run | 1 | required | pending |
+| bilateral denoise/deblock | noise >= 0.24 OR compression >= 0.20 | pending A5/target run | 1 | required | pending |
+| mild sharpen | blur >= 0.18 plus structure/noise/compression guards | pending A5/target run | 1 | required | pending |
+| current adaptive | union of current operation gates | pending A5/target run | 1 | required | pending |
+| current adaptive with cached quality map | same operation sequence, cached quality candidate | pending A5/target run | 1 | required | pending |
+
+The profiler records operation preprocessing ms separately from detector wall time and ONNX inference time.
+
+Synthetic tooling validation verifies that one affected ROI with one raw probe and one enhanced follow-up is accounted as exactly:
+
+- raw probe calls: 1;
+- enhanced calls: 1;
+- isolated total calls: 2.
+
+That synthetic result validates accounting only. It is not CCTV quality/performance evidence.
+
+## 5. Activation frequency
+
+Real activation frequency is **pending** because A5 has not published a frozen real corpus revision.
+
+The new `quality-audit` command records on a supplied ROI manifest:
+
+- darkness gate frequency;
+- blur gate frequency;
+- compression gate frequency;
+- noise gate frequency;
+- actual current operation-combination frequency, including no-op regions.
+
+This is required before deciding that a gate fires "too often".
+
+No gate threshold was changed or calibrated by intuition.
+
+## 6. Recovered / missed detections
+
+Real values:
+
+- recovered GT persons: **pending A5 frozen corpus**
+- lost GT persons: **pending A5 frozen corpus**
+- FN delta: **pending A5 frozen corpus**
+
+The profiler can compute these against canonical `qa_benchmark.py` ground truth when `--ground-truth` and an immutable `--corpus-revision` are supplied.
+
+The synthetic accounting test includes one artificial recovery only to verify that metric plumbing works. It must not be used as a product-quality result.
+
+## 7. False-positive impact
+
+Real new-FP impact is **pending A5 frozen corpus**.
+
+A3 reports **pre-fusion FP observations** only, because A3 does not own final A1 fusion/NMS/NMM.
+
+Final frame-level FP/precision must be evaluated by the canonical A5 comparison after A1 fusion.
+
+Raw corroboration remains mandatory:
+
+- enhanced-only person candidate without same-class spatial raw support -> reject;
+- strong raw detections remain accepted;
+- weak raw evidence may corroborate an enhanced candidate.
+
+## 8. Quality-router audit
+
+Current `assess_frame_quality()` was inspected rather than replaced.
+
+Current behavior:
+
+- grayscale is created at source ROI size;
+- most quality signals are evaluated on a representation reduced to max side 640;
+- darkness uses mean luma;
+- blur uses Laplacian variance;
+- noise uses a Gaussian-residual median;
+- compression uses the 8-pixel block-boundary heuristic on **full-resolution** grayscale;
+- low-resolution score uses source ROI dimensions.
+
+Research tooling adds component timing and reduced-representation candidates at default max side 320 and 160.
+
+For each reduced candidate it records:
+
+- total assessment ms;
+- per-component ms;
+- mean absolute quality-signal difference vs current router;
+- gate-flip frequency vs current thresholds.
+
+This allows a cheaper quality representation to be judged by measured gate stability rather than intuition.
+
+Quality-map reuse is also isolated:
+
+- `current_adaptive` measures the production behavior, including its own internal quality reassessment;
+- `current_adaptive_cached` reuses the already-computed quality map and measures that candidate separately.
+
+No production quality threshold or algorithm was changed.
+
+Temporal reuse of quality maps across frames remains unmeasured and is not claimed safe.
+
+## 9. Selective candidate design
+
+A3 does not create a tile grid or scheduler.
+
+Research input is a detector/scheduler-owned ROI JSONL manifest:
+
+schema:
+
+`spectratrack-vnext-enhancement-roi-v1`
+
+Each ROI contains:
+
+- video;
+- frame;
+- stable experiment ROI id;
+- externally supplied bbox;
+- optional evidence signals.
+
+Supported selective gates:
+
+- quality issue;
+- dark ROI;
+- blur ROI;
+- compression ROI;
+- weak-person evidence;
+- known-track ROI;
+- uncertainty ROI;
+- quality-or-evidence union.
+
+The profiler applies each enhancement candidate directly to the **raw ROI**, not to another enhancement result, so candidate evaluation cannot accidentally double-enhance.
+
+The only intentional combination candidate is the explicit current low-light sequence `gamma + CLAHE`, plus the complete current-adaptive sequence.
+
+## 10. Quality-per-compute table
+
+Real quality-per-compute values are pending the same frozen A5 corpus, exact model and provider.
+
+The profiler will produce for every candidate:
+
+| Metric | Recorded |
+| --- | --- |
+| recovered GT persons | yes, when A5 GT exists |
+| lost GT persons / FN contribution | yes, when A5 GT exists |
+| pre-fusion new FP observations | yes, when A5 GT exists |
+| best-match bbox IoU delta | yes, when A5 GT exists |
+| GT-relative bbox center jitter delta | yes, when A5 GT exists |
+| GT-relative bbox size jitter delta | yes, when A5 GT exists |
+| quality-assessment ms | yes |
+| operation preprocessing ms | yes |
+| raw-probe detector/inference ms | yes |
+| enhanced detector/inference ms | yes |
+| raw ONNX calls | yes |
+| enhanced ONNX calls | yes |
+| isolated candidate total ONNX calls | yes |
+| processing seconds / sampled source second | yes, when source FPS is available |
+
+A3 deliberately labels FP as pre-fusion and deliberately excludes A1 full-frame/fusion costs from its ROI-local accounting.
+
+## 11. Recommended operations
+
+No operation is promoted to production yet.
+
+The evidence currently supports only these research recommendations:
+
+- keep raw corroboration mandatory;
+- compare gamma and CLAHE separately as well as the existing gamma+CLAHE combination;
+- compare bilateral and sharpen independently rather than assuming the current combination helps;
+- compare `current_adaptive` against `current_adaptive_cached` to quantify duplicate quality-assessment cost;
+- run enhancement only on externally selected/suspect ROIs in selective candidates;
+- preserve a no-enhancement path for already-good regions.
+
+A keep/remove decision for gamma, CLAHE, bilateral, sharpen, or their combinations requires A5 real GT quality-per-compute results.
+
+## 12. Operations / behavior to remove or disable
+
+No individual image operation is justified for permanent removal yet.
+
+What is **not** supported as a production strategy is blind "enhance every region" behavior without measured quality benefit and compute budget.
+
+A3 recommends disabling any future production proposal that:
+
+- accepts enhanced-only candidates without raw evidence;
+- double-enhances an ROI;
+- runs an enhanced follow-up on every ROI regardless of measured gate/evidence;
+- reports preprocessing cost without separately counting the extra ONNX call.
+
+## 13. Dependency / handoff to A4 scheduler
+
+A3 outputs the signals A4 needs:
+
+- ROI count;
+- operation gate frequency;
+- selective gate frequency;
+- affected ROI count;
+- quality-assessment ms;
+- operation preprocessing ms;
+- raw detector/inference ms;
+- enhanced detector/inference ms;
+- raw probe inference calls;
+- enhanced inference calls;
+- processing seconds per sampled source second;
+- optional GT quality deltas.
+
+A4 remains owner of:
+
+- full-frame call accounting;
+- detector cadence;
+- scheduler/budget policy;
+- global/track/scene-change scheduling;
+- hard inference-call budgets.
+
+A4 should combine:
+
+`A1/A4 full-frame work + A3 raw ROI work + A3 affected enhanced ROI work`
+
+rather than treat A3's ROI-local total as end-to-end runtime.
+
+No A4 branch content was merged or modified.
+
+## 14. A5 corpus revision
+
+At handoff time, the observed `agent/vnext-qa` branch contains evaluator/tooling changes but no published frozen real CCTV corpus revision.
+
+A5 corpus revision used by A3:
+
+**none / not yet available**
+
+Therefore no real:
+
+- operation ms table on target evidence;
+- activation frequency;
+- recovered/missed count;
+- FP delta;
+- bbox localization/jitter delta;
+- end-to-end quality-per-compute ranking
+
+is claimed in this handoff.
+
+Required rerun after A5 freeze:
+
+- night;
+- compression;
+- blur;
+- tiny-person subsets;
+- negatives where available.
+
+All finalists must use the exact same frozen A5 revision and exact model/provider provenance.
+
+## 15. Tests actually run
+
+Exact tested code HEAD:
+
+`46979da7f1e048060588d5ab0ba3c35004b3aa55`
+
+GitHub Actions PC CI:
+
+- workflow run: `36165997758`
+- run number: `133`
+- conclusion: **success**
+
+Actual results:
+
+- `ruff check spectratrack tests`: success, `All checks passed!`
+- `python -m compileall -q spectratrack tests` + `pytest -q`: **153 passed in 1.31s**
+- synthetic tracker benchmark: `500 frames / 24 targets / 11970 observations`
+- synthetic tracker benchmark elapsed: `0.376 s`
+- synthetic tracker benchmark throughput: `1328.1 tracker_fps`
+- diagnostics: success
+- self-check: success
+- PyInstaller standalone Windows build: success
+- standalone `SpectraTrack-PC.exe --help`: success
+- standalone `SpectraTrack-PC.exe batch --help`: success
+- packaging/artifact upload: success
+
+The CI tracker benchmark and synthetic A3 unit fixtures are tooling/regression checks only. They are not real CCTV enhancement measurements and are not RX 5700 XT performance evidence.
+
+## 16. Commits in this research branch before handoff docs
+
+- `043ee0b2902c349058dc6fcccd4326f3e8b53fb7` — research(a3): add enhancement efficiency profiler
+- `6b98b8f66167326651183fddadee2be376270ee1` — research(a3): mark research package
+- `02eff23f29def2a62457425c604ec61874cba258` — research(a3): reuse quality map for adaptive combination
+- `7f813ce04bca7ac1a7b76fa9c6144139224def53` — research(a3): separate current and cached adaptive costs
+- `e57d13cc7639fb18f231a107d7100f08afe33c69` — test(a3): cover enhancement research profiler
+- `8b9b0d7e10023ac69dc1e8b6d480c2818b829837` — docs(a3): document enhancement profiling workflow
+- `5a1214f5f110358a8d28248eddc3825f001ef163` — docs(a3): add ROI manifest example
+- `27c8c4871c90b23dd97e8b9299d626bde27fcbb1` — research(a3): fix adaptive cost attribution
+- `0df214e605c8f8636183787ae6be6ded1df2eee3` — test(a3): cover adaptive operation combinations
+- `728b990cd7c9953ca7aaa8d9f2656a1eae823c3d` — test(a3): verify enhancement call accounting
+- `46979da7f1e048060588d5ab0ba3c35004b3aa55` — test(a3): use canonical GT object type
+
+## 17. Cross-agent overlap
+
+File-level overlap with the observed A4 performance branch at code handoff: **none**.
+
+File-level overlap with the observed A5 QA branch at code handoff: **none**.
+
+A3 reads canonical A5 GT via existing `qa_benchmark.py` but does not modify the evaluator.
+
+A3 consumes externally supplied ROI/evidence signals and does not implement A1 tile geometry or A4 scheduling.
+
+## 18. Readiness
+
+Research tooling readiness: **yes**.
+
+Production enhancement readiness: **no**.
+
+Evidence status:
+
+**continue research**
+
+Next evidence gate:
+
+1. A5 publishes an immutable human-confirmed corpus revision;
+2. exact detector model/hash/provider is fixed;
+3. run `quality-audit`;
+4. run operation finalists and selective gates on the same ROI manifest/corpus;
+5. pass measured A3 costs/signals to A4;
+6. compare final frame-level quality through A5/A1-owned evaluation/fusion;
+7. only then decide which operations or gates deserve integrator review.
