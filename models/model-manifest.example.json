@@ -1,0 +1,8 @@
+{
+  "name": "yolo11n-coco-640",
+  "sha256": "REPLACE_WITH_EXPORTED_MODEL_SHA256",
+  "input_size": 640,
+  "source": "Ultralytics export generated locally",
+  "format": "YOLO ONNX xywh+class-scores",
+  "notes": "Keep the model file out of Git; store provenance and hash here."
+}
