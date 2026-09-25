@@ -169,3 +169,32 @@ Decision:
 - VRAM is recorded only when a real measurement source is provided; the benchmark must not estimate or fabricate it.
 
 Reason: branch comparisons are useful only when they measure the same annotated evidence under known settings. A strict new-miss gate catches visually convincing demos that quietly lose previously detected people.
+## 2026-09-25 — Confirmed tracks may enter a bounded dormant reactivation window
+
+Decision:
+
+- keep the existing two-stage live tracker and CMC contract;
+- after a confirmed local track exceeds `max_missed`, allow a bounded dormant window instead of immediately making its ID unrecoverable;
+- dormant reactivation requires the same object class plus agreement from several cues: appearance, box shape/size, spatial plausibility, and motion direction when available;
+- do not reactivate a dormant track when appearance information is unavailable;
+- detector-skipped `predict_only()` frames do not age the dormant window.
+
+Reason: the existing tracker already follows ByteTrack-like high/low confidence semantics and CMC. A conservative dormant pool targets the measured long-occlusion fragmentation failure without replacing the tracker wholesale or adding a heavy dependency.
+
+A local `track_id` remains a video-local trajectory identifier. Cross-video/global object grouping is a separate layer.
+
+## 2026-09-25 — Cross-video Re-ID uses multi-signal scores and explicit global object IDs
+
+Decision:
+
+- evolve the existing cross-video graph rather than create a second Re-ID subsystem;
+- keep legacy `entity_id` and `similarity` fields for compatibility;
+- add an explicit `global_object_id` that is independent from each member's local `track_id`;
+- combine appearance/gallery evidence with color, shape, relative size, and—only when comparable—temporal/direction continuity;
+- allow non-overlapping same-video track fragments to become candidates, while overlapping same-video tracks remain incompatible unless manually reviewed as SAME;
+- expose score components and state explicitly that the combined score is an engineering similarity score, not a calibrated probability;
+- a future learned embedding may be added as one signal only after provenance and benchmark evidence; it must not become the sole match criterion.
+
+Reason: the current graph already provides conservative complete-link grouping and manual SAME/DIFFERENT/UNSURE review. Extending it minimizes schema and architecture duplication while preserving ambiguity.
+
+

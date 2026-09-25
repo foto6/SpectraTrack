@@ -1,0 +1,22 @@
+{
+  "camera_width": 1920,
+  "camera_height": 1080,
+  "camera_fps": 30,
+  "camera_backend": "dshow",
+  "input_size": 640,
+  "conf": 0.35,
+  "iou": 0.45,
+  "detector_mode": "people-recall",
+  "person_conf": 0.12,
+  "person_tile_size": 640,
+  "person_tile_overlap": 0.2,
+  "person_merge_iou": 0.55,
+  "profile": "quality",
+  "detect_every": 1,
+  "cpu": false,
+  "enhance": false,
+  "view": "normal",
+  "stabilize": false,
+  "no_cmc": false,
+  "no_appearance": false
+}
