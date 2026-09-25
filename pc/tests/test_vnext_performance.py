@@ -179,6 +179,21 @@ def test_scene_change_and_camera_motion_force_global_rediscovery():
     assert motion.global_rescan_reason == "camera_motion"
 
 
+
+def test_trigger_overrides_detector_cadence_for_immediate_global_rescan():
+    config = SchedulerConfig(detector_every=5, global_period=100, max_calls_per_frame=3)
+    decision = schedule_frame(
+        "BUDGETED_ADAPTIVE",
+        3,
+        FrameSignals(scene_change=True, suspect_rois=1, enhancement_eligible_rois=1),
+        tile_count=8,
+        config=config,
+    )
+
+    assert decision.full_frame_calls == 1
+    assert decision.global_rescan_reason == "scene_change"
+    assert decision.reused_temporal_state is False
+
 def test_periodic_global_discovery_is_bounded():
     config = SchedulerConfig(detector_every=2, global_period=15)
     assert global_discovery_bound_frames("COARSE_TO_FINE", config) == 2
