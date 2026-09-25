@@ -161,7 +161,7 @@ def _match_objects(
     truth: list[tuple[int, GroundTruthObject]],
     predictions: list[PredictedObject],
     iou_threshold: float,
-) -> tuple[dict[int, int], set[int], int]:
+) -> tuple[dict[int, int], set[int]]:
     candidates: list[tuple[float, int, int]] = []
     for truth_index, truth_obj in truth:
         if truth_obj.ignore:
@@ -183,15 +183,13 @@ def _match_objects(
         matched_predictions.add(pred_index)
         matches[truth_index] = pred_index
 
-    ignored_predictions = 0
     ignored_truth = [obj for _, obj in truth if obj.ignore]
     for pred_index, pred in enumerate(predictions):
         if pred_index in matched_predictions:
             continue
         if any(pred.label == ignored.label and bbox_iou(pred.bbox, ignored.bbox) >= iou_threshold for ignored in ignored_truth):
-            ignored_predictions += 1
             matched_predictions.add(pred_index)
-    return matches, matched_predictions, ignored_predictions
+    return matches, matched_predictions
 
 
 def _empty_counts() -> dict[str, int]:
@@ -221,6 +219,7 @@ def evaluate_frames(
     overall = _empty_counts()
     by_tag: dict[str, dict[str, int]] = defaultdict(_empty_counts)
     by_size: dict[str, dict[str, int]] = defaultdict(_empty_counts)
+    by_attribute: dict[str, dict[str, int]] = defaultdict(_empty_counts)
     matched_keys: list[str] = []
     missed_keys: list[str] = []
     missing_prediction_frames: list[str] = []
@@ -238,7 +237,7 @@ def evaluate_frames(
         predictions = [item for item in predictions_by_frame.get(key, []) if item.label == label]
         truth = [(index, obj) for index, obj in enumerate(frame.objects) if obj.label == label]
         valid_truth = [(index, obj) for index, obj in truth if not obj.ignore]
-        matches, used_predictions, _ = _match_objects(truth, predictions, iou_threshold)
+        matches, used_predictions = _match_objects(truth, predictions, iou_threshold)
 
         tp = len(matches)
         fn = len(valid_truth) - tp
@@ -271,7 +270,7 @@ def evaluate_frames(
             else:
                 size_counts["fn"] += 1
             for attribute in obj.attributes:
-                counts = by_tag[f"object:{attribute}"]
+                counts = by_attribute[attribute]
                 counts["gt"] += 1
                 if matched:
                     counts["tp"] += 1
@@ -281,7 +280,7 @@ def evaluate_frames(
         if tracks_by_frame is None:
             continue
         tracks = [item for item in tracks_by_frame.get(key, []) if item.label == label and item.track_id is not None]
-        track_matches, _, _ = _match_objects(truth, tracks, iou_threshold)
+        track_matches, _ = _match_objects(truth, tracks, iou_threshold)
         track_tp += len(track_matches)
         track_fn += len(valid_truth) - len(track_matches)
         for truth_index, obj in valid_truth:
@@ -311,6 +310,15 @@ def evaluate_frames(
     metrics["missing_prediction_frames"] = sorted(missing_prediction_frames)
     metrics["by_tag"] = {name: _rates(counts) for name, counts in sorted(by_tag.items())}
     metrics["by_size"] = {name: _rates(counts) for name, counts in sorted(by_size.items())}
+    metrics["by_attribute"] = {
+        name: {
+            "tp": counts["tp"],
+            "fn": counts["fn"],
+            "gt": counts["gt"],
+            "recall": counts["tp"] / counts["gt"] if counts["gt"] else 1.0,
+        }
+        for name, counts in sorted(by_attribute.items())
+    }
     track_total = track_tp + track_fn
     metrics["tracking"] = {
         "matched_gt": track_tp,
@@ -505,7 +513,9 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         },
         "evaluation": {"label": args.label, "match_iou": args.match_iou},
         "settings": {
-            "input_size": args.input_size,
+            "requested_input_size": args.input_size,
+            "actual_input_width": detector.input_w,
+            "actual_input_height": detector.input_h,
             "conf": args.conf,
             "nms_iou": args.nms_iou,
             "prefer_gpu": not args.cpu,
