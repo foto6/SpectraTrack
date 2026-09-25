@@ -1,0 +1,3 @@
+{"video":"good_daylight.mp4","frame":0,"tags":["good"],"objects":[{"id":"p1","label":"person","bbox":[100,50,145,180]}]}
+{"video":"night_small_people.mp4","frame":120,"tags":["dark","compression","small_people"],"objects":[{"id":"p1","label":"person","bbox":[812,316,827,351],"attributes":["small"]},{"id":"p2","label":"person","bbox":[905,310,919,349],"attributes":["small","occluded"]}]}
+{"video":"night_small_people.mp4","frame":150,"tags":["dark","compression","background_confuser"],"objects":[]}
