@@ -938,7 +938,9 @@ def evaluate_tracking(
         "tracking_recall": matched_gt / total_gt if total_gt else 1.0,
         "false_track_creations": len(false_track_ids),
         "mean_uninterrupted_track_length": statistics.fmean(run_lengths) if run_lengths else 0.0,
+        "uninterrupted_segments": len(run_lengths),
         "mean_recovery_latency_frames": statistics.fmean(recovery_latencies) if recovery_latencies else None,
+        "recovery_events": len(recovery_latencies),
         "recovered_same_id": recovered_same_id,
         "wrong_recovery": wrong_recovery,
         "matched_gt": matched_gt,
@@ -965,23 +967,28 @@ def _aggregate(metrics: Iterable[dict[str, float | int | None]]) -> dict[str, fl
     rows = list(metrics)
     gt = sum(int(row["gt"]) for row in rows)
     matched = sum(int(row["matched_gt"]) for row in rows)
-    weighted_runs = [
-        float(row["mean_uninterrupted_track_length"])
+    run_segments = sum(int(row["uninterrupted_segments"]) for row in rows)
+    run_length_total = sum(
+        float(row["mean_uninterrupted_track_length"]) * int(row["uninterrupted_segments"])
         for row in rows
-        if float(row["mean_uninterrupted_track_length"]) > 0
-    ]
-    latencies = [
-        float(row["mean_recovery_latency_frames"])
+    )
+    recovery_events = sum(int(row["recovery_events"]) for row in rows)
+    recovery_latency_total = sum(
+        float(row["mean_recovery_latency_frames"]) * int(row["recovery_events"])
         for row in rows
         if row["mean_recovery_latency_frames"] is not None
-    ]
+    )
     return {
         "id_switches": sum(int(row["id_switches"]) for row in rows),
         "fragmentations": sum(int(row["fragmentations"]) for row in rows),
         "tracking_recall": matched / gt if gt else 1.0,
         "false_track_creations": sum(int(row["false_track_creations"]) for row in rows),
-        "mean_uninterrupted_track_length": statistics.fmean(weighted_runs) if weighted_runs else 0.0,
-        "mean_recovery_latency_frames": statistics.fmean(latencies) if latencies else None,
+        "mean_uninterrupted_track_length": run_length_total / run_segments if run_segments else 0.0,
+        "uninterrupted_segments": run_segments,
+        "mean_recovery_latency_frames": (
+            recovery_latency_total / recovery_events if recovery_events else None
+        ),
+        "recovery_events": recovery_events,
         "recovered_same_id": sum(int(row["recovered_same_id"]) for row in rows),
         "wrong_recovery": sum(int(row["wrong_recovery"]) for row in rows),
         "matched_gt": matched,
