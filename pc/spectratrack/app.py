@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import json
 import time
 from pathlib import Path
 
@@ -15,10 +16,10 @@ from .enhance import DISPLAY_MODES, apply_display_mode, crop_with_margin, enhanc
 from .hud import compose_hud
 from .integrity import sha256_file, verify_sha256
 from .lock_refine import LockRefiner
-from .metrics import StageTimer
+from .metrics import ProcessCpuSampler, StageTimer
 from .model_manifest import ModelManifest
 from .motion import GlobalMotionEstimator
-from .runtime_config import load_runtime_config
+from .runtime_config import PROFILE_NAMES, canonical_profile, load_runtime_config, profile_detect_every
 from .session import SessionRecorder
 from .snapshot_meta import write_snapshot_metadata
 from .stabilize import VideoStabilizer
@@ -38,6 +39,29 @@ def parse_source(text: str):
 
 def parse_class_filter(text: str) -> set[str]:
     return {part.strip().lower() for part in text.split(",") if part.strip()}
+
+
+def prepare_analysis_frame(frame, enhancement: bool):
+    return enhance_visibility(frame) if enhancement else frame
+
+
+def handle_analysis_enhancement_toggle(
+    current: bool,
+    detector_mode: str,
+    people_recall_enhancement: str,
+    recorder=None,
+) -> bool:
+    if detector_mode == "people-recall" and people_recall_enhancement == "adaptive":
+        print(
+            "analysis enhancement disabled: adaptive people-recall requires raw corroboration; "
+            "pressing E has no effect"
+        )
+        return current
+
+    enabled = not current
+    if recorder:
+        recorder.event("enhance", enabled=enabled)
+    return enabled
 
 
 def main() -> int:
@@ -64,8 +88,25 @@ def main() -> int:
     parser.add_argument("--input-size", type=int, default=640)
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--iou", type=float, default=0.45)
+    parser.add_argument("--detector-mode", choices=("standard", "people-recall"), default="standard")
+    parser.add_argument("--person-conf", type=float, default=0.12, help="Person threshold used by people-recall mode")
+    parser.add_argument("--person-tile-size", type=int, default=640, help="Source-pixel tile size for people-recall mode")
+    parser.add_argument("--person-tile-overlap", type=float, default=0.20, help="Fractional overlap between recall tiles")
+    parser.add_argument("--person-merge-iou", type=float, default=0.55, help="IoU used to merge full-frame/tile detections")
+    parser.add_argument(
+        "--people-recall-enhancement",
+        choices=("off", "adaptive"),
+        default="off",
+        help="Optional A3 adaptive preprocessing for A1-owned people-recall tiles",
+    )
     parser.add_argument("--classes", default="", help="Comma-separated labels to retain, e.g. person,car,truck")
-    parser.add_argument("--profile", choices=("quality", "balanced", "speed"), default="balanced")
+    parser.add_argument(
+        "--profile",
+        type=canonical_profile,
+        choices=PROFILE_NAMES,
+        default="balanced",
+        metavar="{fast,balanced,high-quality,max-recall}",
+    )
     parser.add_argument("--detect-every", type=int, default=0, help="Run detector every N frames; 0 uses profile default")
     parser.add_argument("--cpu", action="store_true", help="Disable DirectML preference")
     parser.add_argument("--enhance", action="store_true", help="Enhance the detector analysis image with non-generative clarity processing")
@@ -75,12 +116,28 @@ def main() -> int:
     parser.add_argument("--no-appearance", action="store_true", help="Disable non-biometric color appearance cue used for same-class association")
     parser.add_argument("--calibration", default="", help="Optional camera calibration JSON with width/height/HFOV")
     parser.add_argument("--session-log", default="", help="Optional JSONL metadata/session log")
+    parser.add_argument("--perf-report", default="", help="Optional JSON pipeline performance report")
     parser.add_argument("--realesrgan", default="", help="Optional path to official realesrgan-ncnn-vulkan executable")
     parser.add_argument("--record", default="", help="Optional output video path")
     parser.add_argument("--headless", action="store_true", help="Do not create an OpenCV window; useful for batch video processing")
     parser.add_argument("--max-frames", type=int, default=0, help="Stop after N processed frames; 0 means unlimited")
     parser.set_defaults(**config_defaults)
     args = parser.parse_args()
+
+    if not 0.0 <= args.person_conf <= 1.0:
+        raise SystemExit("--person-conf must be in [0, 1]")
+    if args.person_tile_size <= 0:
+        raise SystemExit("--person-tile-size must be > 0")
+    if not 0.0 <= args.person_tile_overlap < 1.0:
+        raise SystemExit("--person-tile-overlap must satisfy 0 <= overlap < 1")
+    if not 0.0 < args.person_merge_iou <= 1.0:
+        raise SystemExit("--person-merge-iou must be in (0, 1]")
+    if args.people_recall_enhancement == "adaptive" and args.detector_mode != "people-recall":
+        raise SystemExit("--people-recall-enhancement adaptive requires --detector-mode people-recall")
+    if args.people_recall_enhancement == "adaptive" and args.person_conf <= 0.0:
+        raise SystemExit("adaptive people-recall requires --person-conf > 0")
+    if args.people_recall_enhancement == "adaptive" and args.enhance:
+        raise SystemExit("--enhance cannot be combined with adaptive people-recall; raw corroboration must stay raw")
 
     model = Path(args.model)
     if not model.exists():
@@ -102,15 +159,19 @@ def main() -> int:
 
     calibration = CameraCalibration.from_json(args.calibration) if args.calibration else None
     class_filter = parse_class_filter(args.classes)
-    profile_detect_every = {"quality": 1, "balanced": 2, "speed": 3}[args.profile]
-    detect_every = args.detect_every if args.detect_every > 0 else profile_detect_every
+    profile = canonical_profile(args.profile)
+    profile_default_detect_every = profile_detect_every(profile)
+    detect_every = args.detect_every if args.detect_every > 0 else profile_default_detect_every
 
-    detector = YoloOnnxDetector(model, args.input_size, args.conf, args.iou, prefer_gpu=not args.cpu)
+    timings = StageTimer()
+    with timings.measure("detector_init"):
+        detector = YoloOnnxDetector(model, args.input_size, args.conf, args.iou, prefer_gpu=not args.cpu)
     tracker = MultiObjectTracker()
     stabilizer = VideoStabilizer()
     motion = GlobalMotionEstimator()
     lock_refiner = LockRefiner()
-    timings = StageTimer()
+    cpu_usage = ProcessCpuSampler()
+    onnx_inference_calls = 0
 
     source = parse_source(args.source)
     capture = RobustCapture(
@@ -181,8 +242,16 @@ def main() -> int:
         ),
         "view_mode": view_mode,
         "analysis_enhance": enhancement,
-        "profile": args.profile,
+        "profile": profile,
         "detect_every": detect_every,
+        "detector_mode": args.detector_mode,
+        "person_conf": args.person_conf if args.detector_mode == "people-recall" else None,
+        "person_tile_size": args.person_tile_size if args.detector_mode == "people-recall" else None,
+        "person_tile_overlap": args.person_tile_overlap if args.detector_mode == "people-recall" else None,
+        "person_merge_iou": args.person_merge_iou if args.detector_mode == "people-recall" else None,
+        "people_recall_enhancement": (
+            args.people_recall_enhancement if args.detector_mode == "people-recall" else None
+        ),
         "appearance_cue": not args.no_appearance,
     }) if args.session_log else None
 
@@ -191,6 +260,7 @@ def main() -> int:
     window = "SpectraTrack"
     frame_index = 0
     previous_track_state: dict[int, tuple[bool, int, str]] = {}
+    run_started = time.perf_counter()
 
     def on_mouse(event, x, y, flags, userdata):
         if event != cv2.EVENT_LBUTTONDOWN or x >= state.frame_width:
@@ -211,6 +281,7 @@ def main() -> int:
 
     try:
         while True:
+            frame_started = time.perf_counter()
             with timings.measure("capture"):
                 capture_read = capture.read()
             if not capture_read.ok or capture_read.frame is None:
@@ -238,18 +309,34 @@ def main() -> int:
                     frame = stabilizer.apply(frame)
 
             with timings.measure("enhance"):
-                analysis_frame = enhance_visibility(frame) if enhancement else frame
+                analysis_frame = prepare_analysis_frame(frame, enhancement)
                 display_frame = apply_display_mode(frame, view_mode)
 
             should_detect = ((frame_index - 1) % detect_every) == 0
             detections = []
             if should_detect:
-                with timings.measure("detect"):
-                    detections = detector.detect(analysis_frame)
-                    if class_filter:
-                        detections = [d for d in detections if d.label.lower() in class_filter]
-                    if not args.no_appearance:
+                detect_started = time.perf_counter()
+                with timings.measure("detector"):
+                    if args.detector_mode == "people-recall":
+                        detections = detector.detect_people_recall(
+                            analysis_frame,
+                            person_threshold=args.person_conf,
+                            tile_size=args.person_tile_size,
+                            tile_overlap=args.person_tile_overlap,
+                            merge_iou_threshold=args.person_merge_iou,
+                            enhancement_mode=args.people_recall_enhancement,
+                        )
+                    else:
+                        detections = detector.detect(analysis_frame)
+                for detector_stage, elapsed_ms in detector.last_stage_ms.items():
+                    timings.add(f"detector_{detector_stage}", elapsed_ms)
+                onnx_inference_calls += detector.last_inference_calls
+                if class_filter:
+                    detections = [d for d in detections if d.label.lower() in class_filter]
+                if not args.no_appearance:
+                    with timings.measure("appearance"):
                         attach_appearance(frame, detections)
+                timings.add("detect", (time.perf_counter() - detect_started) * 1000.0)
             else:
                 timings.add("detect", 0.0)
 
@@ -343,6 +430,9 @@ def main() -> int:
             timing_snapshot = {
                 "capture": round(timings.latest("capture"), 3),
                 "detect": round(timings.latest("detect"), 3),
+                "detector": round(timings.latest("detector"), 3),
+                "detector_inference": round(timings.latest("detector_inference"), 3),
+                "onnx_inference_calls": float(detector.last_inference_calls if should_detect else 0),
                 "track": round(timings.latest("track"), 3),
                 "cmc": round(timings.latest("camera_motion"), 3),
                 "enhance": round(timings.latest("enhance"), 3),
@@ -367,27 +457,29 @@ def main() -> int:
                 output = display_frame
 
             if recorder:
-                recorder.frame(
-                    frame_index, tracks, state.selected_id, fps,
-                    timings_ms=timing_snapshot,
-                    camera_motion=camera_motion_info,
-                    selected_refine=lock_refine_info,
-                )
+                with timings.measure("session_write"):
+                    recorder.frame(
+                        frame_index, tracks, state.selected_id, fps,
+                        timings_ms=timing_snapshot,
+                        camera_motion=camera_motion_info,
+                        selected_refine=lock_refine_info,
+                    )
 
             if args.record:
-                if writer is None:
-                    Path(args.record).parent.mkdir(parents=True, exist_ok=True)
-                    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-                    output_fps = capture_fps if capture_fps > 0 else max(10.0, fps)
-                    writer = cv2.VideoWriter(
-                        args.record,
-                        fourcc,
-                        output_fps,
-                        (output.shape[1], output.shape[0]),
-                    )
-                    if not writer.isOpened():
-                        raise RuntimeError(f"Cannot create video writer: {args.record}")
-                writer.write(output)
+                with timings.measure("record_write"):
+                    if writer is None:
+                        Path(args.record).parent.mkdir(parents=True, exist_ok=True)
+                        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                        output_fps = capture_fps if capture_fps > 0 else max(10.0, fps)
+                        writer = cv2.VideoWriter(
+                            args.record,
+                            fourcc,
+                            output_fps,
+                            (output.shape[1], output.shape[0]),
+                        )
+                        if not writer.isOpened():
+                            raise RuntimeError(f"Cannot create video writer: {args.record}")
+                    writer.write(output)
 
             if not args.headless:
                 cv2.imshow(window, output)
@@ -395,9 +487,12 @@ def main() -> int:
                 if key in (ord("q"), 27):
                     break
                 if key == ord("e"):
-                    enhancement = not enhancement
-                    if recorder:
-                        recorder.event("enhance", enabled=enhancement)
+                    enhancement = handle_analysis_enhancement_toggle(
+                        enhancement,
+                        args.detector_mode,
+                        args.people_recall_enhancement,
+                        recorder,
+                    )
                 elif key == ord("h"):
                     hud_enabled = not hud_enabled
                 elif key == ord("m"):
@@ -465,6 +560,9 @@ def main() -> int:
                                     except Exception as exc:
                                         print(f"upscale failed: {exc}")
 
+            timings.add("frame", (time.perf_counter() - frame_started) * 1000.0)
+            cpu_usage.sample()
+
             if args.max_frames > 0 and frame_index >= args.max_frames:
                 break
     except KeyboardInterrupt:
@@ -479,10 +577,77 @@ def main() -> int:
         if not args.headless:
             cv2.destroyAllWindows()
 
+    cpu_usage.sample(force=True)
+    elapsed_s = max(0.0, time.perf_counter() - run_started)
+    stage_names = (
+        "detector_init",
+        "capture",
+        "camera_motion",
+        "stabilize",
+        "enhance",
+        "detector",
+        "detector_preprocess",
+        "detector_inference",
+        "detector_postprocess",
+        "appearance",
+        "detect",
+        "track",
+        "hud",
+        "session_write",
+        "record_write",
+        "frame",
+    )
+    detector_policy_runs = timings.count("detector")
+    performance_report = {
+        "schema_version": 1,
+        "frames": frame_index,
+        "elapsed_s": round(elapsed_s, 3),
+        "processing_fps": round(frame_index / elapsed_s, 3) if elapsed_s > 0 else 0.0,
+        "profile": profile,
+        "detect_every": detect_every,
+        "detector_mode": args.detector_mode,
+        "people_recall_enhancement": (
+            args.people_recall_enhancement if args.detector_mode == "people-recall" else None
+        ),
+        "detector_runs": detector_policy_runs,
+        "detector_policy_runs": detector_policy_runs,
+        "onnx_inference_calls": onnx_inference_calls,
+        "providers": detector.providers,
+        "capture_stats": capture.stats(),
+        "latency_ms": timings.summaries(stage_names),
+        "cpu_process": cpu_usage.summary(),
+        "reid": {
+            "implemented": False,
+            "latency_ms": None,
+            "reason": (
+                "The live tracker has no learned Re-ID stage; its non-biometric appearance cue "
+                "is reported separately as latency_ms.appearance."
+            ),
+        },
+        "gpu": {
+            "usage_pct": None,
+            "vram_mb": None,
+            "telemetry": "unavailable",
+            "reason": (
+                "ONNX Runtime DirectML does not expose portable per-process GPU utilization/VRAM counters; "
+                "values are left null rather than inferred."
+            ),
+        },
+    }
+    if args.perf_report:
+        perf_path = Path(args.perf_report)
+        perf_path.parent.mkdir(parents=True, exist_ok=True)
+        perf_path.write_text(json.dumps(performance_report, indent=2), encoding="utf-8")
+        print(f"performance_report={perf_path}")
+
     print(
         f"processed_frames={frame_index} capture={capture_width}x{capture_height}@{capture_fps:.2f} "
-        f"profile={args.profile} detect_every={detect_every} capture_stats={capture.stats()} model_sha256={model_hash} "
-        f"detect_avg_ms={timings.average('detect'):.2f} track_avg_ms={timings.average('track'):.2f}"
+        f"profile={profile} detect_every={detect_every} capture_stats={capture.stats()} model_sha256={model_hash} "
+        f"detector_policy_runs={detector_policy_runs} onnx_inference_calls={onnx_inference_calls} "
+        f"detect_avg_ms={timings.run_average('detect'):.2f} "
+        f"detector_avg_ms={timings.run_average('detector'):.2f} "
+        f"track_avg_ms={timings.run_average('track'):.2f} "
+        f"cpu_avg_pct={cpu_usage.summary()['avg_pct']:.2f}"
     )
     return 0
 

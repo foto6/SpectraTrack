@@ -2,6 +2,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import pytest
 
 from spectratrack.batch import analyze_video
 from spectratrack.types import Detection
@@ -54,6 +55,90 @@ def test_analyze_video_end_to_end_without_neural_model(tmp_path):
     assert tracklet.label == "car"
     assert tracklet.observations >= 3
     assert tracklet.descriptor is not None
+    assert tracklet.color_descriptor is not None
+    assert tracklet.mean_aspect_ratio is not None
+    assert tracklet.mean_relative_area is not None
+    assert tracklet.start_center is not None
+    assert tracklet.end_center is not None
     assert len(tracklet.gallery) >= 1
     assert tracklet.preview_path is not None
     assert Path(tracklet.preview_path).is_file()
+
+
+
+class FakeRecallDetector:
+    def detect(self, _frame):
+        raise AssertionError("standard detector path must not be used in people-recall mode")
+
+    def detect_people_recall(self, _frame, **_kwargs):
+        return [Detection((90.0, 60.0, 190.0, 170.0), 0.92, 0, "person")]
+
+
+def test_analyze_video_dispatches_people_recall_mode(tmp_path):
+    video = tmp_path / "recall.avi"
+    _write_test_video(video)
+
+    tracklets = analyze_video(
+        video,
+        FakeRecallDetector(),
+        detect_every=1,
+        class_filter=set(),
+        min_observations=3,
+        progress_every=0,
+        detector_mode="people-recall",
+        person_conf=0.12,
+        person_tile_size=640,
+        person_tile_overlap=0.2,
+        person_merge_iou=0.55,
+    )
+
+    assert len(tracklets) == 1
+    assert tracklets[0].label == "person"
+
+
+def test_analyze_video_rejects_unknown_detector_mode(tmp_path):
+    with pytest.raises(ValueError, match="detector_mode"):
+        analyze_video(
+            tmp_path / "unused.avi",
+            FakeDetector(),
+            detect_every=1,
+            class_filter=set(),
+            min_observations=1,
+            progress_every=0,
+            detector_mode="typo",
+        )
+
+
+
+class FakeAdaptiveRecallDetector:
+    def __init__(self):
+        self.enhancement_modes = []
+
+    def detect(self, _frame):
+        raise AssertionError("standard detector path must not be used in people-recall mode")
+
+    def detect_people_recall(self, _frame, **kwargs):
+        self.enhancement_modes.append(kwargs.get("enhancement_mode"))
+        return [Detection((90.0, 60.0, 190.0, 170.0), 0.92, 0, "person")]
+
+
+def test_analyze_video_forwards_adaptive_people_recall_mode(tmp_path):
+    video = tmp_path / "adaptive-recall.avi"
+    _write_test_video(video)
+    detector = FakeAdaptiveRecallDetector()
+
+    tracklets = analyze_video(
+        video,
+        detector,
+        detect_every=1,
+        class_filter=set(),
+        min_observations=3,
+        progress_every=0,
+        detector_mode="people-recall",
+        person_conf=0.12,
+        people_recall_enhancement="adaptive",
+    )
+
+    assert len(tracklets) == 1
+    assert detector.enhancement_modes
+    assert set(detector.enhancement_modes) == {"adaptive"}

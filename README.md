@@ -8,8 +8,7 @@ This is an engineering-oriented civilian computer-vision project, not a claim of
 
 ### Windows / AMD-friendly v0.3
 
-See [docs/PC_V02.md](docs/PC_V02.md) for the full PC guide and
-[docs/PC_V02_PLAN.md](docs/PC_V02_PLAN.md) for the finite engineering checklist.
+See [pc/README.md](pc/README.md) for the Windows guide, [ARCHITECTURE.md](ARCHITECTURE.md) for the current system map, and [TASKS.md](TASKS.md) for active engineering work.
 
 
 
@@ -84,7 +83,34 @@ See `android/README.md` for performance tuning.
 
 ## Why it is split this way
 
-Real-time detection/tracking and neural super-resolution compete for the same compute budget. Running a heavy generative upscaler on every frame increases latency and can make tracking worse. SpectraTrack keeps the real-time path responsive and uses AI SR only on a selected PC snapshot in v0.1.
+Real-time detection/tracking and neural super-resolution compete for the same compute budget. Running a heavy generative upscaler on every frame increases latency and can make tracking worse. SpectraTrack keeps the real-time path responsive and uses AI SR only on a selected PC snapshot.
+
+## Parallel agent development
+
+Before changing code, AI agents and human contributors should read:
+
+- [AGENTS.md](AGENTS.md) — branch, testing, coordination, and scope rules;
+- [ARCHITECTURE.md](ARCHITECTURE.md) — canonical current architecture and code ownership map;
+- [TASKS.md](TASKS.md) — completed, partial, known-problem, debt, and next-work lists;
+- [DECISIONS.md](DECISIONS.md) — architectural decisions and their reasons.
+
+The intended multi-agent flow after the setup branch is merged is:
+
+```text
+main
+ ↑
+integration
+ ↑
+├── agent/detection
+├── agent/tracking
+├── agent/enhancement
+├── agent/performance
+└── agent/qa
+```
+
+Agents should not commit directly to `main`.
+
+Current highest-priority PC problem: high-recall detection of small people in high-angle, night-time, compressed video. See [docs/PC_V03_PLAN.md](docs/PC_V03_PLAN.md).
 
 ## Privacy / security
 
