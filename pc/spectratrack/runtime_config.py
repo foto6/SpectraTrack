@@ -20,6 +20,11 @@ _ALLOWED: dict[str, type | tuple[type, ...]] = {
     "detect_every": int,
     "cpu": bool,
     "enhance": bool,
+    "people_recall": bool,
+    "person_conf": (int, float),
+    "person_probe_conf": (int, float),
+    "tile_size": int,
+    "tile_overlap": (int, float),
     "view": str,
     "stabilize": bool,
     "no_cmc": bool,
@@ -63,4 +68,13 @@ def load_runtime_config(path: str | Path) -> dict[str, Any]:
         raise ValueError("reconnect_attempts cannot be negative")
     if int(out.get("reconnect_delay_ms", 250)) < 0:
         raise ValueError("reconnect_delay_ms cannot be negative")
+    person_conf = float(out.get("person_conf", 0.18))
+    probe_conf = float(out.get("person_probe_conf", 0.08))
+    if not 0.0 < probe_conf <= person_conf <= 1.0:
+        raise ValueError("require 0 < person_probe_conf <= person_conf <= 1")
+    if int(out.get("tile_size", 512)) < 64:
+        raise ValueError("tile_size must be at least 64")
+    tile_overlap = float(out.get("tile_overlap", 0.20))
+    if not 0.0 <= tile_overlap < 0.8:
+        raise ValueError("tile_overlap must be in [0, 0.8)")
     return out
