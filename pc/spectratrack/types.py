@@ -13,6 +13,7 @@ class Detection:
     score: float
     class_id: int
     label: str
+    appearance: tuple[float, ...] | None = None
 
     @property
     def center(self) -> tuple[float, float]:
@@ -35,6 +36,7 @@ class Track:
     confirmed: bool = False
     last_detection_score: float = 0.0
     recoveries: int = 0
+    appearance: tuple[float, ...] | None = None
     history: Deque[tuple[int, int]] = field(default_factory=lambda: deque(maxlen=64))
 
     @property

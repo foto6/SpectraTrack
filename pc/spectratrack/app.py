@@ -7,6 +7,7 @@ from pathlib import Path
 
 import cv2
 
+from .appearance import attach_appearance
 from .calibration import CameraCalibration
 from .detector import YoloOnnxDetector
 from .enhance import DISPLAY_MODES, apply_display_mode, crop_with_margin, enhance_visibility, run_realesrgan_snapshot
@@ -52,6 +53,7 @@ def main() -> int:
     parser.add_argument("--view", choices=DISPLAY_MODES, default="normal", help="Operator display mode; pseudo-thermal is false-color only")
     parser.add_argument("--stabilize", action="store_true", help="Start with optical stabilization enabled")
     parser.add_argument("--no-cmc", action="store_true", help="Disable camera-motion compensation for tracking")
+    parser.add_argument("--no-appearance", action="store_true", help="Disable non-biometric color appearance cue used for same-class association")
     parser.add_argument("--calibration", default="", help="Optional camera calibration JSON with width/height/HFOV")
     parser.add_argument("--session-log", default="", help="Optional JSONL metadata/session log")
     parser.add_argument("--realesrgan", default="", help="Optional path to official realesrgan-ncnn-vulkan executable")
@@ -121,6 +123,7 @@ def main() -> int:
         "analysis_enhance": enhancement,
         "profile": args.profile,
         "detect_every": detect_every,
+        "appearance_cue": not args.no_appearance,
     }) if args.session_log else None
 
     snapshots = Path("snapshots")
@@ -173,6 +176,8 @@ def main() -> int:
                     detections = detector.detect(analysis_frame)
                     if class_filter:
                         detections = [d for d in detections if d.label.lower() in class_filter]
+                    if not args.no_appearance:
+                        attach_appearance(frame, detections)
             else:
                 timings.add("detect", 0.0)
 

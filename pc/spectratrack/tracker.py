@@ -27,6 +27,29 @@ def transform_point(x: float, y: float, affine: tuple[float, float, float, float
     return a * x + b * y + tx, c * x + d * y + ty
 
 
+def appearance_similarity(a: tuple[float, ...] | None, b: tuple[float, ...] | None) -> float | None:
+    if a is None or b is None or len(a) != len(b) or not a:
+        return None
+    dot = sum(x * y for x, y in zip(a, b))
+    na = sum(x * x for x in a) ** 0.5
+    nb = sum(y * y for y in b) ** 0.5
+    if na <= 1e-12 or nb <= 1e-12:
+        return None
+    return max(0.0, min(1.0, dot / (na * nb)))
+
+
+def blend_appearance(old: tuple[float, ...] | None, new: tuple[float, ...] | None, alpha: float = 0.20) -> tuple[float, ...] | None:
+    if new is None:
+        return old
+    if old is None or len(old) != len(new):
+        return new
+    mixed = tuple((1.0 - alpha) * x + alpha * y for x, y in zip(old, new))
+    norm = sum(v * v for v in mixed) ** 0.5
+    if norm <= 1e-12:
+        return new
+    return tuple(v / norm for v in mixed)
+
+
 def transform_box(box: BBox, affine: tuple[float, float, float, float, float, float]) -> BBox:
     x1, y1, x2, y2 = box
     pts = [
@@ -106,7 +129,11 @@ class MultiObjectTracker:
         center_gate = self.max_center_ratio * (1.25 if loose else 1.0)
         if iou < iou_gate and dist_ratio > center_gate:
             return None
-        return iou * 2.4 + max(0.0, 1.0 - dist_ratio / center_gate) + det.score * 0.15
+        score = iou * 2.4 + max(0.0, 1.0 - dist_ratio / center_gate) + det.score * 0.15
+        appearance = appearance_similarity(track.appearance, det.appearance)
+        if appearance is not None:
+            score += appearance * 0.55
+        return score
 
     def _associate(
         self,
@@ -161,6 +188,7 @@ class MultiObjectTracker:
         track.score = det.score
         track.last_detection_score = det.score
         track.label = det.label
+        track.appearance = blend_appearance(track.appearance, det.appearance)
         track.age += 1
         track.hits += 1
         track.missed = 0
@@ -231,6 +259,7 @@ class MultiObjectTracker:
                 det.label,
                 confirmed=self.min_hits <= 1,
                 last_detection_score=det.score,
+                appearance=det.appearance,
             )
             cx, cy = det.center
             t.history.append((int(cx), int(cy)))
