@@ -286,6 +286,8 @@ Validation requires/protects:
 
 Replay detections are evidence. A2 must not silently mutate an A1 replay. Derived/transformed replay data needs a new artifact with provenance.
 
+A1 currently emits `appearance: null`, which is directly compatible. If A2 or a later producer serializes a numeric appearance vector, the replay `config` must also declare a non-empty `appearance_schema` (for example a versioned SpectraTrack descriptor identifier). Unversioned appearance vectors fail A5 validation because the canonical research plan requires non-null appearance metadata to be explicitly versioned.
+
 ## 9. Build the shared leaderboard
 
 After A1-A4 return stamped runs:
