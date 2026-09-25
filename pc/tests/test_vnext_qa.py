@@ -29,7 +29,8 @@ def test_inspect_split_accepts_complete_golden_coverage(monkeypatch, tmp_path: P
                 "frame": 0,
                 "tags": _all_coverage_tags(),
                 "objects": [
-                    {"id": "p1", "label": "person", "bbox": [10, 10, 30, 30]}
+                    {"id": "p1", "label": "person", "bbox": [10, 10, 30, 30]},
+                    {"id": "p2", "label": "person", "bbox": [40, 10, 65, 45]},
                 ],
             },
             {
@@ -611,4 +612,39 @@ def test_external_evidence_rejects_hidden_corpus_video_change(tmp_path: Path):
             evidence_path=evidence_path,
             source_artifact_path=source_artifact,
         )
+
+
+def test_person_specific_coverage_cannot_be_satisfied_by_empty_tagged_frame(
+    monkeypatch, tmp_path: Path
+):
+    video_root = tmp_path / "videos"
+    video = video_root / "golden" / "empty.mp4"
+    video.parent.mkdir(parents=True)
+    video.write_bytes(b"video")
+    gt = tmp_path / "golden.jsonl"
+    _write_jsonl(
+        gt,
+        [
+            {
+                "video": "golden/empty.mp4",
+                "frame": 0,
+                "tags": list(vnext_qa.REQUIRED_GOLDEN_COVERAGE),
+                "objects": [],
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        vnext_qa,
+        "_video_metadata",
+        lambda _path: {"width": 100, "height": 80, "fps": 25.0, "frame_count": 1},
+    )
+    monkeypatch.setattr(vnext_qa, "sha256_file", lambda _path: "a" * 64)
+
+    report = vnext_qa.inspect_split(gt, video_root, "golden")
+
+    assert report["coverage"]["negative"] == 1
+    assert report["coverage"]["night_dark"] == 1
+    assert report["coverage"]["tiny_person"] == 0
+    assert report["coverage"]["crossing_people"] == 0
+    assert any("tiny_person" in error for error in report["errors"])
 
