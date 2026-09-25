@@ -62,13 +62,14 @@ class RobustCapture:
     def _open(self) -> bool:
         if self.cap is not None:
             self.cap.release()
-        backend = self._backend_flag()
+        # Camera backend flags such as DirectShow/MSMF are meaningful only for
+        # live camera indices. Passing them to ordinary video files can make
+        # OpenCV fail to open otherwise valid MP4/MKV inputs.
         if self.is_camera:
+            backend = self._backend_flag()
             self.cap = cv2.VideoCapture(self.source, backend)
-        elif backend == cv2.CAP_ANY:
-            self.cap = cv2.VideoCapture(self.source)
         else:
-            self.cap = cv2.VideoCapture(self.source, backend)
+            self.cap = cv2.VideoCapture(self.source)
         self.open_count += 1
         if not self.cap.isOpened():
             return False

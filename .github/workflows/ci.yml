@@ -55,6 +55,7 @@ jobs:
           Copy-Item START_SPECTRATRACK.bat dist\SpectraTrack-PC\START_SPECTRATRACK.bat
           Copy-Item calibration.example.json dist\SpectraTrack-PC\calibration.example.json
           Copy-Item STANDALONE_README.txt dist\SpectraTrack-PC\README.txt
+          Copy-Item -Recurse presets dist\SpectraTrack-PC\presets
       - name: Package PC source
         shell: pwsh
         run: |
@@ -70,7 +71,8 @@ jobs:
             "run_demo.bat",
             "START_SPECTRATRACK.bat",
             "STANDALONE_README.txt",
-            "calibration.example.json"
+            "calibration.example.json",
+            "presets"
           )
           Compress-Archive -Path $items -DestinationPath SpectraTrack-PC-source.zip -Force
       - name: Package Windows app
