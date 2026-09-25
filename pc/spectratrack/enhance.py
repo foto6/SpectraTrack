@@ -6,6 +6,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+DISPLAY_MODES = ("normal", "clarity", "lowlight", "edges", "pseudo-thermal")
+
 
 def enhance_visibility(frame: np.ndarray, strength: float = 0.65) -> np.ndarray:
     """Non-generative visibility enhancement for live video.
@@ -64,3 +66,29 @@ def run_realesrgan_snapshot(executable: str | Path, input_path: str | Path, outp
         raise FileNotFoundError(executable)
     cmd = [str(executable), "-i", str(input_path), "-o", str(output_path), "-s", str(scale)]
     subprocess.run(cmd, check=True, shell=False)
+
+
+def apply_display_mode(frame: np.ndarray, mode: str) -> np.ndarray:
+    """Operator display transform. Detection should run on a separate analysis frame.
+
+    pseudo-thermal is only a false-color luminance visualization; it is not
+    thermal sensing and must never be interpreted as temperature.
+    """
+    mode = mode.lower()
+    if mode not in DISPLAY_MODES:
+        raise ValueError(f"Unknown display mode: {mode}")
+    if mode == "normal":
+        return frame
+    if mode == "clarity":
+        return enhance_visibility(frame, 0.72)
+    if mode == "lowlight":
+        lut = np.clip(np.power(np.arange(256, dtype=np.float32) / 255.0, 0.58) * 255.0, 0, 255).astype(np.uint8)
+        lifted = cv2.LUT(frame, lut)
+        return enhance_visibility(lifted, 0.48)
+    if mode == "edges":
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 55, 145)
+        edge_bgr = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+        return cv2.addWeighted(frame, 0.78, edge_bgr, 0.70, 0)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    return cv2.applyColorMap(gray, cv2.COLORMAP_INFERNO)

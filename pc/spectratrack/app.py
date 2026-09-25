@@ -9,7 +9,7 @@ import cv2
 
 from .calibration import CameraCalibration
 from .detector import YoloOnnxDetector
-from .enhance import crop_with_margin, enhance_visibility, run_realesrgan_snapshot
+from .enhance import DISPLAY_MODES, apply_display_mode, crop_with_margin, enhance_visibility, run_realesrgan_snapshot
 from .hud import compose_hud
 from .integrity import sha256_file, verify_sha256
 from .metrics import StageTimer
@@ -46,7 +46,8 @@ def main() -> int:
     parser.add_argument("--iou", type=float, default=0.45)
     parser.add_argument("--classes", default="", help="Comma-separated labels to retain, e.g. person,car,truck")
     parser.add_argument("--cpu", action="store_true", help="Disable DirectML preference")
-    parser.add_argument("--enhance", action="store_true", help="Start with visibility enhancement enabled")
+    parser.add_argument("--enhance", action="store_true", help="Enhance the detector analysis image with non-generative clarity processing")
+    parser.add_argument("--view", choices=DISPLAY_MODES, default="normal", help="Operator display mode; pseudo-thermal is false-color only")
     parser.add_argument("--stabilize", action="store_true", help="Start with optical stabilization enabled")
     parser.add_argument("--no-cmc", action="store_true", help="Disable camera-motion compensation for tracking")
     parser.add_argument("--calibration", default="", help="Optional camera calibration JSON with width/height/HFOV")
@@ -97,6 +98,7 @@ def main() -> int:
     hud_enabled = True
     enhancement = bool(args.enhance)
     stabilization = bool(args.stabilize)
+    view_mode = args.view
     last_tick = time.perf_counter()
     fps = 0.0
     writer = None
@@ -111,6 +113,8 @@ def main() -> int:
         "class_filter": sorted(class_filter),
         "calibration": args.calibration or None,
         "headless": bool(args.headless),
+        "view_mode": view_mode,
+        "analysis_enhance": enhancement,
     }) if args.session_log else None
 
     snapshots = Path("snapshots")
@@ -152,10 +156,11 @@ def main() -> int:
                     frame = stabilizer.apply(frame)
 
             with timings.measure("enhance"):
-                input_frame = enhance_visibility(frame) if enhancement else frame
+                analysis_frame = enhance_visibility(frame) if enhancement else frame
+                display_frame = apply_display_mode(frame, view_mode)
 
             with timings.measure("detect"):
-                detections = detector.detect(input_frame)
+                detections = detector.detect(analysis_frame)
                 if class_filter:
                     detections = [d for d in detections if d.label.lower() in class_filter]
 
@@ -200,14 +205,15 @@ def main() -> int:
             if hud_enabled:
                 with timings.measure("hud"):
                     output = compose_hud(
-                        input_frame, tracks, state.selected_id, fps,
+                        display_frame, tracks, state.selected_id, fps,
                         "+".join(detector.providers), enhancement,
                         timings_ms=timing_snapshot,
                         camera_motion=camera_motion_info,
                         calibration=calibration,
+                        view_mode=view_mode,
                     )
             else:
-                output = input_frame
+                output = display_frame
 
             if recorder:
                 recorder.frame(
@@ -236,6 +242,10 @@ def main() -> int:
                         recorder.event("enhance", enabled=enhancement)
                 elif key == ord("h"):
                     hud_enabled = not hud_enabled
+                elif key == ord("m"):
+                    view_mode = DISPLAY_MODES[(DISPLAY_MODES.index(view_mode) + 1) % len(DISPLAY_MODES)]
+                    if recorder:
+                        recorder.event("view_mode", mode=view_mode)
                 elif key == ord("z"):
                     stabilization = not stabilization
                     stabilizer.reset()

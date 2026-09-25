@@ -82,6 +82,7 @@ def compose_hud(
     timings_ms: dict[str, float] | None = None,
     camera_motion: tuple[float, float, float] | None = None,
     calibration: CameraCalibration | None = None,
+    view_mode: str = "normal",
 ) -> np.ndarray:
     base = frame.copy()
     h, w = base.shape[:2]
@@ -95,7 +96,10 @@ def compose_hud(
     confirmed = sum(1 for t in tracks if t.confirmed)
     cv2.putText(canvas, "SPECTRATRACK // PC V0.2", (16, 28), FONT, 0.62, (245, 245, 245), 1, cv2.LINE_AA)
     cv2.putText(canvas, f"FPS {fps:5.1f} | {provider_text}", (16, 52), FONT, 0.45, (210, 210, 210), 1, cv2.LINE_AA)
-    cv2.putText(canvas, f"ENHANCE {'ON' if enhanced else 'OFF'} | TRACKS {confirmed}/{len(tracks)}", (16, 73), FONT, 0.45, (210, 210, 210), 1, cv2.LINE_AA)
+    view_label = view_mode.upper()
+    if view_mode == "pseudo-thermal":
+        view_label += " (FALSE COLOR)"
+    cv2.putText(canvas, f"ANALYSIS ENH {'ON' if enhanced else 'OFF'} | VIEW {view_label} | TRACKS {confirmed}/{len(tracks)}", (16, 73), FONT, 0.40, (210, 210, 210), 1, cv2.LINE_AA)
     if timings_ms:
         timing = f"DET {timings_ms.get('detect',0):.1f}ms | TRK {timings_ms.get('track',0):.1f} | CMC {timings_ms.get('cmc',0):.1f}"
         cv2.putText(canvas, timing, (16, 94), FONT, 0.40, (185, 185, 185), 1, cv2.LINE_AA)
@@ -139,6 +143,6 @@ def compose_hud(
             cv2.putText(canvas, line, (px + 18, y), FONT, 0.45, (220, 220, 220), 1, cv2.LINE_AA)
             y += 23
 
-    footer = "Q quit | E enhance | Z stabilize | H hud | S snapshot | U AI upscale"
+    footer = "Q quit | E analysis | M view | Z stabilize | R reset | H hud | S snapshot | U AI upscale"
     cv2.putText(canvas, footer, (16, h - 16), FONT, 0.42, (190, 190, 190), 1, cv2.LINE_AA)
     return canvas
