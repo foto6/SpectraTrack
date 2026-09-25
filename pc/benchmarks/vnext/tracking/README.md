@@ -45,6 +45,7 @@ python -m spectratrack.tracking_research --replay path\to\detections.jsonl --can
 Run the same replay through one research candidate:
 
 ```powershell
+python -m spectratrack.tracking_research --replay path\to\detections.jsonl --candidate current-global-assignment --output benchmarks/vnext/tracking/current-global.json
 python -m spectratrack.tracking_research --replay path\to\detections.jsonl --candidate byte-global-reference-style --output benchmarks/vnext/tracking/byte-style.json
 python -m spectratrack.tracking_research --replay path\to\detections.jsonl --candidate botsort-reference-style --output benchmarks/vnext/tracking/botsort-style.json
 python -m spectratrack.tracking_research --replay path\to\detections.jsonl --candidate ocsort-style --output benchmarks/vnext/tracking/ocsort-style.json
@@ -54,7 +55,8 @@ python -m spectratrack.tracking_research --replay path\to\detections.jsonl --can
 
 The deterministic pre-A5 suite covers:
 
-- crossings;
+- crossings (including an exact-overlap ambiguity audit);
+- a nearby same-class asymmetric-bbox counterexample where greedy local choice is worse than the global one-to-one assignment;
 - partial occlusion;
 - full occlusion;
 - short detector dropout;
@@ -87,7 +89,9 @@ Important: the current tracker already has ByteTrack-like high/low-confidence re
 
 ## Candidate meaning
 
-The three non-current candidates are dependency-free clean-room mechanism probes. They are **not bit-for-bit copies of official repositories**:
+The isolated `current-global-assignment` candidate preserves the current SpectraTrack score/gates, high/low stages, CMC and dormant lifecycle; only greedy one-to-one selection is replaced by maximum-score global assignment. It is the cleanest test of the assignment hypothesis.
+
+The three named external-style candidates are dependency-free clean-room mechanism probes. They are **not bit-for-bit copies of official repositories**:
 
 - `byte-global-reference-style`: high/low association + strong-only creation + global assignment + constant-velocity geometry;
 - `botsort-reference-style`: global assignment + appearance + replay CMC;
