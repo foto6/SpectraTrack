@@ -19,12 +19,15 @@ def test_stable_id_for_motion():
     assert len(set(ids)) == 1
 
 
-def test_short_dropout_keeps_track():
+def test_short_dropout_keeps_confirmed_track():
     tracker = MultiObjectTracker(max_missed=4)
     first = tracker.update([d(20, 20)])[0].track_id
+    confirmed = tracker.update([d(27, 20)])[0]
+    assert confirmed.track_id == first
+    assert confirmed.confirmed
     tracker.update([])
     tracker.update([])
-    resumed = tracker.update([d(35, 20)])[0].track_id
+    resumed = tracker.update([d(42, 20)])[0].track_id
     assert resumed == first
 
 
