@@ -71,7 +71,7 @@ def tracklet_similarity(left: TrackletSummary, right: TrackletSummary) -> float 
     if not pair_scores:
         return base
     pair_scores.sort(reverse=True)
-    count = min(3, len(pair_scores))
+    count = min(3, len(left.gallery), len(right.gallery), len(pair_scores))
     gallery_score = sum(pair_scores[:count]) / count
     if base is None:
         return gallery_score
