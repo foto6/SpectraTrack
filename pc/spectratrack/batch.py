@@ -145,6 +145,7 @@ def analyze_video(
     max_frames: int = 0,
     preview_dir: Path | None = None,
     video_id: str | None = None,
+    progress_every: int = 120,
 ) -> list[TrackletSummary]:
     capture = RobustCapture(str(path), CaptureConfig(backend="auto", reconnect_attempts=0))
     if not capture.is_opened():
@@ -213,6 +214,9 @@ def analyze_video(
                         tr.bbox,
                     )
 
+            if progress_every > 0 and frame_index % progress_every == 0:
+                print(f"  frames={frame_index} active_tracks={len(tracker.tracks)} retained={len(accumulators)}")
+
             if max_frames > 0 and frame_index >= max_frames:
                 break
     finally:
@@ -262,12 +266,21 @@ def main() -> int:
     parser.add_argument("--no-previews", action="store_true", help="Do not save one best crop per tracklet")
     parser.add_argument("--no-html", action="store_true", help="Do not generate the local HTML review report")
     parser.add_argument("--review", default="", help="Optional exported review JSON from a previous HTML report")
+    parser.add_argument("--progress-every", type=int, default=120, help="Print batch progress every N frames; 0 disables")
     args = parser.parse_args()
 
     if args.detect_every < 1:
         raise SystemExit("--detect-every must be >= 1")
     if args.min_observations < 1:
         raise SystemExit("--min-observations must be >= 1")
+    if args.progress_every < 0:
+        raise SystemExit("--progress-every must be >= 0")
+    if not 0.0 <= args.candidate_threshold <= args.strong_threshold <= 1.0:
+        raise SystemExit("Require 0 <= --candidate-threshold <= --strong-threshold <= 1")
+
+    model_path = Path(args.model)
+    if not model_path.exists() or not model_path.is_file():
+        raise SystemExit(f"Model not found: {model_path}")
 
     videos = discover_videos(
         args.input_dir,
@@ -281,7 +294,7 @@ def main() -> int:
     preview_dir = None if args.no_previews else output.with_name(output.stem + "_samples")
 
     detector = YoloOnnxDetector(
-        args.model,
+        model_path,
         input_size=args.input_size,
         conf_threshold=args.conf,
         iou_threshold=args.iou,
@@ -303,16 +316,25 @@ def main() -> int:
                 max_frames=args.max_frames_per_video,
                 preview_dir=preview_dir,
                 video_id=video_identifier(args.input_dir, path),
+                progress_every=args.progress_every,
             )
             all_tracklets.extend(tracklets)
             print(f"  tracklets={len(tracklets)}")
         except Exception as exc:
-            failures.append({"video": path.name, "error": str(exc)})
+            failures.append({"video": video_identifier(args.input_dir, path), "error": str(exc)})
             print(f"  FAILED: {exc}")
 
     review_decisions = {}
     if args.review:
-        review_payload = json.loads(Path(args.review).read_text(encoding="utf-8"))
+        review_path = Path(args.review)
+        if not review_path.exists() or not review_path.is_file():
+            raise SystemExit(f"Review file not found: {review_path}")
+        try:
+            review_payload = json.loads(review_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SystemExit(f"Cannot read review file {review_path}: {exc}") from exc
+        if not isinstance(review_payload, dict) or not isinstance(review_payload.get("decisions", []), list):
+            raise SystemExit("Review file must contain a JSON object with a decisions array")
         for item in review_payload.get("decisions", []):
             left = str(item.get("left", ""))
             right = str(item.get("right", ""))
@@ -327,8 +349,8 @@ def main() -> int:
         review_decisions=review_decisions,
     )
     graph["run"] = {
-        "model": str(Path(args.model)),
-        "model_sha256": sha256_file(args.model),
+        "model": str(model_path),
+        "model_sha256": sha256_file(model_path),
         "providers": detector.providers,
         "input_dir": str(Path(args.input_dir)),
         "videos_seen": len(videos),
