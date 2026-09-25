@@ -47,6 +47,12 @@ jobs:
           pyinstaller --noconfirm --clean --onedir --name SpectraTrack-PC --collect-all onnxruntime run_spectratrack.py
       - name: Smoke test standalone app
         run: .\dist\SpectraTrack-PC\SpectraTrack-PC.exe --help
+      - name: Add standalone quick-start files
+        shell: pwsh
+        run: |
+          Copy-Item RUN_CAMERA.bat dist\SpectraTrack-PC\RUN_CAMERA.bat
+          Copy-Item calibration.example.json dist\SpectraTrack-PC\calibration.example.json
+          Copy-Item STANDALONE_README.txt dist\SpectraTrack-PC\README.txt
       - name: Package PC source
         shell: pwsh
         run: |
