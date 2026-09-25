@@ -79,15 +79,20 @@ class MultiObjectTracker:
         high_conf: float = 0.45,
         low_conf: float = 0.12,
         min_hits: int = 3,
+        creation_thresholds: dict[int, float] | None = None,
     ) -> None:
         if not 0.0 <= low_conf <= high_conf <= 1.0:
             raise ValueError("Require 0 <= low_conf <= high_conf <= 1")
+        creation_thresholds = dict(creation_thresholds or {})
+        if any(not low_conf <= threshold <= 1.0 for threshold in creation_thresholds.values()):
+            raise ValueError("creation thresholds must be between low_conf and 1")
         self.max_missed = int(max_missed)
         self.min_iou = float(min_iou)
         self.max_center_ratio = float(max_center_ratio)
         self.high_conf = float(high_conf)
         self.low_conf = float(low_conf)
         self.min_hits = int(min_hits)
+        self.creation_thresholds = creation_thresholds
         self._next_id = 1
         self.tracks: dict[int, Track] = {}
 
@@ -222,6 +227,11 @@ class MultiObjectTracker:
         all_tracks = set(self.tracks)
         high = {i for i, d in enumerate(detections) if d.score >= self.high_conf}
         low = set(range(len(detections))) - high
+        creation_candidates = {
+            i
+            for i, d in enumerate(detections)
+            if d.score >= self.creation_thresholds.get(d.class_id, self.high_conf)
+        }
 
         matches_high = self._associate(all_tracks, detections, high, camera_motion, camera_transform, loose=False)
         used_tracks = {tid for tid, _ in matches_high}
@@ -246,8 +256,9 @@ class MultiObjectTracker:
             cx, cy = track.center
             track.history.append((int(cx), int(cy)))
 
-        # Only strong detections may create new identities.
-        for didx in high - used_dets:
+        # New identities use the default high-confidence gate unless an
+        # explicit class-specific creation threshold was configured.
+        for didx in creation_candidates - used_dets:
             det = detections[didx]
             tid = self._next_id
             self._next_id += 1

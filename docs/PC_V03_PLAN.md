@@ -41,11 +41,13 @@ The goal is **high pedestrian recall**, not a blanket confidence-threshold drop.
 - [x] Keep a hard minimum quality gate so lowering person confidence does not flood the scene with single-frame junk.
 
 ### B3 — temporal recovery of weak people
-- [ ] Keep weak person candidates for a short temporal window instead of discarding them immediately.
-- [ ] Confirm a weak candidate when spatially consistent evidence appears across multiple frames.
-- [ ] Allow confirmed person tracks to survive short detector dropouts.
-- [ ] Permit temporally consistent low-confidence person detections to recover an existing track.
-- [ ] Do not create a stable person track from one isolated low-confidence frame.
+- [x] Keep weak person candidates for a short temporal window instead of discarding them immediately.
+- [x] Confirm a weak candidate when spatially consistent evidence appears across multiple frames.
+- [x] Allow confirmed person tracks to survive short detector dropouts.
+- [x] Permit temporally consistent low-confidence person detections to recover an existing track.
+- [x] Do not create a stable person track from one isolated low-confidence frame.
+
+Implementation note: `people-recall` lowers only the `person` tentative-track creation gate. The existing two-stage tracker still requires repeated hits (`min_hits=3`) before confirmation and already supports short dropout prediction/recovery; other classes retain the normal high-confidence creation gate.
 
 ### B4 — image-analysis variants
 - [ ] Benchmark original RGB vs non-generative low-light/contrast analysis for the person pass.

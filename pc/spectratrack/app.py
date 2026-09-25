@@ -125,7 +125,13 @@ def main() -> int:
     detect_every = args.detect_every if args.detect_every > 0 else profile_detect_every
 
     detector = YoloOnnxDetector(model, args.input_size, args.conf, args.iou, prefer_gpu=not args.cpu)
-    tracker = MultiObjectTracker()
+    people_allowed = not class_filter or "person" in class_filter
+    person_creation_thresholds = {
+        class_id: args.person_conf
+        for class_id, label in enumerate(detector.labels)
+        if args.people_recall and people_allowed and label.lower() == "person"
+    }
+    tracker = MultiObjectTracker(creation_thresholds=person_creation_thresholds)
     stabilizer = VideoStabilizer()
     motion = GlobalMotionEstimator()
     lock_refiner = LockRefiner()
@@ -270,7 +276,6 @@ def main() -> int:
             if should_detect:
                 with timings.measure("detect"):
                     detections = detector.detect(analysis_frame)
-                    people_allowed = not class_filter or "person" in class_filter
                     if args.people_recall and people_allowed:
                         people_frame, _quality, operations = adaptive_analysis_frame(frame)
                         enhanced_people_frame = people_frame if operations else None
