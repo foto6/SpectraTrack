@@ -119,7 +119,9 @@ def _coverage_for_frame(frame) -> set[str]:
     coverage = {_normalize_token(tag) for tag in frame.tags}
     people = [obj for obj in frame.objects if obj.label == "person"]
     valid_people = [obj for obj in people if not obj.ignore]
-    if not people:
+    if people:
+        coverage.discard("negative")
+    else:
         coverage.add("negative")
     for obj in valid_people:
         coverage.update(_normalize_token(attribute) for attribute in obj.attributes)
@@ -461,6 +463,21 @@ def annotate_frame_batch(
         current_tags = {_normalize_token(tag) for tag in current.get("tags", [])}
         current_tags.update(base_tags)
         objects = [dict(obj) for obj in current.get("objects", []) if obj.get("label") == "person"]
+        existing_active = next((obj for obj in objects if obj.get("id") == active_id), None)
+        if existing_active is None:
+            active_attributes = ()
+            active_ignore = False
+        else:
+            active_attributes = tuple(
+                sorted(
+                    {
+                        _normalize_token(str(item))
+                        for item in existing_active.get("attributes", [])
+                        if str(item).strip()
+                    }
+                )
+            )
+            active_ignore = bool(existing_active.get("ignore", False))
         drag_start: list[int] | None = None
 
         def mouse(event, x, y, _flags, _param):
@@ -545,6 +562,24 @@ def annotate_frame_batch(
                 candidate = input("Stable person id for this clip (example p1): ").strip()
                 if candidate:
                     active_id = candidate
+                    existing_active = next(
+                        (obj for obj in objects if obj.get("id") == active_id),
+                        None,
+                    )
+                    if existing_active is None:
+                        active_attributes = ()
+                        active_ignore = False
+                    else:
+                        active_attributes = tuple(
+                            sorted(
+                                {
+                                    _normalize_token(str(item))
+                                    for item in existing_active.get("attributes", [])
+                                    if str(item).strip()
+                                }
+                            )
+                        )
+                        active_ignore = bool(existing_active.get("ignore", False))
             elif pressed == ord("a"):
                 raw_attributes = input(
                     "Comma-separated attributes for the active person (blank clears): "
