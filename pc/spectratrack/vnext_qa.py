@@ -690,8 +690,8 @@ def stamp_qa_result(
     if result.get("ground_truth_sha256") != golden.get("ground_truth_sha256"):
         raise ValueError("QA result was not scored against this manifest's golden ground truth")
     revision = result.get("revision")
-    if not isinstance(revision, str) or not revision:
-        raise ValueError("QA result revision/source commit is required")
+    if not _is_hex(revision, 40):
+        raise ValueError("QA result revision must be a full 40-hex subject commit SHA")
     if not isinstance(result.get("settings"), dict):
         raise ValueError("QA result settings are required")
     if not isinstance(result.get("evaluation"), dict):
@@ -708,6 +708,8 @@ def stamp_qa_result(
                 raise ValueError(f"QA result {video!r} has different {key} from frozen corpus")
 
     model = result.get("model", {})
+    if not isinstance(model.get("path"), str) or not model.get("path"):
+        raise ValueError("QA result model identifier/path is required")
     if not _is_hex(model.get("sha256"), 64):
         raise ValueError("QA result model SHA-256 is required")
     providers = model.get("providers")
