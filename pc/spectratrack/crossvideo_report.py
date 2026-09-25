@@ -54,9 +54,11 @@ def write_html_report(graph: dict, output_path: str | Path) -> Path:
         edge_key = f'{edge["left"]}|{edge["right"]}'
         stored = edge.get("review_decision")
         same_label = "LOOKS SAME" if edge.get("relation") == "same_appearance_candidate" else "SAME OBJECT"
+        similarity = edge.get("similarity")
+        similarity_text = f"{float(similarity):.3f}" if similarity is not None else "N/A"
         edge_cards.append(
             f'<section class="edge {escape(edge["strength"])}" data-key="{escape(edge_key)}">'
-            + f'<h3>{escape(edge["strength"].upper())} · similarity {float(edge["similarity"]):.3f}</h3>'
+            + f'<h3>{escape(edge["strength"].upper())} · similarity {similarity_text}</h3>'
             + f'<p>{escape(edge["relation"])}</p>'
             + '<div class="pair">'
             + f'<div>{left_img}<b>{escape(edge["left"])}</b></div>'

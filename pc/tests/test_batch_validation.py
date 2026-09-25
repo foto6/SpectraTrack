@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import pytest
 
 from spectratrack.batch import video_identifier
 
