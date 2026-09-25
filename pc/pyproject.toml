@@ -13,6 +13,8 @@ spectratrack = "spectratrack.app:main"
 spectratrack-benchmark = "spectratrack.benchmark:main"
 spectratrack-diagnostics = "spectratrack.diagnostics:main"
 spectratrack-session = "spectratrack.session_analyze:main"
+spectratrack-calibrate = "spectratrack.calibrate:main"
+spectratrack-replay = "spectratrack.replay:main"
 
 [tool.setuptools]
 packages = ["spectratrack"]

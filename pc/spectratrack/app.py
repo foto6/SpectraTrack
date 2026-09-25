@@ -7,6 +7,7 @@ from pathlib import Path
 import cv2
 
 from .calibration import CameraGeometry
+from .camera_calibration import CameraCalibration, Undistorter
 from .capture import open_capture
 from .cmc import CameraMotionEstimator, MotionEstimate
 from .detector import YoloOnnxDetector
@@ -41,7 +42,9 @@ def main() -> int:
     parser.add_argument("--stabilize", action="store_true", help="Start with optical stabilization enabled")
     parser.add_argument("--cmc", action=argparse.BooleanOptionalAction, default=True, help="Camera-motion compensation")
     parser.add_argument("--mask", action="store_true", help="Start with classical selected-target GrabCut outline")
-    parser.add_argument("--hfov", type=float, default=None, help="Calibrated/known horizontal camera FOV in degrees")
+    parser.add_argument("--hfov", type=float, default=None, help="Known horizontal camera FOV in degrees")
+    parser.add_argument("--calibration", default="", help="Checkerboard calibration JSON")
+    parser.add_argument("--undistort", action="store_true", help="Apply lens distortion correction from --calibration")
     parser.add_argument("--track-high", type=float, default=0.45)
     parser.add_argument("--track-low", type=float, default=0.12)
     parser.add_argument("--new-track", type=float, default=0.55)
@@ -64,6 +67,22 @@ def main() -> int:
         raise SystemExit(str(exc)) from exc
     print(f"model sha256: {model_digest}")
 
+    calibration = None
+    undistorter = None
+    if args.calibration:
+        try:
+            calibration = CameraCalibration.load(args.calibration)
+        except Exception as exc:
+            raise SystemExit(f"Calibration load failed: {exc}") from exc
+    if args.undistort:
+        if calibration is None:
+            raise SystemExit("--undistort requires --calibration camera-calibration.json")
+        undistorter = Undistorter(calibration)
+
+    geometry_hfov = args.hfov
+    if geometry_hfov is None and calibration is not None:
+        geometry_hfov = calibration.hfov_deg
+
     detector = YoloOnnxDetector(model, args.input_size, args.conf, args.iou, prefer_gpu=not args.cpu)
     tracker = MultiObjectTracker(config=TrackerConfig(
         high_conf=args.track_high,
@@ -81,7 +100,7 @@ def main() -> int:
     cmc = CameraMotionEstimator()
     masker = TargetMaskCache()
     profiler = RollingProfiler()
-    geometry = CameraGeometry(args.hfov)
+    geometry = CameraGeometry(geometry_hfov)
 
     try:
         cap = open_capture(args.source)
@@ -108,7 +127,9 @@ def main() -> int:
             "model_sha256": model_digest,
             "providers": detector.providers,
             "input_size": args.input_size,
-            "horizontal_fov_deg": args.hfov,
+            "horizontal_fov_deg": geometry_hfov,
+            "calibration": str(args.calibration) if args.calibration else "",
+            "undistort": bool(args.undistort),
             "adaptive_detect": args.adaptive_detect,
             "detect_every": args.detect_every,
         })
@@ -138,13 +159,20 @@ def main() -> int:
             if not ok:
                 break
             frame_index += 1
-            state.frame_width = frame.shape[1]
+
+            if undistorter is not None:
+                with profiler.measure("undistort"):
+                    sensor_frame = undistorter.apply(frame)
+            else:
+                sensor_frame = frame
+
+            state.frame_width = sensor_frame.shape[1]
 
             if stabilization:
                 with profiler.measure("stabilize"):
-                    base_frame = stabilizer.apply(frame)
+                    base_frame = stabilizer.apply(sensor_frame)
             else:
-                base_frame = frame
+                base_frame = sensor_frame
 
             previous_boxes = [tr.bbox for tr in state.tracks if tr.confirmed]
             if cmc_enabled:
@@ -213,6 +241,7 @@ def main() -> int:
                     detector_ran=detector_ran,
                     target_mask=target_mask,
                     mask_enabled=mask_enabled,
+                    undistort_enabled=undistorter is not None,
                 )
             else:
                 output = analysis_frame
@@ -230,6 +259,7 @@ def main() -> int:
                         "detector_interval": scheduler.interval,
                         "enhancement_mode": enhancement_mode,
                         "mask_enabled": mask_enabled,
+                        "undistort_enabled": undistorter is not None,
                     },
                 )
 

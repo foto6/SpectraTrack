@@ -87,6 +87,7 @@ def compose_hud(
     detector_ran: bool = True,
     target_mask: np.ndarray | None = None,
     mask_enabled: bool = False,
+    undistort_enabled: bool = False,
 ) -> np.ndarray:
     metrics = metrics or {}
     geometry = geometry or CameraGeometry()
@@ -112,8 +113,8 @@ def compose_hud(
         cmc_text = f"CMC {motion.dx:+.1f},{motion.dy:+.1f}px {motion.rotation_deg:+.2f}deg {'OK' if motion.valid else 'HOLD'}"
     cv2.putText(
         canvas,
-        f"ENH {enhancement_mode.upper()} | STAB {'ON' if stabilization_enabled else 'OFF'} | MASK {'ON' if mask_enabled else 'OFF'} | {cmc_text}",
-        (16, 73), FONT, 0.41, (205, 205, 205), 1, cv2.LINE_AA,
+        f"ENH {enhancement_mode.upper()} | UND {'ON' if undistort_enabled else 'OFF'} | STAB {'ON' if stabilization_enabled else 'OFF'} | MASK {'ON' if mask_enabled else 'OFF'} | {cmc_text}",
+        (16, 73), FONT, 0.39, (205, 205, 205), 1, cv2.LINE_AA,
     )
 
     px = w
