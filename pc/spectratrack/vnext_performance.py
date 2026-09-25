@@ -259,12 +259,16 @@ def schedule_frame(
             else "every_detector_frame"
         )
         remaining = max(0, config.max_calls_per_frame - full)
-        raw_suspects = min(signals.suspect_rois, remaining)
+        reserved_enhanced = 0
+        if signals.suspect_rois > 0 and signals.enhancement_eligible_rois > 0:
+            reserved_enhanced = min(config.max_enhanced_calls_per_frame, remaining)
+        raw_budget = max(0, remaining - reserved_enhanced)
+        raw_suspects = min(signals.suspect_rois, raw_budget)
         remaining -= raw_suspects
         enhanced = min(
             raw_suspects,
             signals.enhancement_eligible_rois,
-            config.max_enhanced_calls_per_frame,
+            reserved_enhanced,
             remaining,
         )
         return ScheduleDecision(policy, frame_index, full, raw_suspects, 0, enhanced, False, trigger_reason)
