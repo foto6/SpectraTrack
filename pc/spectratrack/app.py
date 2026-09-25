@@ -39,7 +39,7 @@ def parse_class_filter(text: str) -> set[str]:
 
 
 def main() -> int:
-    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     pre_parser.add_argument("--config", default="", help="Optional validated JSON runtime preset")
     pre_args, _ = pre_parser.parse_known_args()
     config_defaults = load_runtime_config(pre_args.config) if pre_args.config else {}
@@ -47,6 +47,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="SpectraTrack PC v0.2 local object detection/tracking HUD",
         parents=[pre_parser],
+        allow_abbrev=False,
     )
     parser.add_argument("--model", required=True, help="Path to YOLOv8/YOLO11-style ONNX model")
     parser.add_argument("--model-sha256", default="", help="Expected model SHA-256; abort on mismatch")
