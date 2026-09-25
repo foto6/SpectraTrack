@@ -30,6 +30,7 @@ Baseline: `main@2012eaae2f4ffe820a66d12e40346d911616cd03`.
 - Optional external Real-ESRGAN snapshot enhancement.
 - Headless processing and class filters.
 - Synthetic tracker benchmark, diagnostics and self-check.
+- Annotated detector/tracker QA benchmark harness with saved result comparison and NEW FALSE NEGATIVE regression gates.
 - Standalone Windows PyInstaller CI with CLI smoke tests.
 - Native Android CameraX + ONNX Runtime client.
 - Cross-video batch analysis.
@@ -96,7 +97,7 @@ Engineering targets for the first offline validation set are recorded in `docs/P
 - Generic detector confidence is global; there is no class-specific `person` threshold yet.
 - There is no tiled/sliced detector path.
 - There is no multi-scale or dedicated second person pass.
-- There is no annotated real-world person-recall benchmark.
+- The annotated QA harness exists, but no representative real-world person-recall corpus has been collected and validated yet.
 - Cross-video hand-built descriptors can confuse visually similar vehicles/animals.
 - Cross-video similarity thresholds are engineering defaults, not dataset-calibrated probabilities.
 - Greedy tracker association can make suboptimal assignments in dense crossings.
@@ -112,7 +113,7 @@ Engineering targets for the first offline validation set are recorded in `docs/P
 - Evaluate Kalman/ByteTrack/BoT-SORT-style tracking only with regression evidence.
 - Add representative GPU/backend benchmarks, not only synthetic tracker benchmark.
 - Add validated Windows GPU utilization/VRAM telemetry across DirectML hardware; do not infer unavailable counters.
-- Add a detector-level benchmark harness with annotations and per-class metrics.
+- Populate and validate the detector-level benchmark with representative real footage, provenance, and a held-out subset.
 - Add H.264/H.265/FFmpeg output path with optional original-audio mux.
 - Add richer progress/ETA and per-stage performance summaries for long offline runs.
 - Add model compatibility tests for more verified ONNX exports without guessing unknown layouts.
@@ -160,4 +161,4 @@ Profile DirectML pipeline, capture, detector cadence, future tiling, encoding an
 
 ### agent/qa
 
-Build real validation assets, benchmark harness, regression tests, branch-integration checks and release verification.
+Benchmark harness/regression checks are implemented. Next collect real validation assets, establish BASELINE, then use the same result schema for branch-integration and release checks.

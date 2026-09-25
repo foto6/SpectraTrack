@@ -158,6 +158,19 @@ Preferred implementation path after baseline measurement:
 Reason: lowering one global confidence threshold cannot recover objects the model never resolves, and it can flood the tracker with false positives.
 
 
+## 2026-09-25 — QA regression comparisons require identical evaluation inputs
+
+Decision:
+
+- annotated QA results record the exact ground-truth SHA-256, model SHA-256, provider list, detector settings, and evaluation IoU;
+- comparisons are rejected when ground-truth hashes, target labels, or matching IoU differ;
+- the default regression gate treats any object detected by baseline but missed by a candidate as a `NEW FALSE NEGATIVE`;
+- recall/precision drops and increases in ID switches/fragmentation also fail by default unless an explicit tolerance is supplied;
+- VRAM is recorded only when a real measurement source is provided; the benchmark must not estimate or fabricate it.
+
+Reason: branch comparisons are useful only when they measure the same annotated evidence under known settings. A strict new-miss gate catches visually convincing demos that quietly lose previously detected people.
+
+
 ## 2026-09-25 — Performance work starts with stage-level measurement
 
 Decision:

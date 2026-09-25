@@ -450,19 +450,21 @@ Files:
 
 - `pc/spectratrack/metrics.py`
 - `pc/spectratrack/benchmark.py`
+- `pc/spectratrack/qa_benchmark.py`
 - `pc/spectratrack/diagnostics.py`
 - `pc/spectratrack/selfcheck.py`
+- `pc/benchmarks/README.md`
 
 `StageTimer` records bounded recent samples plus whole-run average/count/max values.
 The live PC path separately measures detector preprocessing, ONNX inference, detector postprocessing,
-appearance extraction, tracking, capture, rendering/session/record writes, and full-frame processing. `--perf-report PATH` writes these
-measurements as JSON together with processing FPS, provider selection and dependency-free
-process CPU sampling.
+appearance extraction, tracking, capture, rendering/session/record writes, and full-frame processing.
+`--perf-report PATH` writes these measurements as JSON together with processing FPS, provider
+selection and dependency-free process CPU sampling.
 
-GPU utilization and VRAM are deliberately emitted as `null` with an explicit unavailable
-reason: ONNX Runtime DirectML does not expose portable per-process counters. SpectraTrack does
-not infer or fabricate those values. A Windows hardware-counter implementation still requires
-representative AMD/NVIDIA/Intel validation.
+GPU utilization and VRAM are deliberately emitted as `null` with an explicit unavailable reason:
+ONNX Runtime DirectML does not expose portable per-process counters. SpectraTrack does not infer or
+fabricate those values. A Windows hardware-counter implementation still requires representative
+AMD/NVIDIA/Intel validation.
 
 A synthetic tracker benchmark exists and CI runs:
 
@@ -470,7 +472,9 @@ A synthetic tracker benchmark exists and CI runs:
 python -m spectratrack.benchmark --frames 500 --targets 24
 ```
 
-Important gap: there is currently **no representative annotated detector benchmark for small-person recall in poor high-angle/night/compressed CCTV footage**. That is a top-priority task in `docs/PC_V03_PLAN.md`.
+`qa_benchmark.py` is the detector/tracker quality harness. It reads lightweight JSONL ground truth, runs the current detector + affine CMC + appearance cue + tracker on local video, stores model/ground-truth hashes and settings, and reports person recall/precision, false positives/negatives, apparent-size/frame-tag/object-attribute breakdowns, ID switches, fragmentation, FPS, and optional externally measured VRAM. Its comparator rejects mismatched evaluation inputs and explicitly lists `NEW FALSE NEGATIVE` regressions.
+
+Important remaining gap: the harness exists, but there is currently **no collected and validated representative real CCTV corpus** for small-person recall in poor high-angle/night/compressed footage. Synthetic fixtures test the evaluator only and are not quality evidence. Collecting the real annotated/held-out set remains a top-priority task in `docs/PC_V03_PLAN.md`.
 
 ## 15. Android architecture
 
