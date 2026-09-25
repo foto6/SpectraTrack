@@ -300,14 +300,21 @@ def synthetic_scenarios() -> tuple[ResearchScenario, ...]:
     ))
 
     nearby_rows = []
-    for ax, bx in [(220, 282), (228, 274), (238, 264), (247, 255), (255, 247), (264, 238), (274, 228), (282, 220)]:
-        a = _box(ax, 180, 42, 94)
-        b = _box(bx, 180, 42, 94)
+    for _ in range(3):
+        a = _box(200, 180, 30, 90)
+        b = _box(300, 180, 90, 90)
+        nearby_rows.append(((_det(a), _det(b)), (_truth("a", a), _truth("b", b)), True, (0.0, 0.0), None))
+    for ax, bx in [(240, 250), (270, 230), (300, 200), (330, 170)]:
+        a = _box(ax, 180, 80, 90)
+        b = _box(bx, 180, 30, 90)
         nearby_rows.append(((_det(a), _det(b)), (_truth("a", a), _truth("b", b)), True, (0.0, 0.0), None))
     scenarios.append(_make_scenario(
         "nearby_same_class",
         nearby_rows,
-        "Nearby same-class people stress greedy assignment when geometry is similar and no appearance cue separates them.",
+        (
+            "Nearby same-class people with asymmetric bbox geometry expose a greedy-assignment conflict: "
+            "one locally best pair can block the better total one-to-one assignment."
+        ),
     ))
 
     scale_rows = []
