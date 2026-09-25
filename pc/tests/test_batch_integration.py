@@ -55,6 +55,11 @@ def test_analyze_video_end_to_end_without_neural_model(tmp_path):
     assert tracklet.label == "car"
     assert tracklet.observations >= 3
     assert tracklet.descriptor is not None
+    assert tracklet.color_descriptor is not None
+    assert tracklet.mean_aspect_ratio is not None
+    assert tracklet.mean_relative_area is not None
+    assert tracklet.start_center is not None
+    assert tracklet.end_center is not None
     assert len(tracklet.gallery) >= 1
     assert tracklet.preview_path is not None
     assert Path(tracklet.preview_path).is_file()

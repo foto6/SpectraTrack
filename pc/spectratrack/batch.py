@@ -35,8 +35,13 @@ class _Accumulator:
     best_value: float = -1.0
     best_frame: int = 0
     descriptor_sum: np.ndarray | None = None
+    color_sum: np.ndarray | None = None
     best_crop: np.ndarray | None = None
     gallery: list[tuple[float, ...]] | None = None
+    aspect_sum: float = 0.0
+    relative_area_sum: float = 0.0
+    first_center: tuple[float, float] | None = None
+    last_center: tuple[float, float] | None = None
 
     def add(
         self,
@@ -44,6 +49,7 @@ class _Accumulator:
         score: float,
         quality: float,
         descriptor: tuple[float, ...],
+        color_descriptor: tuple[float, ...] | None,
         frame: np.ndarray,
         bbox: tuple[float, float, float, float],
     ) -> None:
@@ -55,6 +61,12 @@ class _Accumulator:
         if self.descriptor_sum.shape != arr.shape:
             return
         self.descriptor_sum += arr
+        if color_descriptor is not None:
+            color = np.asarray(color_descriptor, dtype=np.float64)
+            if self.color_sum is None:
+                self.color_sum = np.zeros_like(color)
+            if self.color_sum.shape == color.shape:
+                self.color_sum += color
         if len(self.gallery) < 6:
             keep = True
             for existing in self.gallery:
@@ -70,6 +82,21 @@ class _Accumulator:
         self.observations += 1
         self.score_sum += float(score)
         self.quality_sum += float(quality)
+
+        frame_h, frame_w = frame.shape[:2]
+        x1, y1, x2, y2 = bbox
+        box_w = max(0.0, x2 - x1)
+        box_h = max(0.0, y2 - y1)
+        self.aspect_sum += box_w / max(box_h, 1e-6)
+        self.relative_area_sum += (box_w * box_h) / max(float(frame_w * frame_h), 1.0)
+        center = (
+            ((x1 + x2) * 0.5) / max(float(frame_w), 1.0),
+            ((y1 + y2) * 0.5) / max(float(frame_h), 1.0),
+        )
+        if self.first_center is None:
+            self.first_center = center
+        self.last_center = center
+
         value = float(score) * 0.65 + float(quality) * 0.35
         if value > self.best_value:
             self.best_value = value
@@ -80,6 +107,18 @@ class _Accumulator:
         if self.observations <= 0 or self.descriptor_sum is None:
             return None
         descriptor = normalize_descriptor(self.descriptor_sum.tolist())
+        color_descriptor = (
+            normalize_descriptor(self.color_sum.tolist())
+            if self.color_sum is not None
+            else None
+        )
+        motion_direction = None
+        if self.first_center is not None and self.last_center is not None:
+            dx = self.last_center[0] - self.first_center[0]
+            dy = self.last_center[1] - self.first_center[1]
+            distance = float(np.hypot(dx, dy))
+            if distance > 1e-9:
+                motion_direction = (dx / distance, dy / distance)
         return TrackletSummary(
             video=self.video,
             local_track_id=self.local_track_id,
@@ -95,6 +134,12 @@ class _Accumulator:
             descriptor=descriptor,
             preview_path=preview_path,
             gallery=tuple(self.gallery or ()),
+            color_descriptor=color_descriptor,
+            mean_aspect_ratio=self.aspect_sum / self.observations,
+            mean_relative_area=self.relative_area_sum / self.observations,
+            start_center=self.first_center,
+            end_center=self.last_center,
+            motion_direction=motion_direction,
         )
 
 
@@ -235,6 +280,7 @@ def analyze_video(
                         tr.last_detection_score or tr.score,
                         tr.quality,
                         descriptor,
+                        tr.appearance,
                         frame,
                         tr.bbox,
                     )
