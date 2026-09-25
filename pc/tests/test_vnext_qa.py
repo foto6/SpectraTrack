@@ -561,12 +561,16 @@ def test_external_specialist_evidence_can_join_common_leaderboard(tmp_path: Path
 
     evidence = _external_evidence()
     evidence["corpus_sha256"] = manifest["corpus_sha256"]
+    source_artifact = tmp_path / "tracking-result.json"
+    source_artifact.write_text('{"schema":"tracking-result"}', encoding="utf-8")
+    evidence["source_artifact_sha256"] = vnext_qa.sha256_file(source_artifact)
     evidence_path = tmp_path / "tracking-evidence.json"
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
 
     stamped = vnext_qa.stamp_external_evidence(
         manifest_path=manifest_path,
         evidence_path=evidence_path,
+        source_artifact_path=source_artifact,
     )
     run_path = tmp_path / "tracking.stamped.json"
     run_path.write_text(json.dumps(stamped), encoding="utf-8")
@@ -595,6 +599,9 @@ def test_external_evidence_rejects_hidden_corpus_video_change(tmp_path: Path):
     evidence = _external_evidence()
     evidence["corpus_sha256"] = manifest["corpus_sha256"]
     evidence["provenance"]["input_videos"][0]["sha256"] = "9" * 64
+    source_artifact = tmp_path / "tracking-result.json"
+    source_artifact.write_text('{"schema":"tracking-result"}', encoding="utf-8")
+    evidence["source_artifact_sha256"] = vnext_qa.sha256_file(source_artifact)
     evidence_path = tmp_path / "bad-evidence.json"
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
 
@@ -602,5 +609,6 @@ def test_external_evidence_rejects_hidden_corpus_video_change(tmp_path: Path):
         vnext_qa.stamp_external_evidence(
             manifest_path=manifest_path,
             evidence_path=evidence_path,
+            source_artifact_path=source_artifact,
         )
 
