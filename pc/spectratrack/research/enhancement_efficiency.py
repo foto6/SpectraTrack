@@ -14,7 +14,7 @@ from typing import Any, Iterable
 import cv2
 import numpy as np
 
-from spectratrack.enhance import assess_frame_quality
+from spectratrack.enhance import adaptive_analysis_frame, assess_frame_quality
 from spectratrack.enhancement_recall import corroborate_enhanced_detections
 from spectratrack.integrity import sha256_file
 from spectratrack.qa_benchmark import GroundTruthFrame, load_ground_truth
@@ -22,7 +22,15 @@ from spectratrack.types import Detection
 
 SCHEMA = "spectratrack-vnext-enhancement-profile-v1"
 ROI_SCHEMA = "spectratrack-vnext-enhancement-roi-v1"
-OPERATIONS = ("gamma", "clahe", "gamma_clahe", "bilateral", "sharpen", "current_adaptive")
+OPERATIONS = (
+    "gamma",
+    "clahe",
+    "gamma_clahe",
+    "bilateral",
+    "sharpen",
+    "current_adaptive",
+    "current_adaptive_cached",
+)
 SELECTIVE_GATES = (
     "quality",
     "dark",
@@ -275,6 +283,8 @@ def apply_operation(
         blurred = cv2.GaussianBlur(frame, (0, 0), 0.9)
         out = cv2.addWeighted(frame, 1.0 + amount, blurred, -amount, 0)
     elif operation == "current_adaptive":
+        out, _quality, _operations = adaptive_analysis_frame(frame)
+    elif operation == "current_adaptive_cached":
         out = _current_adaptive_from_quality(frame, quality)
     else:
         raise ValueError(f"unknown operation: {operation}")
