@@ -13,6 +13,8 @@ class CameraMotion:
     inliers: int = 0
     valid: bool = False
     affine: tuple[float, float, float, float, float, float] | None = None
+    inlier_ratio: float = 0.0
+    scale: float = 1.0
 
 
 class GlobalMotionEstimator:
@@ -60,14 +62,23 @@ class GlobalMotionEstimator:
         if mat is None:
             return CameraMotion()
         count = int(inliers.sum()) if inliers is not None else len(p0)
+        ratio = count / max(len(p0), 1)
+        scale = float(np.hypot(mat[0, 0], mat[1, 0]))
+        rotation = float(np.arctan2(mat[1, 0], mat[0, 0]))
+        h, w = gray.shape
+        translation_ok = abs(float(mat[0, 2])) <= w * 0.75 and abs(float(mat[1, 2])) <= h * 0.75
+        transform_ok = 0.78 <= scale <= 1.28 and abs(rotation) <= np.deg2rad(35.0)
+        valid = count >= 6 and ratio >= 0.35 and translation_ok and transform_ok
         return CameraMotion(
             dx=float(mat[0, 2]),
             dy=float(mat[1, 2]),
-            rotation_rad=float(np.arctan2(mat[1, 0], mat[0, 0])),
+            rotation_rad=rotation,
             inliers=count,
-            valid=count >= 6,
+            valid=valid,
             affine=(
                 float(mat[0, 0]), float(mat[0, 1]), float(mat[0, 2]),
                 float(mat[1, 0]), float(mat[1, 1]), float(mat[1, 2]),
             ),
+            inlier_ratio=float(ratio),
+            scale=scale,
         )
