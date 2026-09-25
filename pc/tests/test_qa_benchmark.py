@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -7,6 +8,7 @@ from spectratrack.qa_benchmark import (
     GroundTruthFrame,
     GroundTruthObject,
     PredictedObject,
+    _detect_with_runtime_policy,
     compare_results,
     evaluate_frames,
     load_ground_truth,
@@ -185,3 +187,66 @@ def test_loader_rejects_duplicate_object_id_within_frame(tmp_path: Path):
     path.write_text(json.dumps(row) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="duplicate object id"):
         load_ground_truth(path)
+
+
+
+class _FakePolicyDetector:
+    def __init__(self):
+        self.standard_calls = 0
+        self.recall_calls = []
+
+    def detect(self, _frame):
+        self.standard_calls += 1
+        return ["standard"]
+
+    def detect_people_recall(self, _frame, **kwargs):
+        self.recall_calls.append(kwargs)
+        return ["recall"]
+
+
+def _policy_args(mode="standard", enhancement="off"):
+    return SimpleNamespace(
+        detector_mode=mode,
+        person_conf=0.12,
+        person_tile_size=640,
+        person_tile_overlap=0.2,
+        person_merge_iou=0.55,
+        people_recall_enhancement=enhancement,
+    )
+
+
+def test_qa_runtime_policy_uses_standard_production_api():
+    detector = _FakePolicyDetector()
+    result = _detect_with_runtime_policy(detector, object(), _policy_args())
+
+    assert result == ["standard"]
+    assert detector.standard_calls == 1
+    assert detector.recall_calls == []
+
+
+@pytest.mark.parametrize("enhancement", ["off", "adaptive"])
+def test_qa_runtime_policy_uses_people_recall_production_api(enhancement):
+    detector = _FakePolicyDetector()
+    result = _detect_with_runtime_policy(
+        detector,
+        object(),
+        _policy_args("people-recall", enhancement),
+    )
+
+    assert result == ["recall"]
+    assert detector.standard_calls == 0
+    assert len(detector.recall_calls) == 1
+    call = detector.recall_calls[0]
+    assert call == {
+        "person_threshold": 0.12,
+        "tile_size": 640,
+        "tile_overlap": 0.2,
+        "merge_iou_threshold": 0.55,
+        "enhancement_mode": enhancement,
+    }
+
+
+def test_qa_runtime_policy_rejects_unknown_mode():
+    detector = _FakePolicyDetector()
+    with pytest.raises(ValueError, match="detector_mode"):
+        _detect_with_runtime_policy(detector, object(), _policy_args("magic"))

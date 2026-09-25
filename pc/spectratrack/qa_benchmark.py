@@ -418,6 +418,26 @@ def _load_result(path: str | Path) -> dict[str, Any]:
     return data
 
 
+def _detect_with_runtime_policy(detector, frame, args: argparse.Namespace):
+    detector_mode = getattr(args, "detector_mode", "standard")
+    if detector_mode == "standard":
+        return detector.detect(frame)
+    if detector_mode != "people-recall":
+        raise ValueError("detector_mode must be standard or people-recall")
+
+    enhancement_mode = getattr(args, "people_recall_enhancement", "off")
+    if enhancement_mode not in {"off", "adaptive"}:
+        raise ValueError("people_recall_enhancement must be off or adaptive")
+    return detector.detect_people_recall(
+        frame,
+        person_threshold=float(getattr(args, "person_conf", 0.12)),
+        tile_size=int(getattr(args, "person_tile_size", 640)),
+        tile_overlap=float(getattr(args, "person_tile_overlap", 0.20)),
+        merge_iou_threshold=float(getattr(args, "person_merge_iou", 0.55)),
+        enhancement_mode=enhancement_mode,
+    )
+
+
 def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     import cv2
 
@@ -443,6 +463,8 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     tracks_by_frame: dict[tuple[str, int], list[PredictedObject]] = {}
     processed_frames = 0
     inference_seconds = 0.0
+    detector_policy_runs = 0
+    onnx_inference_calls = 0
     total_start = time.perf_counter()
 
     for video, video_annotations in sorted(grouped.items()):
@@ -466,8 +488,10 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                     )
                 cam = motion.update(frame)
                 infer_start = time.perf_counter()
-                detections = detector.detect(frame)
+                detections = _detect_with_runtime_policy(detector, frame, args)
                 inference_seconds += time.perf_counter() - infer_start
+                detector_policy_runs += 1
+                onnx_inference_calls += int(getattr(detector, "last_inference_calls", 0))
                 if not args.no_appearance:
                     attach_appearance(frame, detections)
                 camera_motion = (cam.dx, cam.dy) if cam.valid else (0.0, 0.0)
@@ -519,6 +543,14 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "nms_iou": args.nms_iou,
             "prefer_gpu": not args.cpu,
             "appearance": not args.no_appearance,
+            "detector_mode": args.detector_mode,
+            "person_conf": args.person_conf if args.detector_mode == "people-recall" else None,
+            "person_tile_size": args.person_tile_size if args.detector_mode == "people-recall" else None,
+            "person_tile_overlap": args.person_tile_overlap if args.detector_mode == "people-recall" else None,
+            "person_merge_iou": args.person_merge_iou if args.detector_mode == "people-recall" else None,
+            "people_recall_enhancement": (
+                args.people_recall_enhancement if args.detector_mode == "people-recall" else None
+            ),
         },
         "performance": {
             "processed_frames": processed_frames,
@@ -526,6 +558,8 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "fps": processed_frames / wall_seconds if wall_seconds > 0 else None,
             "detector_seconds": inference_seconds,
             "detector_fps": processed_frames / inference_seconds if inference_seconds > 0 else None,
+            "detector_policy_runs": detector_policy_runs,
+            "onnx_inference_calls": onnx_inference_calls,
             "peak_vram_mb": args.peak_vram_mb,
             "vram_source": args.vram_source if args.peak_vram_mb is not None else None,
         },
@@ -549,6 +583,12 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--input-size", type=int, default=640)
     run.add_argument("--conf", type=float, default=0.35)
     run.add_argument("--nms-iou", type=float, default=0.45)
+    run.add_argument("--detector-mode", choices=("standard", "people-recall"), default="standard")
+    run.add_argument("--person-conf", type=float, default=0.12)
+    run.add_argument("--person-tile-size", type=int, default=640)
+    run.add_argument("--person-tile-overlap", type=float, default=0.20)
+    run.add_argument("--person-merge-iou", type=float, default=0.55)
+    run.add_argument("--people-recall-enhancement", choices=("off", "adaptive"), default="off")
     run.add_argument("--cpu", action="store_true")
     run.add_argument("--no-appearance", action="store_true")
     run.add_argument(
@@ -577,6 +617,18 @@ def main() -> int:
     if args.command == "run":
         if args.peak_vram_mb is not None and not args.vram_source:
             parser.error("--vram-source is required when --peak-vram-mb is supplied")
+        if not 0.0 <= args.person_conf <= 1.0:
+            parser.error("--person-conf must be in [0, 1]")
+        if args.person_tile_size <= 0:
+            parser.error("--person-tile-size must be > 0")
+        if not 0.0 <= args.person_tile_overlap < 1.0:
+            parser.error("--person-tile-overlap must satisfy 0 <= overlap < 1")
+        if not 0.0 < args.person_merge_iou <= 1.0:
+            parser.error("--person-merge-iou must be in (0, 1]")
+        if args.people_recall_enhancement == "adaptive" and args.detector_mode != "people-recall":
+            parser.error("--people-recall-enhancement adaptive requires --detector-mode people-recall")
+        if args.people_recall_enhancement == "adaptive" and args.person_conf <= 0.0:
+            parser.error("adaptive people-recall requires --person-conf > 0")
         result = run_current_pipeline(args)
         _json_dump(args.output, result)
         metrics = result["metrics"]
