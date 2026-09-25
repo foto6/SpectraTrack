@@ -39,6 +39,9 @@ Baseline: `main@2012eaae2f4ffe820a66d12e40346d911616cd03`.
 - Generated-output exclusion to avoid batch feedback loops.
 - End-to-end synthetic AVI batch regression test.
 - Published `v0.3.0` Windows/Android release pipeline.
+- Feature-flagged PC `people-recall` detector mode with a lower person-specific threshold.
+- Overlapping tiled/sliced person pass with full-frame coordinate remapping and class-aware NMS merge.
+- Detector-level annotated person benchmark harness with recall, precision, false positives/frame, latency/FPS, pixel-height buckets, tags, model SHA-256, and exact settings.
 
 ## Partially implemented / limited
 
@@ -74,28 +77,28 @@ Do not solve this by only lowering global `--conf`.
 
 Follow `docs/PC_V03_PLAN.md`.
 
-Required sequence:
+Current implementation state:
 
-1. create a representative annotated validation set;
-2. measure current person recall/precision/false positives;
-3. add offline `people-recall` / `quality-max` mode;
-4. add person-only high-resolution pass;
-5. add tiled/sliced inference with overlap;
-6. merge tile/full-frame detections without duplicates;
-7. support class-specific person thresholds;
-8. use temporal confirmation/recovery for weak person evidence;
-9. benchmark input sizes, tile sizes, enhancement variants, models;
-10. only then optimize for live DirectML performance.
+1. representative annotated validation set — **missing**;
+2. real baseline recall/precision/false positives — **not measured yet**;
+3. `people-recall` feature flag — implemented;
+4. lower person-specific threshold — implemented;
+5. overlapping tiled/sliced second pass — implemented;
+6. full-frame/tile coordinate merge with class-aware NMS — implemented;
+7. detector benchmark harness — implemented;
+8. temporal confirmation of weak new-person evidence — not implemented;
+9. model/input/tile/enhancement comparison on real data — not measured;
+10. DirectML live optimization — intentionally deferred until recall is measured.
 
-Engineering targets for the first offline validation set are recorded in `docs/PC_V03_PLAN.md`.
+Engineering targets for the first real validation set remain in `docs/PC_V03_PLAN.md`. See `docs/detection.md` for the current detector contract and benchmark workflow.
 
 ## Known bugs / known product problems
 
 - Small visible people can be completely missed in high-angle night/compressed footage.
-- Generic detector confidence is global; there is no class-specific `person` threshold yet.
-- There is no tiled/sliced detector path.
-- There is no multi-scale or dedicated second person pass.
-- There is no annotated real-world person-recall benchmark.
+- There is no annotated real-world person-recall dataset in the repository yet, so no real recall/precision improvement is claimed.
+- `people-recall` adds multiple inference calls per detector frame; live DirectML FPS/VRAM impact is not measured yet.
+- End-to-end ONNX exports that already suppress boxes inside the graph can limit how much an external lower threshold can recover.
+- The tracker only creates a new ID from detections at or above its existing `high_conf=0.45`; weak person detections can recover existing tracks but do not yet get temporal confirmation into new tracks.
 - Cross-video hand-built descriptors can confuse visually similar vehicles/animals.
 - Cross-video similarity thresholds are engineering defaults, not dataset-calibrated probabilities.
 - Greedy tracker association can make suboptimal assignments in dense crossings.
@@ -110,7 +113,6 @@ Engineering targets for the first offline validation set are recorded in `docs/P
 - Replace or benchmark greedy association against a global assignment method.
 - Evaluate Kalman/ByteTrack/BoT-SORT-style tracking only with regression evidence.
 - Add representative GPU/backend benchmarks, not only synthetic tracker benchmark.
-- Add a detector-level benchmark harness with annotations and per-class metrics.
 - Add H.264/H.265/FFmpeg output path with optional original-audio mux.
 - Add richer progress/ETA and per-stage performance summaries for long offline runs.
 - Add model compatibility tests for more verified ONNX exports without guessing unknown layouts.
@@ -122,10 +124,9 @@ Engineering targets for the first offline validation set are recorded in `docs/P
 
 ## Ideas not implemented
 
-- quality-max / people-recall detector mode;
-- tiled/sliced inference;
-- class-specific thresholds;
 - temporal accumulation of weak person detections before creating tracks;
+- benchmark Soft-NMS / Weighted Boxes Fusion against the current class-aware NMS before changing merge semantics;
+- multi-scale person passes beyond the current full-frame + fixed-source-tile strategy;
 - dedicated small-object/overhead model or fine-tuned person model;
 - selected-target segmentation;
 - learned generic object embedding for cross-video matching;

@@ -156,3 +156,27 @@ Preferred implementation path after baseline measurement:
 7. optimize for live performance only after recall is demonstrated.
 
 Reason: lowering one global confidence threshold cannot recover objects the model never resolves, and it can flood the tracker with false positives.
+
+
+## 2026-09-25 — People-recall is additive and feature-flagged
+
+Decision:
+
+- keep `standard` as the default detector mode;
+- add `people-recall` as an explicit opt-in mode;
+- use a lower threshold only for the `person` class;
+- run the existing full-frame detector plus overlapping source-image tiles;
+- map tile detections back to source coordinates and merge duplicates class-wise;
+- keep `Detection` and tracker interfaces unchanged.
+
+Reason: this increases source-pixel scale for small people while preserving the existing runtime contract and minimizing blast radius. It can be evaluated independently and disabled without changing standard behavior.
+
+The first merge implementation remains the project's existing class-aware NMS. Soft-NMS/WBF are candidates for benchmark comparison, not assumptions.
+
+## 2026-09-25 — Detector benchmark numbers require real annotations
+
+Decision: do not claim a recall/FPS/VRAM improvement from synthetic unit tests or unannotated footage.
+
+The detector benchmark stores exact model hash/settings and reports recall, precision, false positives/frame, latency/FPS, height buckets, and tags. DirectML VRAM remains explicitly unavailable until a trustworthy measurement path is added.
+
+Reason: the active failure mode is domain-specific. A correct engineering claim requires representative high-angle/night/compressed frames and complete person annotations.

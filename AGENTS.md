@@ -93,7 +93,7 @@ Primary files:
 - `pc/tests/test_detector_decode.py`
 - future person-recall benchmark/validation files
 
-Current priority: small-person recall in poor high-angle/night/compressed video. Read `docs/PC_V03_PLAN.md` before changing thresholds or model strategy.
+Current priority: small-person recall in poor high-angle/night/compressed video. Read `docs/detection.md` and `docs/PC_V03_PLAN.md` before changing thresholds, tiling, merge strategy, or model choice.
 
 ### Tracking agent
 
