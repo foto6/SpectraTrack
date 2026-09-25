@@ -45,7 +45,7 @@ Current branch: `agent/tracking-integration`.
 
 Validated implementation HEAD before this handoff-file commit: `0379da5e497a10afe8a3462895fcca46185cfe59`.
 
-At review time the branch is 8 implementation commits ahead of the older integration code base and 7 coordination-document commits behind current `integration`; no other agent branch was merged into this branch. The seven newer integration commits only add `docs/agents/*` coordination files.
+After review, current `integration @ ee76f4e0c9728af9f94a363c3cee682130599521` was merged into this branch only to import the canonical coordination files and resolve the `docs/agents/tracking.md` add/add conflict. No agent feature branch was merged. The branch is now ahead of `integration` and no longer behind it.
 
 Implemented work:
 
@@ -91,8 +91,10 @@ Final coordination update is limited to this file: `docs/agents/tracking.md`.
 - `475f9ce9f6756816f459b31e7cdb13a5cae4e0d6` — tracking: keep dormant geometry aligned with CMC
 - `23e741a10ab6804f037fd53aa5a32c0b0f9f0a28` — reid: fix inclusive tracklet gap calculation
 - `0379da5e497a10afe8a3462895fcca46185cfe59` — docs: merge tracking re-id docs onto integration
+- `74fee97219ff4a2daacd1c946327c70027e06f00` — docs: finalize tracking agent handoff state
+- `a4d1aaa000b17fd78d001808eaaf70142c05412d` — merge: sync current integration coordination state
 
-The handoff-state commit containing this file is intentionally not self-referenced by SHA; the final branch HEAD is reported in the handoff response.
+The final metadata-only commit that updates this file is intentionally not self-referenced by SHA; the final branch HEAD is reported in the handoff response.
 
 ## Tests actually run
 
@@ -169,4 +171,5 @@ Old PR #2 / `agent/tracking` contains the earlier equivalent tracking history an
 - ID-switch evidence: deterministic crossing/reappearance probes both 0 on the validated implementation;
 - unverified items: real-video calibration, learned Re-ID, real GPU/CCTV quality benchmarks;
 - conflicts/overlaps: PR #5 tracker lifecycle; PR #1 batch path; PR #1/#4 shared docs; obsolete duplicate PR #2;
-- ready for integration: **yes, subject to preserving the noted overlaps during integration and final CI on the handoff commit**.
+- current synchronized pre-final-metadata HEAD: `a4d1aaa000b17fd78d001808eaaf70142c05412d`;
+- ready for integration: **yes, subject to preserving the noted overlaps during integration and final CI on the final metadata commit**.
