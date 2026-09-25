@@ -1,0 +1,10 @@
+{
+  "width": 1280,
+  "height": 720,
+  "fx_px": 920.0,
+  "baseline_m": 0.12,
+  "min_disparity": 0,
+  "num_disparities": 128,
+  "block_size": 5,
+  "name": "example-rectified-rig"
+}
