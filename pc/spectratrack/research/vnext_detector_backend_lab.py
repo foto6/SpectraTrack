@@ -359,7 +359,7 @@ class RtDetrv2OnnxAdapter:
         wall_started = time.perf_counter()
         started = time.perf_counter()
         blob = _rtdetr_preprocess(frame, self.input_h, self.input_w)
-        target_sizes = np.asarray([[frame.shape[0], frame.shape[1]]], dtype=np.int64)
+        target_sizes = np.asarray([[frame.shape[1], frame.shape[0]]], dtype=np.int64)
         preprocess_ms = (time.perf_counter() - started) * 1000.0
 
         started = time.perf_counter()
