@@ -117,8 +117,9 @@ def _video_metadata(path: Path) -> dict[str, Any]:
 
 def _coverage_for_frame(frame) -> set[str]:
     coverage = {_normalize_token(tag) for tag in frame.tags}
-    valid_people = [obj for obj in frame.objects if obj.label == "person" and not obj.ignore]
-    if not valid_people:
+    people = [obj for obj in frame.objects if obj.label == "person"]
+    valid_people = [obj for obj in people if not obj.ignore]
+    if not people:
         coverage.add("negative")
     for obj in valid_people:
         coverage.update(_normalize_token(attribute) for attribute in obj.attributes)
