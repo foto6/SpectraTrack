@@ -341,7 +341,13 @@ def main() -> int:
                 if writer is None:
                     Path(args.record).parent.mkdir(parents=True, exist_ok=True)
                     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-                    writer = cv2.VideoWriter(args.record, fourcc, max(10.0, fps), (output.shape[1], output.shape[0]))
+                    output_fps = capture_fps if capture_fps > 0 else max(10.0, fps)
+                    writer = cv2.VideoWriter(
+                        args.record,
+                        fourcc,
+                        output_fps,
+                        (output.shape[1], output.shape[0]),
+                    )
                     if not writer.isOpened():
                         raise RuntimeError(f"Cannot create video writer: {args.record}")
                 writer.write(output)
