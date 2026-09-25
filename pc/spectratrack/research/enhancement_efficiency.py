@@ -188,27 +188,39 @@ def _has_structure(frame: np.ndarray) -> bool:
     return float(np.std(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))) >= 8.0
 
 
-def operation_gate(operation: str, frame: np.ndarray, quality: dict[str, float]) -> bool:
-    if operation not in OPERATIONS:
-        raise ValueError(f"unknown operation: {operation}")
-    dark = quality["darkness"] >= QUALITY_THRESHOLDS["darkness"]
-    bilateral = (
+def current_operation_set(
+    frame: np.ndarray,
+    quality: dict[str, float],
+) -> tuple[str, ...]:
+    operations: list[str] = []
+    if quality["darkness"] >= QUALITY_THRESHOLDS["darkness"]:
+        operations.extend(("gamma", "clahe"))
+    if (
         quality["noise"] >= QUALITY_THRESHOLDS["noise"]
         or quality["compression"] >= QUALITY_THRESHOLDS["compression"]
-    )
-    sharpen = (
+    ):
+        operations.append("bilateral")
+    if (
         _has_structure(frame)
         and quality["blur"] >= QUALITY_THRESHOLDS["blur"]
         and quality["noise"] < 0.62
         and quality["compression"] < 0.70
-    )
+    ):
+        operations.append("sharpen")
+    return tuple(operations)
+
+
+def operation_gate(operation: str, frame: np.ndarray, quality: dict[str, float]) -> bool:
+    if operation not in OPERATIONS:
+        raise ValueError(f"unknown operation: {operation}")
+    active = set(current_operation_set(frame, quality))
     if operation in {"gamma", "clahe", "gamma_clahe"}:
-        return dark
+        return "gamma" in active
     if operation == "bilateral":
-        return bilateral
+        return "bilateral" in active
     if operation == "sharpen":
-        return sharpen
-    return dark or bilateral or sharpen
+        return "sharpen" in active
+    return bool(active)
 
 
 def _gamma(frame: np.ndarray, quality: dict[str, float]) -> np.ndarray:
@@ -767,7 +779,7 @@ def run_profile(args: argparse.Namespace) -> dict[str, Any]:
             raw_calls=raw_calls,
             raw_ms=raw_ms,
             raw_inference_ms=raw_inference_ms,
-            quality_ms=quality_ms,
+            quality_ms=0.0 if operation == "current_adaptive" else quality_ms,
             sampled_source_seconds=sampled_source_seconds,
             has_gt=bool(args.ground_truth),
         )
@@ -845,6 +857,7 @@ def run_quality_audit(args: argparse.Namespace) -> dict[str, Any]:
 
     current_ms = 0.0
     activation: dict[str, int] = defaultdict(int)
+    combinations: dict[str, int] = defaultdict(int)
     candidates: dict[int, dict[str, Any]] = {
         size: {
             "ms": 0.0,
@@ -863,6 +876,9 @@ def run_quality_audit(args: argparse.Namespace) -> dict[str, Any]:
 
         for signal, threshold in QUALITY_THRESHOLDS.items():
             activation[signal] += int(current[signal] >= threshold)
+        active = current_operation_set(roi, current)
+        combination = "+".join(active) if active else "none"
+        combinations[combination] += 1
 
         for size in args.max_sides:
             started = time.perf_counter()
@@ -903,6 +919,10 @@ def run_quality_audit(args: argparse.Namespace) -> dict[str, Any]:
             "assessment_total_ms": current_ms,
             "activation_frequency": {
                 signal: activation[signal] / count for signal in QUALITY_THRESHOLDS
+            },
+            "operation_combination_frequency": {
+                combination: occurrences / count
+                for combination, occurrences in sorted(combinations.items())
             },
         },
         "reduced_candidates": {
