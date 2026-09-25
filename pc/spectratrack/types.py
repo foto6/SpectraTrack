@@ -32,7 +32,9 @@ class Track:
     missed: int = 0
     vx: float = 0.0
     vy: float = 0.0
-    history: Deque[tuple[int, int]] = field(default_factory=lambda: deque(maxlen=48))
+    confirmed: bool = False
+    last_detection_score: float = 0.0
+    history: Deque[tuple[int, int]] = field(default_factory=lambda: deque(maxlen=64))
 
     @property
     def center(self) -> tuple[float, float]:
