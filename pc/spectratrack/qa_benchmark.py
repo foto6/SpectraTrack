@@ -72,7 +72,7 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
             frame = data.get("frame")
             if not isinstance(video, str) or not video.strip():
                 raise ValueError(f"{source}:{line_number}: video must be a non-empty string")
-            if not isinstance(frame, int) or frame < 0:
+            if not isinstance(frame, int) or isinstance(frame, bool) or frame < 0:
                 raise ValueError(f"{source}:{line_number}: frame must be a non-negative integer")
             key = (video, frame)
             if key in seen:
@@ -87,6 +87,7 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
             if not isinstance(objects_raw, list):
                 raise ValueError(f"{source}:{line_number}: objects must be a list")
             objects: list[GroundTruthObject] = []
+            object_ids: set[str] = set()
             for index, item in enumerate(objects_raw):
                 where = f"{source}:{line_number}:objects[{index}]"
                 if not isinstance(item, dict):
@@ -97,6 +98,13 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
                 object_id = item.get("id")
                 if object_id is not None and (not isinstance(object_id, str) or not object_id):
                     raise ValueError(f"{where}: id must be a non-empty string when present")
+                if object_id is not None:
+                    if object_id in object_ids:
+                        raise ValueError(f"{where}: duplicate object id {object_id!r} in frame")
+                    object_ids.add(object_id)
+                ignore = item.get("ignore", False)
+                if not isinstance(ignore, bool):
+                    raise ValueError(f"{where}: ignore must be a boolean")
                 attributes_raw = item.get("attributes", [])
                 if not isinstance(attributes_raw, list) or not all(
                     isinstance(attribute, str) and attribute for attribute in attributes_raw
@@ -107,7 +115,7 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
                         object_id=object_id,
                         label=label,
                         bbox=_validate_bbox(item.get("bbox"), where),
-                        ignore=bool(item.get("ignore", False)),
+                        ignore=ignore,
                         attributes=tuple(sorted(set(attributes_raw))),
                     )
                 )
