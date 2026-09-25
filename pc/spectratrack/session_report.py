@@ -12,6 +12,7 @@ def summarize(path: str | Path) -> dict:
     frames = [r for r in rows if r.get("type") == "frame"]
     header = next((r for r in rows if r.get("type") == "header"), {})
     footer = next((r for r in reversed(rows) if r.get("type") == "footer"), {})
+    events = [r for r in rows if r.get("type") == "event"]
 
     fps = [float(r.get("fps", 0.0)) for r in frames if float(r.get("fps", 0.0)) > 0]
     timing: dict[str, list[float]] = defaultdict(list)
@@ -65,6 +66,13 @@ def summarize(path: str | Path) -> dict:
             if values
         },
         "track_count": len(tracks),
+        "events": {
+            "created": sum(1 for e in events if e.get("name") == "track_created"),
+            "confirmed": sum(1 for e in events if e.get("name") == "track_confirmed"),
+            "recovered": sum(1 for e in events if e.get("name") == "track_recovered"),
+            "ended": sum(1 for e in events if e.get("name") == "track_ended"),
+            "target_lost": sum(1 for e in events if e.get("name") == "target_lost"),
+        },
         "tracks": tracks,
     }
 

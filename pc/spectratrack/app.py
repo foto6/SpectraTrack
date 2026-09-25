@@ -121,6 +121,7 @@ def main() -> int:
     snapshots.mkdir(exist_ok=True)
     window = "SpectraTrack"
     frame_index = 0
+    previous_track_state: dict[int, tuple[bool, int, str]] = {}
 
     def on_mouse(event, x, y, flags, userdata):
         if event != cv2.EVENT_LBUTTONDOWN or x >= state.frame_width:
@@ -179,6 +180,28 @@ def main() -> int:
                 )
 
             state.tracks = tracks
+
+            if recorder:
+                current_ids = {t.track_id for t in tracks}
+                previous_ids = set(previous_track_state)
+                for tr in tracks:
+                    prev = previous_track_state.get(tr.track_id)
+                    if prev is None:
+                        recorder.event("track_created", track_id=tr.track_id, label=tr.label, confirmed=tr.confirmed)
+                    else:
+                        prev_confirmed, prev_missed, _ = prev
+                        if not prev_confirmed and tr.confirmed:
+                            recorder.event("track_confirmed", track_id=tr.track_id, label=tr.label)
+                        if prev_missed > 0 and tr.missed == 0:
+                            recorder.event("track_recovered", track_id=tr.track_id, label=tr.label, recoveries=tr.recoveries)
+                for ended_id in previous_ids - current_ids:
+                    prev_confirmed, prev_missed, prev_label = previous_track_state[ended_id]
+                    recorder.event("track_ended", track_id=ended_id, label=prev_label, confirmed=prev_confirmed, last_missed=prev_missed)
+                previous_track_state = {
+                    t.track_id: (t.confirmed, t.missed, t.label)
+                    for t in tracks
+                }
+
             if state.selected_id is not None and all(t.track_id != state.selected_id for t in tracks):
                 if recorder:
                     recorder.event("target_lost", selected_id=state.selected_id)
