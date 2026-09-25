@@ -18,6 +18,9 @@ def summarize(path: str | Path) -> dict:
     timing: dict[str, list[float]] = defaultdict(list)
     track_frames: dict[int, int] = defaultdict(int)
     track_missed: dict[int, int] = defaultdict(int)
+    track_confirmed: dict[int, int] = defaultdict(int)
+    track_quality: dict[int, list[float]] = defaultdict(list)
+    track_recoveries: dict[int, int] = defaultdict(int)
     labels: dict[int, str] = {}
 
     for row in frames:
@@ -27,6 +30,9 @@ def summarize(path: str | Path) -> dict:
             tid = int(tr["id"])
             track_frames[tid] += 1
             track_missed[tid] += int(tr.get("missed", 0) > 0)
+            track_confirmed[tid] += int(bool(tr.get("confirmed", False)))
+            track_quality[tid].append(float(tr.get("quality", 0.0)))
+            track_recoveries[tid] = max(track_recoveries[tid], int(tr.get("recoveries", 0)))
             labels[tid] = tr.get("label", "")
 
     def p95(values: list[float]) -> float:
@@ -41,6 +47,10 @@ def summarize(path: str | Path) -> dict:
             "label": labels.get(tid, ""),
             "frames_present": count,
             "frames_predicted": track_missed.get(tid, 0),
+            "prediction_ratio": round(track_missed.get(tid, 0) / max(count, 1), 4),
+            "confirmed_ratio": round(track_confirmed.get(tid, 0) / max(count, 1), 4),
+            "avg_quality": round(statistics.fmean(track_quality[tid]), 4) if track_quality[tid] else 0.0,
+            "recoveries": track_recoveries.get(tid, 0),
         }
         for tid, count in sorted(track_frames.items(), key=lambda kv: (-kv[1], kv[0]))
     ]
@@ -66,6 +76,7 @@ def summarize(path: str | Path) -> dict:
             if values
         },
         "track_count": len(tracks),
+        "longest_track_frames": max((t["frames_present"] for t in tracks), default=0),
         "events": {
             "created": sum(1 for e in events if e.get("name") == "track_created"),
             "confirmed": sum(1 for e in events if e.get("name") == "track_confirmed"),
