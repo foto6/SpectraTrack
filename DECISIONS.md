@@ -197,4 +197,19 @@ Decision:
 
 Reason: the current graph already provides conservative complete-link grouping and manual SAME/DIFFERENT/UNSURE review. Extending it minimizes schema and architecture duplication while preserving ambiguity.
 
+## 2026-09-26 — vNext QA measurements remain backward-compatible with QA result schema v1
+
+Decision:
+
+- keep `qa_benchmark` result `schema_version = 1` and preserve all existing fields/comparator behavior;
+- add vNext measurement fields only additively:
+  - exact input-video SHA-256/dimensions;
+  - ONNX calls/frame and processing seconds/source second;
+  - GT-relative bbox-stability metrics;
+  - uninterrupted-track length and recovery latency;
+- old consumers may ignore these new fields without changing prior semantics;
+- keep frozen-corpus manifests, stamped experiment runs, replay validation, and leaderboard output in separate research schemas rather than overloading production/session formats;
+- auto-label output is never accepted as golden ground truth without explicit human confirmation.
+
+Reason: A1-A4 need richer common evidence, but the existing QA result contract is already used by regression tooling. Additive measurement fields let vNext experiments share quality/compute evidence without invalidating existing QA consumers or creating a second incompatible evaluator.
 
