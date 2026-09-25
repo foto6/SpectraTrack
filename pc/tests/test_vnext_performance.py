@@ -155,6 +155,35 @@ def test_budgeted_scheduler_enforces_hard_call_limits():
     assert enhanced_seen
 
 
+
+def test_budgeted_scheduler_preserves_track_and_suspect_work():
+    decision = schedule_frame(
+        "BUDGETED_ADAPTIVE",
+        1,
+        FrameSignals(track_rois=4, suspect_rois=4, enhancement_eligible_rois=1),
+        tile_count=8,
+        config=SchedulerConfig(global_period=10, max_calls_per_frame=4, max_enhanced_calls_per_frame=1),
+    )
+
+    assert decision.suspect_roi_calls >= 1
+    assert decision.track_roi_calls >= 1
+    assert decision.enhanced_roi_calls == 1
+    assert decision.total_calls <= 4
+
+
+def test_coarse_to_fine_reserves_expensive_follow_up_slot():
+    decision = schedule_frame(
+        "COARSE_TO_FINE",
+        0,
+        FrameSignals(suspect_rois=8, enhancement_eligible_rois=8),
+        tile_count=8,
+        config=SchedulerConfig(max_calls_per_frame=4, max_enhanced_calls_per_frame=1),
+    )
+
+    assert decision.full_frame_calls == 1
+    assert decision.enhanced_roi_calls == 1
+    assert decision.total_calls == 4
+
 def test_scene_change_and_camera_motion_force_global_rediscovery():
     config = SchedulerConfig(global_period=100, max_calls_per_frame=4)
 
