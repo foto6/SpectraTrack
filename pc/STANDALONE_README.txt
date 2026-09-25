@@ -1,4 +1,4 @@
-SPECTRATRACK PC v0.2 - STANDALONE QUICK START
+SPECTRATRACK PC v0.3 - STANDALONE QUICK START
 =================================================
 
 1. Copy a compatible fixed-size YOLO ONNX model into this folder.
@@ -57,3 +57,6 @@ CROSS-VIDEO BATCH
     spectratrack_cross_video_samples\
 - The HTML report shows entity groups, best crops, candidate/review links, and local review buttons.
 - Person links mean similar visible appearance in that batch only, not biometric identity.
+- Review candidates in the HTML with SAME / DIFFERENT / UNSURE.
+- EXPORT REVIEW JSON saves spectratrack_review.json.
+- Put that JSON back in the analyzed folder and rerun ANALYZE_VIDEO_FOLDER.bat to apply decisions.
