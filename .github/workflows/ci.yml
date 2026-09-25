@@ -52,7 +52,7 @@ jobs:
       - name: Add standalone quick-start files
         shell: pwsh
         run: |
-          Copy-Item RUN_CAMERA.bat dist\SpectraTrack-PC\RUN_CAMERA.bat
+          Copy-Item START_SPECTRATRACK.bat dist\SpectraTrack-PC\START_SPECTRATRACK.bat
           Copy-Item calibration.example.json dist\SpectraTrack-PC\calibration.example.json
           Copy-Item STANDALONE_README.txt dist\SpectraTrack-PC\README.txt
       - name: Package PC source
@@ -68,7 +68,7 @@ jobs:
             "run_spectratrack.py",
             "run_camera.bat",
             "run_demo.bat",
-            "RUN_CAMERA.bat",
+            "START_SPECTRATRACK.bat",
             "STANDALONE_README.txt",
             "calibration.example.json"
           )
