@@ -42,6 +42,18 @@ def test_recall_precision_and_size_breakdown():
     assert metrics["by_size"]["height_48_95"]["recall"] == 0.0
 
 
+def test_object_attribute_reports_recall_without_fake_precision():
+    frame = GroundTruthFrame(
+        video="clip.mp4",
+        frame=0,
+        tags=("dark",),
+        objects=(GroundTruthObject("p1", "person", (0.0, 0.0, 10.0, 20.0), attributes=("occluded",)),),
+    )
+    metrics = evaluate_frames([frame], {("clip.mp4", 0): []})
+    assert metrics["by_attribute"]["occluded"] == {"tp": 0, "fn": 1, "gt": 1, "recall": 0.0}
+    assert "precision" not in metrics["by_attribute"]["occluded"]
+
+
 def test_ignored_truth_suppresses_overlapping_false_positive():
     frame = GroundTruthFrame(
         video="clip.mp4",
