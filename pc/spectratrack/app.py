@@ -41,6 +41,29 @@ def parse_class_filter(text: str) -> set[str]:
     return {part.strip().lower() for part in text.split(",") if part.strip()}
 
 
+def prepare_analysis_frame(frame, enhancement: bool):
+    return enhance_visibility(frame) if enhancement else frame
+
+
+def handle_analysis_enhancement_toggle(
+    current: bool,
+    detector_mode: str,
+    people_recall_enhancement: str,
+    recorder=None,
+) -> bool:
+    if detector_mode == "people-recall" and people_recall_enhancement == "adaptive":
+        print(
+            "analysis enhancement disabled: adaptive people-recall requires raw corroboration; "
+            "pressing E has no effect"
+        )
+        return current
+
+    enabled = not current
+    if recorder:
+        recorder.event("enhance", enabled=enabled)
+    return enabled
+
+
 def main() -> int:
     pre_parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     pre_parser.add_argument("--config", default="", help="Optional validated JSON runtime preset")
@@ -286,7 +309,7 @@ def main() -> int:
                     frame = stabilizer.apply(frame)
 
             with timings.measure("enhance"):
-                analysis_frame = enhance_visibility(frame) if enhancement else frame
+                analysis_frame = prepare_analysis_frame(frame, enhancement)
                 display_frame = apply_display_mode(frame, view_mode)
 
             should_detect = ((frame_index - 1) % detect_every) == 0
@@ -464,9 +487,12 @@ def main() -> int:
                 if key in (ord("q"), 27):
                     break
                 if key == ord("e"):
-                    enhancement = not enhancement
-                    if recorder:
-                        recorder.event("enhance", enabled=enhancement)
+                    enhancement = handle_analysis_enhancement_toggle(
+                        enhancement,
+                        args.detector_mode,
+                        args.people_recall_enhancement,
+                        recorder,
+                    )
                 elif key == ord("h"):
                     hud_enabled = not hud_enabled
                 elif key == ord("m"):
