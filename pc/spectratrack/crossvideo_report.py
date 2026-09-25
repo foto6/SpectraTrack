@@ -117,6 +117,26 @@ function decide(button, value) {{
   localStorage.setItem(key, value);
   card.querySelector('.decision').textContent = value.toUpperCase();
 }}
+function exportReview() {{
+  const decisions = [];
+  document.querySelectorAll('.edge').forEach(card => {{
+    const pair = card.dataset.key.split('|');
+    const stored = localStorage.getItem('spectratrack:' + card.dataset.key);
+    const shown = card.querySelector('.decision').textContent.toLowerCase();
+    const value = stored || shown;
+    if (value === 'same' || value === 'different' || value === 'unsure') {{
+      decisions.push({{left: pair[0], right: pair[1], decision: value}});
+    }}
+  }});
+  const payload = JSON.stringify({{version: 1, decisions: decisions}}, null, 2);
+  const blob = new Blob([payload], {{type: 'application/json'}});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'spectratrack_review.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}}
 document.querySelectorAll('.edge').forEach(card => {{
   const value = localStorage.getItem('spectratrack:' + card.dataset.key);
   if (value) card.querySelector('.decision').textContent = value.toUpperCase();
