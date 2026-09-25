@@ -146,6 +146,11 @@ def analyze_video(
     preview_dir: Path | None = None,
     video_id: str | None = None,
     progress_every: int = 120,
+    detector_mode: str = "standard",
+    person_conf: float = 0.12,
+    person_tile_size: int = 640,
+    person_tile_overlap: float = 0.20,
+    person_merge_iou: float = 0.55,
 ) -> list[TrackletSummary]:
     capture = RobustCapture(str(path), CaptureConfig(backend="auto", reconnect_attempts=0))
     if not capture.is_opened():
@@ -172,7 +177,16 @@ def analyze_video(
             camera_transform = cam.affine if cam.valid else None
             should_detect = ((frame_index - 1) % detect_every) == 0
             if should_detect:
-                detections = detector.detect(frame)
+                if detector_mode == "people-recall":
+                    detections = detector.detect_people_recall(
+                        frame,
+                        person_threshold=person_conf,
+                        tile_size=person_tile_size,
+                        tile_overlap=person_tile_overlap,
+                        merge_iou_threshold=person_merge_iou,
+                    )
+                else:
+                    detections = detector.detect(frame)
                 if class_filter:
                     detections = [d for d in detections if d.label.lower() in class_filter]
                 attach_appearance(frame, detections)
@@ -250,6 +264,11 @@ def main() -> int:
     parser.add_argument("--input-size", type=int, default=640)
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--iou", type=float, default=0.45)
+    parser.add_argument("--detector-mode", choices=("standard", "people-recall"), default="standard")
+    parser.add_argument("--person-conf", type=float, default=0.12)
+    parser.add_argument("--person-tile-size", type=int, default=640)
+    parser.add_argument("--person-tile-overlap", type=float, default=0.20)
+    parser.add_argument("--person-merge-iou", type=float, default=0.55)
     parser.add_argument("--detect-every", type=int, default=1)
     parser.add_argument("--classes", default="")
     parser.add_argument("--candidate-threshold", type=float, default=0.86)
@@ -275,6 +294,14 @@ def main() -> int:
         raise SystemExit("--min-observations must be >= 1")
     if args.progress_every < 0:
         raise SystemExit("--progress-every must be >= 0")
+    if not 0.0 <= args.person_conf <= 1.0:
+        raise SystemExit("--person-conf must be in [0, 1]")
+    if args.person_tile_size <= 0:
+        raise SystemExit("--person-tile-size must be > 0")
+    if not 0.0 <= args.person_tile_overlap < 1.0:
+        raise SystemExit("--person-tile-overlap must satisfy 0 <= overlap < 1")
+    if not 0.0 < args.person_merge_iou <= 1.0:
+        raise SystemExit("--person-merge-iou must be in (0, 1]")
     if not 0.0 <= args.candidate_threshold <= args.strong_threshold <= 1.0:
         raise SystemExit("Require 0 <= --candidate-threshold <= --strong-threshold <= 1")
 
@@ -317,6 +344,11 @@ def main() -> int:
                 preview_dir=preview_dir,
                 video_id=video_identifier(args.input_dir, path),
                 progress_every=args.progress_every,
+                detector_mode=args.detector_mode,
+                person_conf=args.person_conf,
+                person_tile_size=args.person_tile_size,
+                person_tile_overlap=args.person_tile_overlap,
+                person_merge_iou=args.person_merge_iou,
             )
             all_tracklets.extend(tracklets)
             print(f"  tracklets={len(tracklets)}")
@@ -360,6 +392,11 @@ def main() -> int:
         "videos_seen": len(videos),
         "videos_failed": len(failures),
         "detect_every": args.detect_every,
+        "detector_mode": args.detector_mode,
+        "person_conf": args.person_conf if args.detector_mode == "people-recall" else None,
+        "person_tile_size": args.person_tile_size if args.detector_mode == "people-recall" else None,
+        "person_tile_overlap": args.person_tile_overlap if args.detector_mode == "people-recall" else None,
+        "person_merge_iou": args.person_merge_iou if args.detector_mode == "people-recall" else None,
         "classes": sorted(class_filter),
         "failures": failures,
         "review_file": args.review or None,

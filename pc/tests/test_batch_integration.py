@@ -57,3 +57,34 @@ def test_analyze_video_end_to_end_without_neural_model(tmp_path):
     assert len(tracklet.gallery) >= 1
     assert tracklet.preview_path is not None
     assert Path(tracklet.preview_path).is_file()
+
+
+
+class FakeRecallDetector:
+    def detect(self, _frame):
+        raise AssertionError("standard detector path must not be used in people-recall mode")
+
+    def detect_people_recall(self, _frame, **_kwargs):
+        return [Detection((90.0, 60.0, 190.0, 170.0), 0.92, 0, "person")]
+
+
+def test_analyze_video_dispatches_people_recall_mode(tmp_path):
+    video = tmp_path / "recall.avi"
+    _write_test_video(video)
+
+    tracklets = analyze_video(
+        video,
+        FakeRecallDetector(),
+        detect_every=1,
+        class_filter=set(),
+        min_observations=3,
+        progress_every=0,
+        detector_mode="people-recall",
+        person_conf=0.12,
+        person_tile_size=640,
+        person_tile_overlap=0.2,
+        person_merge_iou=0.55,
+    )
+
+    assert len(tracklets) == 1
+    assert tracklets[0].label == "person"

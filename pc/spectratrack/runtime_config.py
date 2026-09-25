@@ -15,6 +15,11 @@ _ALLOWED: dict[str, type | tuple[type, ...]] = {
     "input_size": int,
     "conf": (int, float),
     "iou": (int, float),
+    "detector_mode": str,
+    "person_conf": (int, float),
+    "person_tile_size": int,
+    "person_tile_overlap": (int, float),
+    "person_merge_iou": (int, float),
     "classes": str,
     "profile": str,
     "detect_every": int,
@@ -55,6 +60,16 @@ def load_runtime_config(path: str | Path) -> dict[str, Any]:
         raise ValueError("camera_backend must be auto, dshow or msmf")
     if out.get("profile", "balanced") not in {"quality", "balanced", "speed"}:
         raise ValueError("profile must be quality, balanced or speed")
+    if out.get("detector_mode", "standard") not in {"standard", "people-recall"}:
+        raise ValueError("detector_mode must be standard or people-recall")
+    if not 0.0 <= float(out.get("person_conf", 0.12)) <= 1.0:
+        raise ValueError("person_conf must be in [0, 1]")
+    if int(out.get("person_tile_size", 640)) <= 0:
+        raise ValueError("person_tile_size must be > 0")
+    if not 0.0 <= float(out.get("person_tile_overlap", 0.20)) < 1.0:
+        raise ValueError("person_tile_overlap must satisfy 0 <= overlap < 1")
+    if not 0.0 < float(out.get("person_merge_iou", 0.55)) <= 1.0:
+        raise ValueError("person_merge_iou must be in (0, 1]")
     if out.get("view", "normal") not in {"normal", "clarity", "lowlight", "edges", "pseudo-thermal"}:
         raise ValueError("invalid view mode")
     if int(out.get("detect_every", 0)) < 0:
