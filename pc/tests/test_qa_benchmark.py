@@ -148,3 +148,40 @@ def test_compare_rejects_different_ground_truth():
     }
     with pytest.raises(ValueError, match="different ground-truth"):
         compare_results(baseline, candidate)
+
+
+def test_loader_rejects_boolean_frame(tmp_path: Path):
+    path = tmp_path / "gt.jsonl"
+    row = {"video": "x.mp4", "frame": True, "objects": []}
+    path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="frame must be a non-negative integer"):
+        load_ground_truth(path)
+
+
+def test_loader_rejects_non_boolean_ignore(tmp_path: Path):
+    path = tmp_path / "gt.jsonl"
+    row = {
+        "video": "x.mp4",
+        "frame": 0,
+        "objects": [
+            {"id": "p1", "label": "person", "bbox": [0, 0, 10, 20], "ignore": "false"}
+        ],
+    }
+    path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="ignore must be a boolean"):
+        load_ground_truth(path)
+
+
+def test_loader_rejects_duplicate_object_id_within_frame(tmp_path: Path):
+    path = tmp_path / "gt.jsonl"
+    row = {
+        "video": "x.mp4",
+        "frame": 0,
+        "objects": [
+            {"id": "p1", "label": "person", "bbox": [0, 0, 10, 20]},
+            {"id": "p1", "label": "person", "bbox": [20, 0, 30, 20]},
+        ],
+    }
+    path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicate object id"):
+        load_ground_truth(path)
