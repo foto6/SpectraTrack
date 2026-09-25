@@ -136,3 +136,14 @@ def test_tentative_track_expires_quickly():
     tracker.update([])
     tracks = tracker.update([])
     assert all(t.track_id != tr.track_id for t in tracks)
+
+
+def test_predict_only_does_not_increment_missed():
+    tracker = MultiObjectTracker(min_hits=1)
+    tr = tracker.update([d(100, 100)])[0]
+    assert tr.missed == 0
+    tr = tracker.predict_only(camera_motion=(5.0, 0.0))[0]
+    assert tr.track_id == 1
+    assert tr.missed == 0
+    assert tr.age == 2
+    assert tr.center[0] == 155.0

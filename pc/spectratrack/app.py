@@ -45,6 +45,8 @@ def main() -> int:
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--iou", type=float, default=0.45)
     parser.add_argument("--classes", default="", help="Comma-separated labels to retain, e.g. person,car,truck")
+    parser.add_argument("--profile", choices=("quality", "balanced", "speed"), default="balanced")
+    parser.add_argument("--detect-every", type=int, default=0, help="Run detector every N frames; 0 uses profile default")
     parser.add_argument("--cpu", action="store_true", help="Disable DirectML preference")
     parser.add_argument("--enhance", action="store_true", help="Enhance the detector analysis image with non-generative clarity processing")
     parser.add_argument("--view", choices=DISPLAY_MODES, default="normal", help="Operator display mode; pseudo-thermal is false-color only")
@@ -78,6 +80,8 @@ def main() -> int:
 
     calibration = CameraCalibration.from_json(args.calibration) if args.calibration else None
     class_filter = parse_class_filter(args.classes)
+    profile_detect_every = {"quality": 1, "balanced": 2, "speed": 3}[args.profile]
+    detect_every = args.detect_every if args.detect_every > 0 else profile_detect_every
 
     detector = YoloOnnxDetector(model, args.input_size, args.conf, args.iou, prefer_gpu=not args.cpu)
     tracker = MultiObjectTracker()
@@ -115,6 +119,8 @@ def main() -> int:
         "headless": bool(args.headless),
         "view_mode": view_mode,
         "analysis_enhance": enhancement,
+        "profile": args.profile,
+        "detect_every": detect_every,
     }) if args.session_log else None
 
     snapshots = Path("snapshots")
@@ -160,10 +166,15 @@ def main() -> int:
                 analysis_frame = enhance_visibility(frame) if enhancement else frame
                 display_frame = apply_display_mode(frame, view_mode)
 
-            with timings.measure("detect"):
-                detections = detector.detect(analysis_frame)
-                if class_filter:
-                    detections = [d for d in detections if d.label.lower() in class_filter]
+            should_detect = ((frame_index - 1) % detect_every) == 0
+            detections = []
+            if should_detect:
+                with timings.measure("detect"):
+                    detections = detector.detect(analysis_frame)
+                    if class_filter:
+                        detections = [d for d in detections if d.label.lower() in class_filter]
+            else:
+                timings.add("detect", 0.0)
 
             # Stabilization already compensates image motion; do not compensate twice.
             camera_shift = (0.0, 0.0)
@@ -173,11 +184,17 @@ def main() -> int:
                 camera_transform = cam.affine
 
             with timings.measure("track"):
-                tracks = tracker.update(
-                    detections,
-                    camera_motion=camera_shift,
-                    camera_transform=camera_transform,
-                )
+                if should_detect:
+                    tracks = tracker.update(
+                        detections,
+                        camera_motion=camera_shift,
+                        camera_transform=camera_transform,
+                    )
+                else:
+                    tracks = tracker.predict_only(
+                        camera_motion=camera_shift,
+                        camera_transform=camera_transform,
+                    )
 
             state.tracks = tracks
 
@@ -223,6 +240,7 @@ def main() -> int:
                 "enhance": round(timings.latest("enhance"), 3),
                 "stabilize": round(timings.latest("stabilize"), 3),
                 "hud": round(timings.latest("hud"), 3),
+                "detector_ran": 1.0 if should_detect else 0.0,
             }
 
             if hud_enabled:
@@ -320,7 +338,7 @@ def main() -> int:
             cv2.destroyAllWindows()
 
     print(
-        f"processed_frames={frame_index} model_sha256={model_hash} "
+        f"processed_frames={frame_index} profile={args.profile} detect_every={detect_every} model_sha256={model_hash} "
         f"detect_avg_ms={timings.average('detect'):.2f} track_avg_ms={timings.average('track'):.2f}"
     )
     return 0

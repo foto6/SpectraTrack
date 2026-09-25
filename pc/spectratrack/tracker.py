@@ -167,6 +167,23 @@ class MultiObjectTracker:
         track.confirmed = track.confirmed or track.hits >= self.min_hits
         track.history.append((int(new_cx), int(new_cy)))
 
+    def predict_only(
+        self,
+        camera_motion: tuple[float, float] = (0.0, 0.0),
+        camera_transform: tuple[float, float, float, float, float, float] | None = None,
+    ) -> list[Track]:
+        """Advance tracks on an intentionally detector-skipped frame.
+
+        This does not increment missed because no detector observation was
+        expected on this frame.
+        """
+        for track in self.tracks.values():
+            track.bbox = self._predicted_box(track, camera_motion, camera_transform)
+            track.age += 1
+            cx, cy = track.center
+            track.history.append((int(cx), int(cy)))
+        return sorted(self.tracks.values(), key=lambda t: t.track_id)
+
     def update(
         self,
         detections: Iterable[Detection],
