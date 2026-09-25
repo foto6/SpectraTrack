@@ -32,6 +32,14 @@ def draw_corner_box(frame: np.ndarray, box, selected: bool = False, confirmed: b
         cv2.line(frame, (a, b), (c, d), color, thickness, cv2.LINE_AA)
 
 
+def draw_mask_outline(frame: np.ndarray, mask: np.ndarray | None) -> None:
+    if mask is None or mask.shape[:2] != frame.shape[:2]:
+        return
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        cv2.drawContours(frame, contours, -1, (255, 255, 255), 1, cv2.LINE_AA)
+
+
 def draw_tracks(frame: np.ndarray, tracks: list[Track], selected_id: int | None) -> None:
     for tr in tracks:
         selected = tr.track_id == selected_id
@@ -75,6 +83,10 @@ def compose_hud(
     geometry: CameraGeometry | None = None,
     cmc_enabled: bool = True,
     stabilization_enabled: bool = False,
+    detector_interval: int = 1,
+    detector_ran: bool = True,
+    target_mask: np.ndarray | None = None,
+    mask_enabled: bool = False,
 ) -> np.ndarray:
     metrics = metrics or {}
     geometry = geometry or CameraGeometry()
@@ -84,25 +96,24 @@ def compose_hud(
     canvas = np.zeros((h, w + panel_w, 3), dtype=np.uint8)
     canvas[:, :w] = base
 
+    if mask_enabled:
+        draw_mask_outline(canvas[:, :w], target_mask)
     draw_tracks(canvas[:, :w], tracks, selected_id)
     draw_center_reticle(canvas[:, :w])
 
     cv2.putText(canvas, "SPECTRATRACK // PC V0.2", (16, 27), FONT, 0.62, (245, 245, 245), 1, cv2.LINE_AA)
     cv2.putText(
         canvas,
-        f"FPS {fps:5.1f} | DET {_metric(metrics,'detect'):5.1f} ms | TRK {_metric(metrics,'track'):4.1f} ms | {provider_text}",
-        (16, 51), FONT, 0.43, (210, 210, 210), 1, cv2.LINE_AA,
+        f"FPS {fps:5.1f} | DET {_metric(metrics,'detect'):5.1f} ms x{detector_interval} {'RUN' if detector_ran else 'SKIP'} | TRK {_metric(metrics,'track'):4.1f} ms | {provider_text}",
+        (16, 51), FONT, 0.41, (210, 210, 210), 1, cv2.LINE_AA,
     )
     cmc_text = "CMC OFF"
     if cmc_enabled and motion is not None:
-        cmc_text = (
-            f"CMC {motion.dx:+.1f},{motion.dy:+.1f}px {motion.rotation_deg:+.2f}deg "
-            f"{'OK' if motion.valid else 'HOLD'}"
-        )
+        cmc_text = f"CMC {motion.dx:+.1f},{motion.dy:+.1f}px {motion.rotation_deg:+.2f}deg {'OK' if motion.valid else 'HOLD'}"
     cv2.putText(
         canvas,
-        f"ENH {enhancement_mode.upper()} | STAB {'ON' if stabilization_enabled else 'OFF'} | {cmc_text}",
-        (16, 73), FONT, 0.43, (205, 205, 205), 1, cv2.LINE_AA,
+        f"ENH {enhancement_mode.upper()} | STAB {'ON' if stabilization_enabled else 'OFF'} | MASK {'ON' if mask_enabled else 'OFF'} | {cmc_text}",
+        (16, 73), FONT, 0.41, (205, 205, 205), 1, cv2.LINE_AA,
     )
 
     px = w
@@ -136,16 +147,15 @@ def compose_hud(
             lines.append(f"REL ANGLE   {bearing:+6.2f} deg [CAL]")
         if angular is not None:
             lines.append(f"ANG RATE    {angular:+6.2f} deg/s [EST]")
-        lines.extend([
-            f"AGE         {selected.age}",
-            f"MISSED      {selected.missed}",
-        ])
+        if mask_enabled:
+            lines.append(f"MASK        {'CLASSICAL' if target_mask is not None else 'NO LOCK'}")
+        lines.extend([f"AGE         {selected.age}", f"MISSED      {selected.missed}"])
         for line in lines:
             if y > h - 42:
                 break
             cv2.putText(canvas, line, (px + 18, y), FONT, 0.45, (220, 220, 220), 1, cv2.LINE_AA)
             y += 23
 
-    footer = "Q quit | E enhance | C CMC | Z stabilize | H HUD | S snapshot | U AI SR"
-    cv2.putText(canvas, footer, (16, h - 16), FONT, 0.40, (190, 190, 190), 1, cv2.LINE_AA)
+    footer = "Q quit | E enhance | C CMC | Z stabilize | M mask | H HUD | S snapshot | U AI SR"
+    cv2.putText(canvas, footer, (16, h - 16), FONT, 0.39, (190, 190, 190), 1, cv2.LINE_AA)
     return canvas

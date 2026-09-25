@@ -11,6 +11,8 @@ requires-python = ">=3.12"
 [project.scripts]
 spectratrack = "spectratrack.app:main"
 spectratrack-benchmark = "spectratrack.benchmark:main"
+spectratrack-diagnostics = "spectratrack.diagnostics:main"
+spectratrack-session = "spectratrack.session_analyze:main"
 
 [tool.setuptools]
 packages = ["spectratrack"]

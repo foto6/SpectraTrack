@@ -46,13 +46,7 @@ class _State:
 
 
 class MultiObjectTracker:
-    """Two-stage, class-aware tracker with Kalman prediction and CMC support.
-
-    The first association uses high-confidence detector boxes. Confirmed tracks
-    that remain unmatched get a second chance against low-confidence boxes,
-    which reduces ID breaks during blur/occlusion without allowing weak boxes to
-    spawn arbitrary new tracks.
-    """
+    """Two-stage tracker with Kalman prediction and global camera compensation."""
 
     def __init__(
         self,
@@ -139,8 +133,9 @@ class MultiObjectTracker:
         detections: Iterable[Detection],
         camera_affine: np.ndarray | None = None,
         dt: float = 1.0,
+        detector_ran: bool = True,
     ) -> list[Track]:
-        detections = [d for d in detections if d.score >= self.config.low_conf]
+        detections = [d for d in detections if d.score >= self.config.low_conf] if detector_ran else []
 
         for state in self._states.values():
             state.public.bbox = state.kf.predict(dt=dt, camera_affine=camera_affine)
@@ -154,7 +149,6 @@ class MultiObjectTracker:
         stage1, unmatched_tracks, unmatched_high = self._associate(all_tracks, high, detections, relaxed=False)
         confirmed_unmatched = {tid for tid in unmatched_tracks if self._states[tid].public.confirmed}
         stage2, still_unmatched, _ = self._associate(confirmed_unmatched, low, detections, relaxed=True)
-        matched_track_ids = {tid for tid, _, _ in stage1 + stage2}
         unmatched_tracks = (unmatched_tracks - confirmed_unmatched) | still_unmatched
 
         for tid, didx, assoc_score in stage1 + stage2:
@@ -168,6 +162,7 @@ class MultiObjectTracker:
             state.public.age += 1
             state.public.hits += 1
             state.public.missed = 0
+            state.public.predicted_only = False
             state.public.association_score = assoc_score
             if state.public.hits >= self.config.min_hits:
                 state.public.confirmed = True
@@ -177,15 +172,20 @@ class MultiObjectTracker:
         for tid in unmatched_tracks:
             state = self._states[tid]
             state.public.age += 1
-            state.public.missed += 1
             state.public.association_score = 0.0
+            if detector_ran:
+                state.public.missed += 1
+                state.public.predicted_only = False
+            else:
+                state.public.predicted_only = True
             cx, cy = state.public.center
             state.public.history.append((int(cx), int(cy)))
 
-        for didx in unmatched_high:
-            det = detections[didx]
-            if det.score >= self.config.new_track_conf:
-                self._spawn(det)
+        if detector_ran:
+            for didx in unmatched_high:
+                det = detections[didx]
+                if det.score >= self.config.new_track_conf:
+                    self._spawn(det)
 
         expired: list[int] = []
         for tid, state in self._states.items():

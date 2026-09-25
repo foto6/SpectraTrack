@@ -33,6 +33,7 @@ class SessionRecorder:
         selected_id: int | None,
         motion: dict[str, Any] | None,
         metrics: dict[str, float],
+        extra: dict[str, Any] | None = None,
     ) -> None:
         payload = {
             "frame": int(frame_index),
@@ -53,11 +54,14 @@ class SessionRecorder:
                     "hits": t.hits,
                     "missed": t.missed,
                     "confirmed": t.confirmed,
+                    "predicted_only": t.predicted_only,
                     "association_score": t.association_score,
                 }
                 for t in tracks
             ],
         }
+        if extra:
+            payload["extra"] = extra
         self._fp.write(json.dumps(payload, separators=(",", ":")) + "\n")
         self._fp.flush()
 

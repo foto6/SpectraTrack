@@ -34,6 +34,7 @@ class Track:
     vy: float = 0.0
     confirmed: bool = False
     association_score: float = 0.0
+    predicted_only: bool = False
     history: Deque[tuple[int, int]] = field(default_factory=lambda: deque(maxlen=64))
 
     @property
@@ -55,6 +56,8 @@ class Track:
 
     @property
     def state(self) -> str:
+        if self.predicted_only:
+            return "PREDICT"
         if self.missed > 0:
             return "COAST"
         return "LOCK" if self.confirmed else "TENTATIVE"

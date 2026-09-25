@@ -1,11 +1,11 @@
 # PC v0.2 execution plan
 
-This plan is intentionally staged so CI failures cannot turn into blind retry loops.
+The work is staged so CI failures cannot turn into blind retry loops.
 
 ## Milestone A - tracking core
 - [x] 8-state bounding-box Kalman filter.
 - [x] Two-stage high/low confidence association.
-- [x] Tentative/confirmed/coasting states.
+- [x] Tentative / LOCK / COAST / PREDICT states.
 - [x] Camera-motion affine compensation.
 - [x] Preserve lightweight dependency footprint.
 
@@ -15,28 +15,38 @@ This plan is intentionally staged so CI failures cannot turn into blind retry lo
 - [x] Headless benchmark command.
 - [x] Horizontal-FOV geometry for relative angles only.
 - [x] Explicit CAL/EST labels; no fake metric range.
+- [x] Session analyzer for track/performance summaries.
+- [x] Environment/model/camera diagnostics CLI.
+- [x] Optional model SHA-256 verification.
 
-## Milestone C - live UX
+## Milestone C - live UX and throughput
 - [x] HUD performance counters.
 - [x] CMC state and global-motion readout.
 - [x] Target association/state readout.
 - [x] Enhancement modes: off / visibility / lowlight / detail.
 - [x] Runtime toggles for CMC, stabilization and enhancement.
+- [x] Fixed detector cadence with prediction on skipped frames.
+- [x] Adaptive detector cadence with hysteresis.
+- [x] Optional classical GrabCut outline for selected target.
 
 ## Milestone D - verification
-- [ ] Crossing-target regression test.
-- [ ] Camera-motion synthetic regression test.
-- [ ] Low-confidence recovery regression test.
-- [ ] Enhancement and geometry tests.
-- [ ] JSONL recorder test.
-- [ ] Windows and Linux PC-only CI green.
-- [ ] Main branch fast-forward only after branch CI is green.
+- [x] Crossing-target regression test.
+- [x] Camera-motion synthetic regression test.
+- [x] Low-confidence recovery regression test.
+- [x] Enhancement and geometry tests.
+- [x] JSONL recorder test.
+- [x] First Windows and Linux PC-only CI green.
+- [x] Explicit regression for scheduled detector skips.
+- [x] Model hash / mask / scheduler / session-analyzer tests.
+- [ ] Second Windows and Linux CI green after throughput/diagnostics layer.
+- [ ] Main branch fast-forward only after final branch CI is green.
 
 ## Later, after v0.2 is green
 - Optional appearance/ReID model as a separate, explicitly sourced model.
-- Optional target segmentation model with a documented ONNX output contract.
+- Optional neural target segmentation model with a documented ONNX output contract.
 - Stereo depth only with calibrated two-camera geometry.
-- Offline replay viewer for JSONL sessions.
+- Checkerboard calibration CLI and distortion correction.
+- Offline video + telemetry replay viewer.
 - Model manifest with provenance + SHA-256.
 
 ## Anti-loop rule
