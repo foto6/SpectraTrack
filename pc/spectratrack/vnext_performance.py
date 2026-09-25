@@ -215,7 +215,8 @@ def schedule_frame(
     if tile_count < 0:
         raise ValueError("tile_count cannot be negative")
 
-    if not _detector_due(frame_index, config):
+    triggered = signals.scene_change or signals.camera_motion_trigger
+    if not _detector_due(frame_index, config) and not (policy != "CURRENT" and triggered):
         return ScheduleDecision(policy, frame_index, 0, 0, 0, True, None)
 
     if policy == "CURRENT":
@@ -232,6 +233,13 @@ def schedule_frame(
 
     if policy == "COARSE_TO_FINE":
         full = 1
+        trigger_reason = (
+            "scene_change"
+            if signals.scene_change
+            else "camera_motion"
+            if signals.camera_motion_trigger
+            else "every_detector_frame"
+        )
         remaining = max(0, config.max_calls_per_frame - full)
         raw_suspects = min(signals.suspect_rois, remaining)
         remaining -= raw_suspects
@@ -241,7 +249,7 @@ def schedule_frame(
             config.max_enhanced_calls_per_frame,
             remaining,
         )
-        return ScheduleDecision(policy, frame_index, full, raw_suspects, enhanced, False, "every_detector_frame")
+        return ScheduleDecision(policy, frame_index, full, raw_suspects, enhanced, False, trigger_reason)
 
     global_scan, reason = _global_due(frame_index, signals, config)
     full = 1 if global_scan else 0
