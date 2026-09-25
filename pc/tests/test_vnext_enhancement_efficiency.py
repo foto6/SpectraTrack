@@ -6,6 +6,7 @@ import pytest
 
 from spectratrack.enhance import assess_frame_quality
 import spectratrack.research.enhancement_efficiency as efficiency
+from spectratrack.qa_benchmark import GroundTruthObject
 from spectratrack.research.enhancement_efficiency import (
     ROI_SCHEMA,
     _jitter,
@@ -211,7 +212,7 @@ def test_run_profile_counts_raw_and_enhanced_calls_and_recovery(tmp_path, monkey
         frame=0,
         tags=("dark",),
         objects=(
-            efficiency.GroundTruthObject(
+            GroundTruthObject(
                 "p1",
                 "person",
                 (10.0, 10.0, 30.0, 50.0),
