@@ -667,12 +667,25 @@ def validate_detection_replay(path: str | Path) -> dict[str, Any]:
             if not isinstance(label, str) or not label:
                 raise ValueError(f"{where}: label must be non-empty")
             appearance = detection.get("appearance")
-            if appearance is not None and (
-                not isinstance(appearance, dict)
-                or not isinstance(appearance.get("schema"), str)
-                or not appearance.get("schema")
-            ):
-                raise ValueError(f"{where}: non-null appearance metadata must have a schema")
+            if appearance is not None:
+                if isinstance(appearance, dict):
+                    if not isinstance(appearance.get("schema"), str) or not appearance.get("schema"):
+                        raise ValueError(f"{where}: appearance object must have a schema")
+                elif isinstance(appearance, list):
+                    appearance_schema = metadata["config"].get("appearance_schema")
+                    if not isinstance(appearance_schema, str) or not appearance_schema:
+                        raise ValueError(
+                            f"{where}: appearance vector requires config.appearance_schema"
+                        )
+                    if not appearance or any(
+                        isinstance(value, bool)
+                        or not isinstance(value, (int, float))
+                        or not math.isfinite(float(value))
+                        for value in appearance
+                    ):
+                        raise ValueError(f"{where}: appearance vector must contain finite numbers")
+                else:
+                    raise ValueError(f"{where}: unsupported appearance metadata")
             detections += 1
 
     return {
