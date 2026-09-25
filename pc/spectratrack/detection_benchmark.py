@@ -9,20 +9,9 @@ from typing import Iterable
 
 import cv2
 
-from .detector import YoloOnnxDetector
+from .detector import YoloOnnxDetector, _iou
 from .integrity import sha256_file
 from .types import BBox, Detection
-
-
-def bbox_iou(a: BBox, b: BBox) -> float:
-    xx1 = max(float(a[0]), float(b[0]))
-    yy1 = max(float(a[1]), float(b[1]))
-    xx2 = min(float(a[2]), float(b[2]))
-    yy2 = min(float(a[3]), float(b[3]))
-    inter = max(0.0, xx2 - xx1) * max(0.0, yy2 - yy1)
-    area_a = max(0.0, float(a[2] - a[0])) * max(0.0, float(a[3] - a[1]))
-    area_b = max(0.0, float(b[2] - b[0])) * max(0.0, float(b[3] - b[1]))
-    return inter / max(area_a + area_b - inter, 1e-6)
 
 
 def match_person_detections(
@@ -43,7 +32,7 @@ def match_person_detections(
         best_index = None
         best_iou = 0.0
         for index in unmatched:
-            overlap = bbox_iou(detection.bbox, truth_boxes[index])
+            overlap = _iou(detection.bbox, truth_boxes[index])
             if overlap > best_iou:
                 best_iou = overlap
                 best_index = index
