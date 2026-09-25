@@ -18,57 +18,31 @@ AdaptiveTile = tuple[
 DetectionFn = Callable[[np.ndarray, float], Iterable[Detection]]
 
 
-def _axis_starts(length: int, tile_size: int, overlap: float) -> list[int]:
-    size = min(length, tile_size)
-    if size >= length:
-        return [0]
-
-    stride = max(1, int(round(size * (1.0 - overlap))))
-    starts = list(range(0, length - size + 1, stride))
-    last = length - size
-    if starts[-1] != last:
-        starts.append(last)
-    return starts
+def _validated_region(region: TileRegion, frame_w: int, frame_h: int) -> TileRegion:
+    x1, y1, x2, y2 = region
+    if x1 < 0 or y1 < 0 or x2 > frame_w or y2 > frame_h:
+        raise ValueError("tile region must stay inside the frame")
+    if x2 <= x1 or y2 <= y1:
+        raise ValueError("tile region must have positive area")
+    return x1, y1, x2, y2
 
 
-def tiled_regions(
-    frame_w: int,
-    frame_h: int,
-    tile_size: int = 512,
-    overlap: float = 0.20,
-) -> list[TileRegion]:
-    """Return overlapping source-pixel tiles that cover the whole frame."""
-    if frame_w <= 0 or frame_h <= 0:
-        raise ValueError("frame dimensions must be positive")
-    if tile_size < 64:
-        raise ValueError("tile_size must be at least 64")
-    if not 0.0 <= overlap < 0.8:
-        raise ValueError("overlap must be in [0, 0.8)")
-
-    tile_w = min(frame_w, tile_size)
-    tile_h = min(frame_h, tile_size)
-    xs = _axis_starts(frame_w, tile_w, overlap)
-    ys = _axis_starts(frame_h, tile_h, overlap)
-    return [(x, y, x + tile_w, y + tile_h) for y in ys for x in xs]
-
-
-def iter_adaptive_tiles(
+def iter_adaptive_regions(
     frame: np.ndarray,
-    tile_size: int = 512,
-    overlap: float = 0.20,
+    regions: Iterable[TileRegion],
 ) -> Iterator[AdaptiveTile]:
-    """Yield raw tiles plus optional adaptively processed analysis tiles.
+    """Yield detector-owned raw regions plus optional enhanced analysis copies.
 
-    The processed tile is None when the quality router selects no operation.
-    The raw tile is always kept so detector evidence can be corroborated against
-    source pixels instead of trusting enhancement-only structure.
+    Region generation intentionally remains detector-owned so enhancement does
+    not duplicate tile geometry/overlap policy. The raw view is always kept;
+    the enhanced copy is None when the quality router selects no operation.
     """
     if frame is None or frame.size == 0 or frame.ndim != 3 or frame.shape[2] != 3:
         raise ValueError("frame must be a non-empty BGR image")
 
     height, width = frame.shape[:2]
-    for region in tiled_regions(width, height, tile_size, overlap):
-        x1, y1, x2, y2 = region
+    for region in regions:
+        x1, y1, x2, y2 = _validated_region(region, width, height)
         raw_tile = frame[y1:y2, x1:x2]
         processed, quality, operations = adaptive_analysis_frame(raw_tile)
         enhanced_tile = processed if operations else None
@@ -140,21 +114,20 @@ def corroborate_enhanced_detections(
     ]
 
 
-def detect_people_with_adaptive_tiles(
+def detect_people_with_adaptive_regions(
     frame: np.ndarray,
+    regions: Iterable[TileRegion],
     detect_at_confidence: DetectionFn,
     person_conf: float = 0.18,
     probe_conf: float = 0.08,
-    tile_size: int = 512,
-    overlap: float = 0.20,
     corroboration_iou: float = 0.10,
 ) -> list[Detection]:
-    """Run enhancement-aware tiny-person tile processing using a detector callback.
+    """Run enhancement-aware tiny-person processing over detector-owned tiles.
 
     The callback receives (tile_bgr, confidence_threshold). Raw tiles are probed
     below the acceptance threshold. An enhanced candidate can be returned only
     when a raw probe supports the same person. This helper intentionally does
-    not perform final NMS/merging; detector ownership keeps that policy.
+    not own tile generation or final NMS/merging; those remain detector policy.
     """
     if not 0.0 < probe_conf <= person_conf <= 1.0:
         raise ValueError("require 0 < probe_conf <= person_conf <= 1")
@@ -162,10 +135,9 @@ def detect_people_with_adaptive_tiles(
         raise ValueError("corroboration_iou must be in [0, 1]")
 
     accepted: list[Detection] = []
-    for region, raw_tile, enhanced_tile, _quality, _operations in iter_adaptive_tiles(
+    for region, raw_tile, enhanced_tile, _quality, _operations in iter_adaptive_regions(
         frame,
-        tile_size,
-        overlap,
+        regions,
     ):
         x1, y1, _x2, _y2 = region
         raw_probes = [
