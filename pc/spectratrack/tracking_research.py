@@ -842,6 +842,10 @@ def evaluate_tracking(
                 id_switches += 1
             if state["seen"] and state["gap"]:
                 fragmentations += 1
+                if state["last_track_id"] == track_id:
+                    recovered_same_id += 1
+                else:
+                    wrong_recovery += 1
             if truth_item.object_id in recovery_wait:
                 recovery_latencies.append(recovery_wait.pop(truth_item.object_id))
             if truth_item.object_id in occluded_since:
