@@ -558,6 +558,11 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_common(probe)
     probe.add_argument("--output", required=True)
 
+    smoke = sub.add_parser("smoke", help="Run one image to verify the exact export executes")
+    _add_common(smoke)
+    smoke.add_argument("--image", required=True)
+    smoke.add_argument("--output", required=True)
+
     benchmark = sub.add_parser("benchmark", help="Evaluate one backend on the frozen A5 annotated frames")
     _add_common(benchmark)
     benchmark.add_argument("--ground-truth", required=True)
@@ -597,7 +602,35 @@ def main() -> int:
             "contract": adapter.contract(),
             "providers": adapter.providers,
             "quality_evidence": False,
-            "note": "Session creation/contract probe only. DirectML inference remains unverified until an actual run.",
+            "note": "Session creation/contract probe only. Run smoke/benchmark to verify actual inference.",
+        }
+    elif args.command == "smoke":
+        adapter = build_adapter(args)
+        image = cv2.imread(args.image)
+        if image is None:
+            raise SystemExit(f"cannot read image: {args.image}")
+        result = adapter.detect(image)
+        payload = {
+            "schema": "spectratrack-vnext-detector-smoke-v1",
+            "backend": args.backend,
+            "model": str(model_path),
+            "model_sha256": sha256_file(model_path),
+            "image": str(args.image),
+            "providers": adapter.providers,
+            "contract": adapter.contract(),
+            "timing_ms": {
+                "preprocess": result.preprocess_ms,
+                "inference": result.inference_ms,
+                "postprocess": result.postprocess_ms,
+                "wall": result.wall_ms,
+            },
+            "inference_calls": result.inference_calls,
+            "person_detections": [
+                {"bbox": list(item.bbox), "score": item.score}
+                for item in result.detections
+            ],
+            "quality_evidence": False,
+            "note": "Single-image execution smoke only; not a quality benchmark.",
         }
     else:
         if args.peak_vram_mb is not None and not args.vram_source:
