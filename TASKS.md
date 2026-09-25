@@ -16,7 +16,8 @@ Baseline: `main@2012eaae2f4ffe820a66d12e40346d911616cd03`.
 - Source FPS preserved for processed video recording.
 - CLI abbreviation disabled; `--conf` no longer collides with `--config`.
 - Two-stage high/low confidence tracker with stable IDs and lifecycle states.
-- Detector cadence profiles: quality/balanced/speed.
+- Detector cadence profiles with canonical fast/balanced/high-quality/max-recall names and legacy speed/quality aliases.
+- Stage-level live performance report with true detector-only latency and process CPU sampling.
 - Prediction-only skipped-frame tracking.
 - Affine CMC using optical flow + RANSAC gates.
 - Non-biometric HSV appearance cue for same-class tracking.
@@ -110,6 +111,7 @@ Engineering targets for the first offline validation set are recorded in `docs/P
 - Replace or benchmark greedy association against a global assignment method.
 - Evaluate Kalman/ByteTrack/BoT-SORT-style tracking only with regression evidence.
 - Add representative GPU/backend benchmarks, not only synthetic tracker benchmark.
+- Add validated Windows GPU utilization/VRAM telemetry across DirectML hardware; do not infer unavailable counters.
 - Add a detector-level benchmark harness with annotations and per-class metrics.
 - Add H.264/H.265/FFmpeg output path with optional original-audio mux.
 - Add richer progress/ETA and per-stage performance summaries for long offline runs.

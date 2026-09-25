@@ -156,3 +156,20 @@ Preferred implementation path after baseline measurement:
 7. optimize for live performance only after recall is demonstrated.
 
 Reason: lowering one global confidence threshold cannot recover objects the model never resolves, and it can flood the tracker with false positives.
+
+
+## 2026-09-25 — Performance work starts with stage-level measurement
+
+Decision:
+
+- canonical live performance profiles are `fast`, `balanced`, `high-quality`, and `max-recall`;
+- legacy `speed` and `quality` remain accepted aliases;
+- these profiles currently change detector cadence only;
+- detector inference and appearance extraction are timed separately from the legacy aggregate detection stage;
+- whole-run performance reports may include measured process CPU load;
+- GPU utilization and VRAM stay explicitly unavailable until a validated hardware-counter path exists.
+
+Reason: cadence is already a stable project mechanism and can be named without changing detector quality.
+The old aggregate `detect` timing includes skipped-frame zeroes and appearance work, so it cannot be used
+as true model latency. DirectML provider selection proves where inference is scheduled but does not itself
+measure GPU utilization or VRAM. Missing hardware measurements must remain missing rather than being guessed.

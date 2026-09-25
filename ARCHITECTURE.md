@@ -168,13 +168,17 @@ Available display modes:
 
 ## 5. Detection cadence / performance profiles
 
-Defined in `pc/spectratrack/app.py`:
+Defined through `pc/spectratrack/runtime_config.py` and consumed by `app.py`:
 
-- `quality`: detector every `1` frame
+- `fast`: detector every `3` frames
 - `balanced`: detector every `2` frames
-- `speed`: detector every `3` frames
+- `high-quality`: detector every `1` frame
+- `max-recall`: detector every `1` frame and reserves the profile for recall-first work without adding quality-reducing shortcuts
 
-`--detect-every N` overrides the profile cadence when `N > 0`.
+Legacy `speed` and `quality` values remain accepted as aliases for `fast` and `high-quality`.
+`--detect-every N` still overrides the profile cadence when `N > 0`.
+
+The profiles currently change detector cadence only. They do not silently change confidence, input size, model, or detector output semantics.
 
 Presets:
 
@@ -449,7 +453,16 @@ Files:
 - `pc/spectratrack/diagnostics.py`
 - `pc/spectratrack/selfcheck.py`
 
-`StageTimer` records recent stage timings.
+`StageTimer` records bounded recent samples plus whole-run average/count/max values.
+The live PC path separately measures model inference, appearance extraction, tracking, capture,
+rendering/session/record writes, and full-frame processing. `--perf-report PATH` writes these
+measurements as JSON together with processing FPS, provider selection and dependency-free
+process CPU sampling.
+
+GPU utilization and VRAM are deliberately emitted as `null` with an explicit unavailable
+reason: ONNX Runtime DirectML does not expose portable per-process counters. SpectraTrack does
+not infer or fabricate those values. A Windows hardware-counter implementation still requires
+representative AMD/NVIDIA/Intel validation.
 
 A synthetic tracker benchmark exists and CI runs:
 
