@@ -15,6 +15,7 @@ CORPUS_SCHEMA = "spectratrack-cctv-corpus-v1"
 FRAME_BATCH_SCHEMA = "spectratrack-cctv-frame-batch-v1"
 REPLAY_SCHEMA = "spectratrack-detection-replay-v1"
 STAMPED_RUN_SCHEMA = "spectratrack-vnext-run-v1"
+EVIDENCE_SCHEMA = "spectratrack-vnext-evidence-v1"
 LEADERBOARD_SCHEMA = "spectratrack-vnext-leaderboard-v1"
 
 REQUIRED_GOLDEN_COVERAGE = (
@@ -792,6 +793,7 @@ def stamp_qa_result(
 
     return {
         "schema": STAMPED_RUN_SCHEMA,
+        "kind": "qa_result",
         "role": role.strip(),
         "experiment": experiment.strip(),
         "corpus_revision": manifest["revision"],
@@ -802,6 +804,106 @@ def stamp_qa_result(
         "settings_sha256": _canonical_sha256(result["settings"]),
         "evaluation_sha256": _canonical_sha256(result["evaluation"]),
         "result": result,
+    }
+
+
+def _validate_frozen_input_videos(
+    manifest: dict[str, Any],
+    input_videos: Any,
+    *,
+    where: str,
+) -> list[dict[str, Any]]:
+    if not isinstance(input_videos, list):
+        raise ValueError(f"{where}: input_videos must be a list")
+    expected_videos = _golden_video_map(manifest)
+    observed_videos = {
+        item.get("video"): item
+        for item in input_videos
+        if isinstance(item, dict)
+    }
+    if len(observed_videos) != len(input_videos):
+        raise ValueError(f"{where}: every input video must be an object with a unique video id")
+    if set(observed_videos) != set(expected_videos):
+        raise ValueError(f"{where}: input videos do not exactly match the frozen golden split")
+    for video, expected in expected_videos.items():
+        observed = observed_videos[video]
+        for key in ("sha256", "width", "height"):
+            if observed.get(key) != expected.get(key):
+                raise ValueError(f"{where}: {video!r} has different {key} from frozen corpus")
+    return input_videos
+
+
+def stamp_external_evidence(
+    *,
+    manifest_path: str | Path,
+    evidence_path: str | Path,
+) -> dict[str, Any]:
+    manifest = load_frozen_manifest(manifest_path)
+    evidence = _json_load(evidence_path)
+    if evidence.get("schema") != EVIDENCE_SCHEMA:
+        raise ValueError(f"Expected {EVIDENCE_SCHEMA}")
+    role = evidence.get("role")
+    experiment = evidence.get("experiment")
+    scope = evidence.get("scope")
+    for field_name, field_value in (
+        ("role", role),
+        ("experiment", experiment),
+        ("scope", scope),
+    ):
+        if not isinstance(field_value, str) or not field_value.strip():
+            raise ValueError(f"evidence {field_name} must be non-empty")
+    source_commit = evidence.get("source_commit")
+    if not _is_hex(source_commit, 40):
+        raise ValueError("evidence source_commit must be a full 40-hex SHA")
+    if evidence.get("corpus_revision") != manifest["revision"]:
+        raise ValueError("evidence corpus revision differs from frozen manifest")
+    if evidence.get("corpus_sha256") != manifest["corpus_sha256"]:
+        raise ValueError("evidence corpus SHA differs from frozen manifest")
+    golden = manifest["splits"]["golden"]
+    if evidence.get("ground_truth_sha256") != golden.get("ground_truth_sha256"):
+        raise ValueError("evidence ground-truth SHA differs from frozen golden split")
+    source_artifact_sha = evidence.get("source_artifact_sha256")
+    if not _is_hex(source_artifact_sha, 64):
+        raise ValueError("evidence source_artifact_sha256 must be 64-hex")
+    for field_name in ("config", "evaluation", "quality", "compute", "provenance"):
+        if not isinstance(evidence.get(field_name), dict):
+            raise ValueError(f"evidence {field_name} must be an object")
+    _validate_frozen_input_videos(
+        manifest,
+        evidence["provenance"].get("input_videos"),
+        where="evidence provenance",
+    )
+    replay_sha = evidence["provenance"].get("replay_sha256")
+    if replay_sha is not None and not _is_hex(replay_sha, 64):
+        raise ValueError("evidence provenance replay_sha256 must be null or 64-hex")
+
+    model = evidence.get("model")
+    if model is not None:
+        if not isinstance(model, dict):
+            raise ValueError("evidence model must be null or an object")
+        model_id = model.get("id")
+        if not isinstance(model_id, str) or not model_id:
+            raise ValueError("evidence model.id must be non-empty when model is present")
+        model_sha = model.get("sha256")
+        if model_sha is not None and not _is_hex(model_sha, 64):
+            raise ValueError("evidence model.sha256 must be null or 64-hex")
+        provider = model.get("provider")
+        if not isinstance(provider, str) or not provider:
+            raise ValueError("evidence model.provider must be non-empty when model is present")
+
+    return {
+        "schema": STAMPED_RUN_SCHEMA,
+        "kind": "external_evidence",
+        "role": role.strip(),
+        "experiment": experiment.strip(),
+        "corpus_revision": manifest["revision"],
+        "corpus_sha256": manifest["corpus_sha256"],
+        "source_commit": source_commit,
+        "source_evidence_sha256": sha256_file(evidence_path),
+        "evidence_payload_sha256": _canonical_sha256(evidence),
+        "settings_sha256": _canonical_sha256(evidence["config"]),
+        "evaluation_sha256": _canonical_sha256(evidence["evaluation"]),
+        "evidence": evidence,
     }
 
 
@@ -826,6 +928,7 @@ def _leaderboard_row(run: dict[str, Any]) -> dict[str, Any]:
     return {
         "role": run["role"],
         "experiment": run["experiment"],
+        "scope": "end-to-end-qa",
         "source_commit": run["source_commit"],
         "model": model.get("path"),
         "model_sha256": model.get("sha256"),
@@ -862,6 +965,51 @@ def _leaderboard_row(run: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _external_evidence_row(run: dict[str, Any]) -> dict[str, Any]:
+    evidence = run["evidence"]
+    quality = evidence["quality"]
+    compute = evidence["compute"]
+    model = evidence.get("model") or {}
+    return {
+        "role": run["role"],
+        "experiment": run["experiment"],
+        "scope": evidence["scope"],
+        "source_commit": run["source_commit"],
+        "model": model.get("id"),
+        "model_sha256": model.get("sha256"),
+        "providers": [model["provider"]] if model.get("provider") else None,
+        "settings_sha256": run["settings_sha256"],
+        "settings": evidence["config"],
+        "evaluation": evidence["evaluation"],
+        "recall": quality.get("recall"),
+        "precision": quality.get("precision"),
+        "fn": quality.get("fn"),
+        "fp": quality.get("fp"),
+        "recall_lt24": quality.get("recall_lt24"),
+        "recall_24_47": quality.get("recall_24_47"),
+        "recall_48_95": quality.get("recall_48_95"),
+        "recall_ge96": quality.get("recall_ge96"),
+        "track_recall": quality.get("track_recall"),
+        "id_switches": quality.get("id_switches"),
+        "fragmentations": quality.get("fragmentations"),
+        "mean_track_length_annotated_frames": quality.get(
+            "mean_track_length_annotated_frames"
+        ),
+        "mean_recovery_latency_frames": quality.get("mean_recovery_latency_frames"),
+        "detection_center_jitter": quality.get("detection_center_jitter"),
+        "detection_temporal_iou": quality.get("detection_temporal_iou"),
+        "tracking_center_jitter": quality.get("tracking_center_jitter"),
+        "tracking_temporal_iou": quality.get("tracking_temporal_iou"),
+        "onnx_inference_calls": compute.get("onnx_inference_calls"),
+        "onnx_calls_per_frame": compute.get("onnx_calls_per_frame"),
+        "wall_seconds": compute.get("wall_seconds"),
+        "processing_seconds_per_source_second": compute.get(
+            "processing_seconds_per_source_second"
+        ),
+        "peak_vram_mb": compute.get("peak_vram_mb"),
+    }
+
+
 def build_leaderboard(
     *,
     manifest_path: str | Path,
@@ -877,16 +1025,29 @@ def build_leaderboard(
             raise ValueError(f"{path}: expected {STAMPED_RUN_SCHEMA}")
         if run.get("corpus_revision") != manifest["revision"] or run.get("corpus_sha256") != manifest["corpus_sha256"]:
             raise ValueError(f"{path}: corpus revision/hash differs from leaderboard manifest")
-        result = run.get("result")
-        if not isinstance(result, dict):
-            raise ValueError(f"{path}: stamped run has no result object")
-        if run.get("result_payload_sha256") != _canonical_sha256(result):
-            raise ValueError(f"{path}: stamped result payload hash mismatch")
-        if run.get("settings_sha256") != _canonical_sha256(result.get("settings")):
+        kind = run.get("kind", "qa_result")
+        if kind == "qa_result":
+            result = run.get("result")
+            if not isinstance(result, dict):
+                raise ValueError(f"{path}: stamped run has no result object")
+            if run.get("result_payload_sha256") != _canonical_sha256(result):
+                raise ValueError(f"{path}: stamped result payload hash mismatch")
+            settings = result.get("settings")
+            current_evaluation = result.get("evaluation")
+        elif kind == "external_evidence":
+            evidence = run.get("evidence")
+            if not isinstance(evidence, dict):
+                raise ValueError(f"{path}: stamped run has no evidence object")
+            if run.get("evidence_payload_sha256") != _canonical_sha256(evidence):
+                raise ValueError(f"{path}: stamped evidence payload hash mismatch")
+            settings = evidence.get("config")
+            current_evaluation = evidence.get("evaluation")
+        else:
+            raise ValueError(f"{path}: unsupported stamped run kind {kind!r}")
+        if run.get("settings_sha256") != _canonical_sha256(settings):
             raise ValueError(f"{path}: settings hash mismatch")
-        if run.get("evaluation_sha256") != _canonical_sha256(result.get("evaluation")):
+        if run.get("evaluation_sha256") != _canonical_sha256(current_evaluation):
             raise ValueError(f"{path}: evaluation hash mismatch")
-        current_evaluation = result.get("evaluation")
         if evaluation is None:
             evaluation = current_evaluation
         elif current_evaluation != evaluation:
@@ -899,7 +1060,12 @@ def build_leaderboard(
     if not runs:
         raise ValueError("Leaderboard requires at least one stamped run")
 
-    rows = [_leaderboard_row(run) for run in runs]
+    rows = [
+        _external_evidence_row(run)
+        if run.get("kind") == "external_evidence"
+        else _leaderboard_row(run)
+        for run in runs
+    ]
     return {
         "schema": LEADERBOARD_SCHEMA,
         "corpus_revision": manifest["revision"],
@@ -914,6 +1080,7 @@ def leaderboard_markdown(leaderboard: dict[str, Any]) -> str:
     columns = [
         ("Role", "role"),
         ("Experiment", "experiment"),
+        ("Scope", "scope"),
         ("Recall", "recall"),
         ("Precision", "precision"),
         ("FN", "fn"),
@@ -1004,6 +1171,14 @@ def _build_parser() -> argparse.ArgumentParser:
     stamp.add_argument("--experiment", required=True)
     stamp.add_argument("--output", required=True)
 
+    evidence = sub.add_parser(
+        "stamp-evidence",
+        help="Bind normalized A1-A4 research evidence to a frozen golden corpus",
+    )
+    evidence.add_argument("--manifest", required=True)
+    evidence.add_argument("--evidence", required=True)
+    evidence.add_argument("--output", required=True)
+
     leaderboard = sub.add_parser("leaderboard", help="Assemble comparable stamped runs without ranking them")
     leaderboard.add_argument("--manifest", required=True)
     leaderboard.add_argument("--run", action="append", required=True, dest="runs")
@@ -1069,6 +1244,15 @@ def main() -> int:
                 result_path=args.result,
                 role=args.role,
                 experiment=args.experiment,
+            )
+            _json_dump(args.output, stamped)
+            print(f"stamped={args.output} settings_sha256={stamped['settings_sha256']}")
+            return 0
+
+        if args.command == "stamp-evidence":
+            stamped = stamp_external_evidence(
+                manifest_path=args.manifest,
+                evidence_path=args.evidence,
             )
             _json_dump(args.output, stamped)
             print(f"stamped={args.output} settings_sha256={stamped['settings_sha256']}")
