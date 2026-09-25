@@ -39,3 +39,21 @@ Notes:
 - Angular data requires a valid calibration file.
 - AI super-resolution can invent fine detail.
 - SpectraTrack does not auto-download models or executables.
+
+
+ONE-CLICK VIDEO
+===============
+- Drag one video file onto PROCESS_VIDEO.bat.
+- The launcher auto-detects model.onnx, then yolo11x.onnx, then the first .onnx file.
+- It writes <video>_SpectraTrack.mp4 and <video>_SpectraTrack.jsonl beside the source.
+
+CROSS-VIDEO BATCH
+=================
+- Drag a folder of videos onto ANALYZE_VIDEO_FOLDER.bat.
+- It analyzes supported videos recursively.
+- It writes:
+    spectratrack_cross_video.json
+    spectratrack_cross_video.html
+    spectratrack_cross_video_samples\
+- The HTML report shows entity groups, best crops, candidate/review links, and local review buttons.
+- Person links mean similar visible appearance in that batch only, not biometric identity.

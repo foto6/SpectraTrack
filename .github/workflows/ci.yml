@@ -55,6 +55,8 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item START_SPECTRATRACK.bat dist\SpectraTrack-PC\START_SPECTRATRACK.bat
+          Copy-Item PROCESS_VIDEO.bat dist\SpectraTrack-PC\PROCESS_VIDEO.bat
+          Copy-Item ANALYZE_VIDEO_FOLDER.bat dist\SpectraTrack-PC\ANALYZE_VIDEO_FOLDER.bat
           Copy-Item calibration.example.json dist\SpectraTrack-PC\calibration.example.json
           Copy-Item STANDALONE_README.txt dist\SpectraTrack-PC\README.txt
           Copy-Item -Recurse presets dist\SpectraTrack-PC\presets
@@ -72,6 +74,8 @@ jobs:
             "run_camera.bat",
             "run_demo.bat",
             "START_SPECTRATRACK.bat",
+            "PROCESS_VIDEO.bat",
+            "ANALYZE_VIDEO_FOLDER.bat",
             "STANDALONE_README.txt",
             "calibration.example.json",
             "presets"
