@@ -23,17 +23,30 @@ def shift_box(box: BBox, dx: float, dy: float) -> BBox:
 
 
 class MultiObjectTracker:
-    """Lightweight multi-object tracker for local camera use.
+    """Dependency-light two-stage tracker with camera-motion compensation.
 
-    It combines constant-velocity prediction, class-aware IoU matching and
-    center-distance gating. It is deliberately dependency-light so the same
-    logic can be mirrored on Android.
+    High-confidence detections can create tracks. Lower-confidence detections are
+    used only to keep an existing track alive. Track velocity is stored as
+    residual image motion after subtracting estimated global camera translation.
     """
 
-    def __init__(self, max_missed: int = 12, min_iou: float = 0.12, max_center_ratio: float = 1.8) -> None:
+    def __init__(
+        self,
+        max_missed: int = 14,
+        min_iou: float = 0.10,
+        max_center_ratio: float = 1.9,
+        high_conf: float = 0.45,
+        low_conf: float = 0.12,
+        min_hits: int = 3,
+    ) -> None:
+        if not 0.0 <= low_conf <= high_conf <= 1.0:
+            raise ValueError("Require 0 <= low_conf <= high_conf <= 1")
         self.max_missed = int(max_missed)
         self.min_iou = float(min_iou)
         self.max_center_ratio = float(max_center_ratio)
+        self.high_conf = float(high_conf)
+        self.low_conf = float(low_conf)
+        self.min_hits = int(min_hits)
         self._next_id = 1
         self.tracks: dict[int, Track] = {}
 
@@ -41,77 +54,142 @@ class MultiObjectTracker:
         self._next_id = 1
         self.tracks.clear()
 
-    def _predicted_box(self, track: Track) -> BBox:
-        # Damp prediction as a target remains unobserved.
+    def _predicted_box(self, track: Track, camera_motion: tuple[float, float]) -> BBox:
+        camera_dx, camera_dy = camera_motion
         factor = max(0.25, 1.0 - track.missed * 0.08)
-        return shift_box(track.bbox, track.vx * factor, track.vy * factor)
+        return shift_box(
+            track.bbox,
+            camera_dx + track.vx * factor,
+            camera_dy + track.vy * factor,
+        )
 
-    def update(self, detections: Iterable[Detection]) -> list[Track]:
-        detections = list(detections)
-        unmatched_tracks = set(self.tracks.keys())
-        unmatched_dets = set(range(len(detections)))
+    def _candidate_score(
+        self,
+        track: Track,
+        det: Detection,
+        camera_motion: tuple[float, float],
+        loose: bool,
+    ) -> float | None:
+        if det.class_id != track.class_id:
+            return None
+        predicted = self._predicted_box(track, camera_motion)
+        pcx = (predicted[0] + predicted[2]) * 0.5
+        pcy = (predicted[1] + predicted[3]) * 0.5
+        dcx, dcy = det.center
+        diag = max(hypot(track.width, track.height), 24.0)
+        iou = bbox_iou(predicted, det.bbox)
+        dist_ratio = hypot(dcx - pcx, dcy - pcy) / diag
+        iou_gate = self.min_iou * (0.65 if loose else 1.0)
+        center_gate = self.max_center_ratio * (1.25 if loose else 1.0)
+        if iou < iou_gate and dist_ratio > center_gate:
+            return None
+        return iou * 2.4 + max(0.0, 1.0 - dist_ratio / center_gate) + det.score * 0.15
+
+    def _associate(
+        self,
+        track_ids: set[int],
+        detections: list[Detection],
+        det_ids: set[int],
+        camera_motion: tuple[float, float],
+        loose: bool = False,
+    ) -> list[tuple[int, int]]:
         candidates: list[tuple[float, int, int]] = []
-
-        for tid, track in self.tracks.items():
-            predicted = self._predicted_box(track)
-            pcx = (predicted[0] + predicted[2]) * 0.5
-            pcy = (predicted[1] + predicted[3]) * 0.5
-            diag = max(hypot(track.width, track.height), 24.0)
-            for didx, det in enumerate(detections):
-                if det.class_id != track.class_id:
-                    continue
-                iou = bbox_iou(predicted, det.bbox)
-                dcx, dcy = det.center
-                dist_ratio = hypot(dcx - pcx, dcy - pcy) / diag
-                if iou < self.min_iou and dist_ratio > self.max_center_ratio:
-                    continue
-                # Higher score is better: IoU dominates, distance helps fast motion.
-                match_score = iou * 2.2 + max(0.0, 1.0 - dist_ratio / self.max_center_ratio)
-                candidates.append((match_score, tid, didx))
-
+        for tid in track_ids:
+            track = self.tracks[tid]
+            for didx in det_ids:
+                score = self._candidate_score(track, detections[didx], camera_motion, loose)
+                if score is not None:
+                    candidates.append((score, tid, didx))
         candidates.sort(reverse=True)
+
         matches: list[tuple[int, int]] = []
+        remaining_tracks = set(track_ids)
+        remaining_dets = set(det_ids)
         for _, tid, didx in candidates:
-            if tid in unmatched_tracks and didx in unmatched_dets:
-                unmatched_tracks.remove(tid)
-                unmatched_dets.remove(didx)
+            if tid in remaining_tracks and didx in remaining_dets:
+                remaining_tracks.remove(tid)
+                remaining_dets.remove(didx)
                 matches.append((tid, didx))
+        return matches
+
+    def _apply_match(
+        self,
+        track: Track,
+        det: Detection,
+        camera_motion: tuple[float, float],
+    ) -> None:
+        old_cx, old_cy = track.center
+        new_cx, new_cy = det.center
+        camera_dx, camera_dy = camera_motion
+        measured_vx = (new_cx - old_cx) - camera_dx
+        measured_vy = (new_cy - old_cy) - camera_dy
+        track.vx = track.vx * 0.62 + measured_vx * 0.38
+        track.vy = track.vy * 0.62 + measured_vy * 0.38
+        track.bbox = det.bbox
+        track.score = det.score
+        track.last_detection_score = det.score
+        track.label = det.label
+        track.age += 1
+        track.hits += 1
+        track.missed = 0
+        track.confirmed = track.confirmed or track.hits >= self.min_hits
+        track.history.append((int(new_cx), int(new_cy)))
+
+    def update(
+        self,
+        detections: Iterable[Detection],
+        camera_motion: tuple[float, float] = (0.0, 0.0),
+    ) -> list[Track]:
+        detections = [d for d in detections if d.score >= self.low_conf]
+        all_tracks = set(self.tracks)
+        high = {i for i, d in enumerate(detections) if d.score >= self.high_conf}
+        low = set(range(len(detections))) - high
+
+        matches_high = self._associate(all_tracks, detections, high, camera_motion, loose=False)
+        used_tracks = {tid for tid, _ in matches_high}
+        used_dets = {didx for _, didx in matches_high}
+
+        unmatched_tracks = all_tracks - used_tracks
+        low_candidates = low | (high - used_dets)
+        matches_low = self._associate(unmatched_tracks, detections, low_candidates, camera_motion, loose=True)
+
+        matches = matches_high + matches_low
+        used_tracks |= {tid for tid, _ in matches_low}
+        used_dets |= {didx for _, didx in matches_low}
 
         for tid, didx in matches:
-            track = self.tracks[tid]
-            det = detections[didx]
-            old_cx, old_cy = track.center
-            new_cx, new_cy = det.center
-            measured_vx = new_cx - old_cx
-            measured_vy = new_cy - old_cy
-            track.vx = track.vx * 0.6 + measured_vx * 0.4
-            track.vy = track.vy * 0.6 + measured_vy * 0.4
-            track.bbox = det.bbox
-            track.score = det.score
-            track.label = det.label
-            track.age += 1
-            track.hits += 1
-            track.missed = 0
-            track.history.append((int(new_cx), int(new_cy)))
+            self._apply_match(self.tracks[tid], detections[didx], camera_motion)
 
-        for tid in unmatched_tracks:
+        for tid in all_tracks - used_tracks:
             track = self.tracks[tid]
-            track.bbox = self._predicted_box(track)
+            track.bbox = self._predicted_box(track, camera_motion)
             track.age += 1
             track.missed += 1
             cx, cy = track.center
             track.history.append((int(cx), int(cy)))
 
-        for didx in unmatched_dets:
+        # Only strong detections may create new identities.
+        for didx in high - used_dets:
             det = detections[didx]
             tid = self._next_id
             self._next_id += 1
-            t = Track(tid, det.bbox, det.score, det.class_id, det.label)
+            t = Track(
+                tid,
+                det.bbox,
+                det.score,
+                det.class_id,
+                det.label,
+                confirmed=self.min_hits <= 1,
+                last_detection_score=det.score,
+            )
             cx, cy = det.center
             t.history.append((int(cx), int(cy)))
             self.tracks[tid] = t
 
-        expired = [tid for tid, tr in self.tracks.items() if tr.missed > self.max_missed]
+        expired = [
+            tid for tid, tr in self.tracks.items()
+            if tr.missed > self.max_missed or (not tr.confirmed and tr.missed > min(2, self.max_missed))
+        ]
         for tid in expired:
             del self.tracks[tid]
 
