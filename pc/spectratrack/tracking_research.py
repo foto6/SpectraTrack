@@ -479,6 +479,60 @@ class AuditedCurrentTracker(MultiObjectTracker):
         return matches
 
 
+class GlobalAssignmentCurrentTracker(MultiObjectTracker):
+    """Current SpectraTrack lifecycle/gates with only assignment selection changed."""
+
+    def _associate(
+        self,
+        track_ids: set[int],
+        detections: list[Detection],
+        det_ids: set[int],
+        camera_motion: tuple[float, float],
+        camera_transform: tuple[float, float, float, float, float, float] | None,
+        loose: bool = False,
+    ) -> list[tuple[int, int]]:
+        ordered_tracks = sorted(track_ids)
+        ordered_detections = sorted(det_ids)
+        scores = [
+            [
+                self._candidate_score(
+                    self.tracks[track_id],
+                    detections[detection_id],
+                    camera_motion,
+                    camera_transform,
+                    loose,
+                )
+                for detection_id in ordered_detections
+            ]
+            for track_id in ordered_tracks
+        ]
+        return [
+            (ordered_tracks[row], ordered_detections[column])
+            for row, column in _maximize_assignment(scores)
+        ]
+
+
+class GlobalAssignmentCurrentRunner:
+    name = "current-global-assignment"
+
+    def __init__(self) -> None:
+        self.tracker = GlobalAssignmentCurrentTracker()
+
+    def step(self, frame: ReplayFrame) -> list[TrackView]:
+        if frame.detector_ran:
+            tracks = self.tracker.update(
+                frame.fresh_detections(),
+                camera_motion=frame.camera_motion,
+                camera_transform=frame.camera_transform,
+            )
+        else:
+            tracks = self.tracker.predict_only(
+                camera_motion=frame.camera_motion,
+                camera_transform=frame.camera_transform,
+            )
+        return [_view(track) for track in tracks]
+
+
 class CurrentTrackerRunner:
     name = "current"
 
@@ -935,9 +989,13 @@ def _aggregate(metrics: Iterable[dict[str, float | int | None]]) -> dict[str, fl
     }
 
 
-def _candidate_factories() -> dict[str, Callable[[], CurrentTrackerRunner | ReferenceStyleTracker]]:
+def _candidate_factories() -> dict[
+    str,
+    Callable[[], CurrentTrackerRunner | GlobalAssignmentCurrentRunner | ReferenceStyleTracker],
+]:
     return {
         "current": lambda: CurrentTrackerRunner(),
+        "current-global-assignment": lambda: GlobalAssignmentCurrentRunner(),
         "byte-global-reference-style": lambda: ReferenceStyleTracker("byte"),
         "botsort-reference-style": lambda: ReferenceStyleTracker("botsort"),
         "ocsort-style": lambda: ReferenceStyleTracker("ocsort"),
@@ -1179,6 +1237,10 @@ def run_synthetic_bakeoff(performance_repeats: int = 20) -> dict:
         "current_failure_audit": audits,
         "candidate_notes": {
             "current": "Production MultiObjectTracker unchanged; greedy two-stage high/low association plus CMC/appearance/dormant recovery.",
+            "current-global-assignment": (
+                "Isolated candidate: production MultiObjectTracker gates, scoring, lifecycle, CMC and dormant recovery are unchanged; "
+                "only greedy one-to-one selection is replaced by global maximum-score assignment."
+            ),
             "byte-global-reference-style": (
                 "Clean-room mechanism probe: identical high/low stages and strong-only creation, "
                 "global assignment, constant-velocity geometry; not the official ByteTrack repository."
@@ -1249,7 +1311,13 @@ def _build_parser() -> argparse.ArgumentParser:
     source.add_argument("--replay", help="Run one candidate on a spectratrack-detection-replay-v1 JSONL file")
     parser.add_argument(
         "--candidate",
-        choices=("current", "byte-global-reference-style", "botsort-reference-style", "ocsort-style"),
+        choices=(
+            "current",
+            "current-global-assignment",
+            "byte-global-reference-style",
+            "botsort-reference-style",
+            "ocsort-style",
+        ),
         default="current",
     )
     parser.add_argument("--audit-current", action="store_true")
