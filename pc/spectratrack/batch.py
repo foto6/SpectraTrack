@@ -83,13 +83,27 @@ class _Accumulator:
         )
 
 
-def discover_videos(input_dir: str | Path, recursive: bool = False) -> list[Path]:
+def _looks_generated(path: Path) -> bool:
+    stem = path.stem.lower()
+    return stem.endswith("_spectratrack") or stem in {"result_max", "result_stabilized", "analyzed"}
+
+
+def discover_videos(
+    input_dir: str | Path,
+    recursive: bool = False,
+    include_derived: bool = False,
+) -> list[Path]:
     root = Path(input_dir)
     if not root.exists() or not root.is_dir():
         raise FileNotFoundError(f"Input directory not found: {root}")
     iterator = root.rglob("*") if recursive else root.glob("*")
     return sorted(
-        (p for p in iterator if p.is_file() and p.suffix.lower() in VIDEO_SUFFIXES),
+        (
+            p for p in iterator
+            if p.is_file()
+            and p.suffix.lower() in VIDEO_SUFFIXES
+            and (include_derived or not _looks_generated(p))
+        ),
         key=lambda p: str(p).lower(),
     )
 
@@ -209,6 +223,11 @@ def main() -> int:
     parser.add_argument("--strong-threshold", type=float, default=0.94)
     parser.add_argument("--min-observations", type=int, default=3)
     parser.add_argument("--recursive", action="store_true")
+    parser.add_argument(
+        "--include-derived",
+        action="store_true",
+        help="Include SpectraTrack-generated video outputs in the input scan",
+    )
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--max-frames-per-video", type=int, default=0)
     parser.add_argument("--no-previews", action="store_true", help="Do not save one best crop per tracklet")
@@ -220,7 +239,11 @@ def main() -> int:
     if args.min_observations < 1:
         raise SystemExit("--min-observations must be >= 1")
 
-    videos = discover_videos(args.input_dir, recursive=args.recursive)
+    videos = discover_videos(
+        args.input_dir,
+        recursive=args.recursive,
+        include_derived=args.include_derived,
+    )
     if not videos:
         raise SystemExit(f"No supported videos found in: {args.input_dir}")
 
