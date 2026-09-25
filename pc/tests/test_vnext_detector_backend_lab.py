@@ -108,5 +108,5 @@ def test_rtdetrv2_adapter_feeds_original_size_and_filters_person():
     assert len(result.detections) == 1
     assert result.detections[0].bbox == (1.0, 2.0, 20.0, 40.0)
     assert adapter.session.feed["images"].shape == (1, 3, 64, 64)
-    assert adapter.session.feed["orig_target_sizes"].tolist() == [[50, 100]]
+    assert adapter.session.feed["orig_target_sizes"].tolist() == [[100, 50]]
     assert result.inference_calls == 1
