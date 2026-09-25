@@ -151,6 +151,7 @@ def test_compare_rejects_different_ground_truth():
     with pytest.raises(ValueError, match="different ground-truth"):
         compare_results(baseline, candidate)
 
+
 def test_loader_rejects_boolean_frame(tmp_path: Path):
     path = tmp_path / "gt.jsonl"
     row = {"video": "x.mp4", "frame": True, "objects": []}
