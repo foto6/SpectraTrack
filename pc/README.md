@@ -131,3 +131,15 @@ Add --session-video together with --session-dir. SpectraTrack stores tracking-in
 python -m spectratrack.app --model ..\models\yolo11n.onnx --source 0 --session-dir .\sessions --session-video
 python -m spectratrack.replay --session .\sessions\session-YYYYMMDDTHHMMSSZ
 ~~~
+
+
+## Standalone Windows build
+
+GitHub Actions also builds a standalone folder. After CI succeeds, download the
+SpectraTrack-PC-v0.2-standalone artifact and extract it.
+
+- Double-click SpectraTrack.exe: choose the ONNX model, then camera 0 opens with adaptive detector cadence.
+- If <model>.manifest.json exists beside the selected ONNX model, the launcher passes it automatically for SHA-256 verification.
+- Advanced users can run SpectraTrack.exe --help from PowerShell for all flags.
+
+The standalone build is an onedir package rather than onefile. This is larger on disk but substantially easier to audit and more reliable for OpenCV/ONNX Runtime native DLL loading.
