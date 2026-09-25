@@ -9,6 +9,7 @@ from spectratrack.research.enhancement_efficiency import (
     _jitter,
     _match_truth,
     apply_operation,
+    current_operation_set,
     load_roi_manifest,
     operation_gate,
     quality_snapshot,
@@ -61,6 +62,16 @@ def test_operation_gate_keeps_low_light_ops_dark_only():
     assert operation_gate("gamma", dark, quality)
     assert operation_gate("clahe", dark, quality)
     assert operation_gate("gamma_clahe", dark, quality)
+
+
+def test_current_operation_set_exposes_combination_members():
+    dark = np.full((120, 160, 3), 10, dtype=np.uint8)
+    quality = assess_frame_quality(dark)
+
+    operations = current_operation_set(dark, quality)
+
+    assert "gamma" in operations
+    assert "clahe" in operations
 
 
 def test_selective_gate_uses_external_evidence_without_own_scheduler():
