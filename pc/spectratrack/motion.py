@@ -45,7 +45,6 @@ class GlobalMotionEstimator:
             return CameraMotion()
 
         nxt, status, _ = cv2.calcOpticalFlowPyrLK(self.prev_gray, gray, pts, None)
-        old = self.prev_gray
         self.prev_gray = gray
         if nxt is None or status is None:
             return CameraMotion()

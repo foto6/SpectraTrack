@@ -17,10 +17,10 @@ def enhance_visibility(frame: np.ndarray, strength: float = 0.65) -> np.ndarray:
     """
     strength = float(max(0.0, min(1.0, strength)))
     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
+    lightness, a, b = cv2.split(lab)
     clahe = cv2.createCLAHE(clipLimit=2.0 + strength * 1.5, tileGridSize=(8, 8))
-    l2 = clahe.apply(l)
-    enhanced = cv2.cvtColor(cv2.merge([l2, a, b]), cv2.COLOR_LAB2BGR)
+    lightness2 = clahe.apply(lightness)
+    enhanced = cv2.cvtColor(cv2.merge([lightness2, a, b]), cv2.COLOR_LAB2BGR)
 
     if strength > 0.25:
         enhanced = cv2.bilateralFilter(enhanced, 5, 28, 28)
