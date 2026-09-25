@@ -2,7 +2,7 @@ name: SpectraTrack PC CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, pc-v0.3-dev]
     paths:
       - 'pc/**'
       - 'models/**'
