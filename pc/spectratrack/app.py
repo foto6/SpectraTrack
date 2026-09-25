@@ -42,6 +42,9 @@ def main() -> int:
     parser.add_argument("--model-sha256", default="", help="Expected model SHA-256; abort on mismatch")
     parser.add_argument("--model-manifest", default="", help="Optional JSON model manifest with hash/provenance/input size")
     parser.add_argument("--source", default="0", help="Camera index or video path")
+    parser.add_argument("--camera-width", type=int, default=0, help="Requested webcam width; camera sources only")
+    parser.add_argument("--camera-height", type=int, default=0, help="Requested webcam height; camera sources only")
+    parser.add_argument("--camera-fps", type=float, default=0.0, help="Requested webcam FPS; camera sources only")
     parser.add_argument("--input-size", type=int, default=640)
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--iou", type=float, default=0.45)
@@ -100,6 +103,38 @@ def main() -> int:
         raise SystemExit(f"Cannot open source: {args.source}")
 
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    if isinstance(source, int):
+        if args.camera_width > 0:
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.camera_width)
+        if args.camera_height > 0:
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.camera_height)
+        if args.camera_fps > 0:
+            cap.set(cv2.CAP_PROP_FPS, args.camera_fps)
+
+    capture_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+    capture_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+    capture_fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
+    requested_capture = {
+        "width": args.camera_width or None,
+        "height": args.camera_height or None,
+        "fps": args.camera_fps or None,
+    }
+    actual_capture = {
+        "width": capture_width,
+        "height": capture_height,
+        "fps": round(capture_fps, 3),
+    }
+    if isinstance(source, int) and any(v is not None for v in requested_capture.values()):
+        print(f"camera_requested={requested_capture}")
+        print(f"camera_actual={actual_capture}")
+    if calibration is not None and capture_width > 0 and capture_height > 0:
+        if (calibration.width, calibration.height) != (capture_width, capture_height):
+            print(
+                "WARNING calibration resolution differs from capture: "
+                f"cal={calibration.width}x{calibration.height} capture={capture_width}x{capture_height}. "
+                "Angular mapping is scaled, but recalibration is recommended if crop/zoom/FOV changed."
+            )
+
     state = UiState()
     hud_enabled = True
     enhancement = bool(args.enhance)
@@ -119,6 +154,14 @@ def main() -> int:
         "class_filter": sorted(class_filter),
         "calibration": args.calibration or None,
         "headless": bool(args.headless),
+        "capture_requested": requested_capture,
+        "capture_actual": actual_capture,
+        "calibration_resolution_match": (
+            calibration is None
+            or capture_width <= 0
+            or capture_height <= 0
+            or (calibration.width == capture_width and calibration.height == capture_height)
+        ),
         "view_mode": view_mode,
         "analysis_enhance": enhancement,
         "profile": args.profile,
@@ -343,7 +386,8 @@ def main() -> int:
             cv2.destroyAllWindows()
 
     print(
-        f"processed_frames={frame_index} profile={args.profile} detect_every={detect_every} model_sha256={model_hash} "
+        f"processed_frames={frame_index} capture={capture_width}x{capture_height}@{capture_fps:.2f} "
+        f"profile={args.profile} detect_every={detect_every} model_sha256={model_hash} "
         f"detect_avg_ms={timings.average('detect'):.2f} track_avg_ms={timings.average('track'):.2f}"
     )
     return 0
