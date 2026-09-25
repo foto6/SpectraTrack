@@ -4,6 +4,7 @@ from spectratrack.tracking_research import (
     CurrentTrackerRunner,
     GlobalAssignmentCurrentRunner,
     ReferenceStyleTracker,
+    _aggregate,
     bbox_stability_probe,
     current_failure_audit,
     evaluate_tracking,
@@ -141,6 +142,46 @@ def test_bbox_smoothing_reports_jitter_and_lag_separately():
     for row in metrics.values():
         assert 0.0 <= row["temporal_iou"] <= 1.0
         assert 0.0 <= row["mean_iou_to_truth"] <= 1.0
+
+
+
+
+def test_aggregate_means_are_weighted_by_actual_segments_and_recoveries():
+    rows = [
+        {
+            "id_switches": 0,
+            "fragmentations": 0,
+            "tracking_recall": 1.0,
+            "false_track_creations": 0,
+            "mean_uninterrupted_track_length": 10.0,
+            "uninterrupted_segments": 1,
+            "mean_recovery_latency_frames": 2.0,
+            "recovery_events": 1,
+            "recovered_same_id": 1,
+            "wrong_recovery": 0,
+            "matched_gt": 10,
+            "gt": 10,
+        },
+        {
+            "id_switches": 0,
+            "fragmentations": 0,
+            "tracking_recall": 1.0,
+            "false_track_creations": 0,
+            "mean_uninterrupted_track_length": 2.0,
+            "uninterrupted_segments": 3,
+            "mean_recovery_latency_frames": 6.0,
+            "recovery_events": 3,
+            "recovered_same_id": 0,
+            "wrong_recovery": 0,
+            "matched_gt": 6,
+            "gt": 6,
+        },
+    ]
+    aggregate = _aggregate(rows)
+    assert aggregate["mean_uninterrupted_track_length"] == 4.0
+    assert aggregate["mean_recovery_latency_frames"] == 5.0
+    assert aggregate["uninterrupted_segments"] == 4
+    assert aggregate["recovery_events"] == 4
 
 
 def test_research_report_quality_fields_are_json_serializable():
