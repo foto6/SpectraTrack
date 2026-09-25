@@ -22,3 +22,5 @@ def test_html_report_contains_review_controls_and_person_semantics(tmp_path):
     assert "localStorage" in text
     assert "function exportReview()" in text
     assert "spectratrack_review.json" in text
+    assert "function safeStore(" in text
+    assert "function safeLoad(" in text

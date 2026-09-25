@@ -113,17 +113,23 @@ pre{{white-space:pre-wrap;background:#181818;padding:12px;border-radius:8px}}
 <h2>Run metadata</h2>
 <pre>{escape(meta)}</pre>
 <script>
+function safeStore(key, value) {{
+  try {{ localStorage.setItem(key, value); }} catch (_error) {{}}
+}}
+function safeLoad(key) {{
+  try {{ return localStorage.getItem(key); }} catch (_error) {{ return null; }}
+}}
 function decide(button, value) {{
   const card = button.closest('.edge');
   const key = 'spectratrack:' + card.dataset.key;
-  localStorage.setItem(key, value);
+  safeStore(key, value);
   card.querySelector('.decision').textContent = value.toUpperCase();
 }}
 function exportReview() {{
   const decisions = [];
   document.querySelectorAll('.edge').forEach(card => {{
     const pair = card.dataset.key.split('|');
-    const stored = localStorage.getItem('spectratrack:' + card.dataset.key);
+    const stored = safeLoad('spectratrack:' + card.dataset.key);
     const shown = card.querySelector('.decision').textContent.toLowerCase();
     const value = stored || shown;
     if (value === 'same' || value === 'different' || value === 'unsure') {{
@@ -140,7 +146,7 @@ function exportReview() {{
   URL.revokeObjectURL(url);
 }}
 document.querySelectorAll('.edge').forEach(card => {{
-  const value = localStorage.getItem('spectratrack:' + card.dataset.key);
+  const value = safeLoad('spectratrack:' + card.dataset.key);
   if (value) card.querySelector('.decision').textContent = value.toUpperCase();
 }});
 </script>
