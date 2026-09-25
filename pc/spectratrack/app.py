@@ -47,7 +47,7 @@ def main() -> int:
     config_defaults = load_runtime_config(pre_args.config) if pre_args.config else {}
 
     parser = argparse.ArgumentParser(
-        description="SpectraTrack PC v0.2 local object detection/tracking HUD",
+        description="SpectraTrack PC v0.3 local object detection/tracking HUD",
         parents=[pre_parser],
         allow_abbrev=False,
     )

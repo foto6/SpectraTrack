@@ -96,7 +96,7 @@ def compose_hud(
     draw_center_reticle(canvas[:, :w])
 
     confirmed = sum(1 for t in tracks if t.confirmed)
-    cv2.putText(canvas, "SPECTRATRACK // PC V0.2", (16, 28), FONT, 0.62, (245, 245, 245), 1, cv2.LINE_AA)
+    cv2.putText(canvas, "SPECTRATRACK // PC V0.3", (16, 28), FONT, 0.62, (245, 245, 245), 1, cv2.LINE_AA)
     cv2.putText(canvas, f"FPS {fps:5.1f} | {provider_text}", (16, 52), FONT, 0.45, (210, 210, 210), 1, cv2.LINE_AA)
     view_label = view_mode.upper()
     if view_mode == "pseudo-thermal":

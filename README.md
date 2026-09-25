@@ -4,9 +4,9 @@ Local-only camera object detection, multi-object tracking, target lock, digital 
 
 This is an engineering-oriented civilian computer-vision project, not a claim of military sensor capability. It operates on ordinary camera pixels and does not invent calibrated range, bearing, thermal data, or sensor measurements that the hardware did not capture.
 
-## What is in v0.2
+## What is in v0.3
 
-### Windows / AMD-friendly v0.2
+### Windows / AMD-friendly v0.3
 
 See [docs/PC_V02.md](docs/PC_V02.md) for the full PC guide and
 [docs/PC_V02_PLAN.md](docs/PC_V02_PLAN.md) for the finite engineering checklist.
@@ -32,6 +32,13 @@ See [docs/PC_V02.md](docs/PC_V02.md) for the full PC guide and
 - target snapshots;
 - optional Real-ESRGAN ncnn/Vulkan x4 snapshot hook;
 - synthetic visual demo that needs no model;
+- selected-target sparse optical-flow refinement between detector observations;
+- multi-video batch analysis with conservative cross-video track graphs;
+- best-tracklet preview crops and a local HTML review report;
+- exportable SAME / DIFFERENT / UNSURE review decisions;
+- richer spatial HSV/grayscale/edge descriptor galleries for cross-video candidates;
+- generated-video exclusion to avoid batch feedback loops;
+- one-click Windows launchers for one video or a whole video folder;
 - unit tests.
 
 ### Android / Samsung
@@ -95,10 +102,10 @@ docs/      Architecture and test plan
 
 ## Current status
 
-PC v0.2 is the active development target. Windows CI compiles/tests the package,
+PC v0.3 is the active development target. Windows CI compiles/tests the package,
 runs a synthetic benchmark and diagnostics, builds a standalone PyInstaller artifact,
 and smoke-tests the generated EXE. Android remains maintained separately and is not
-part of the current PC v0.2 feature work.
+part of the current PC v0.3 feature work.
 
 
 

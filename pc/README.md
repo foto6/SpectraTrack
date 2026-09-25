@@ -54,3 +54,35 @@ Press `U` while a target is locked. SpectraTrack saves the raw crop first and th
 ## AMD note
 
 The Python client uses `onnxruntime-directml`, so it does not require CUDA/NVIDIA. On Windows the detector will display its active ONNX providers in the HUD. Pass `--cpu` to compare performance.
+
+## 6. Cross-video batch graph
+
+Standalone Windows build:
+
+- drag one video onto `PROCESS_VIDEO.bat`;
+- drag a folder of videos onto `ANALYZE_VIDEO_FOLDER.bat`.
+
+Direct CLI:
+
+```powershell
+SpectraTrack-PC.exe batch `
+  --model .\yolo11x.onnx `
+  --input-dir "D:\Videos" `
+  --output "D:\Videos\spectratrack_cross_video.json" `
+  --detect-every 1 `
+  --conf 0.20 `
+  --recursive
+```
+
+Outputs:
+
+- `spectratrack_cross_video.json` — machine-readable track/entity graph;
+- `spectratrack_cross_video.html` — local visual review;
+- `spectratrack_cross_video_samples\` — one best crop per retained tracklet.
+
+The HTML supports local SAME / DIFFERENT / UNSURE review and can export
+`spectratrack_review.json`. Pass it back with `--review` to rebuild groups
+with manual decisions applied.
+
+For `person`, cross-video links mean similar visible appearance in the current
+batch only. SpectraTrack does not perform face recognition or claim biometric identity.
