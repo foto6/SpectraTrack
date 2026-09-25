@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import time
 from pathlib import Path
 
@@ -9,6 +8,7 @@ import cv2
 
 from .appearance import attach_appearance
 from .calibration import CameraCalibration
+from .capture import CaptureConfig, RobustCapture
 from .detector import YoloOnnxDetector
 from .enhance import DISPLAY_MODES, apply_display_mode, crop_with_margin, enhance_visibility, run_realesrgan_snapshot
 from .hud import compose_hud
@@ -16,6 +16,7 @@ from .integrity import sha256_file, verify_sha256
 from .metrics import StageTimer
 from .model_manifest import ModelManifest
 from .motion import GlobalMotionEstimator
+from .runtime_config import load_runtime_config
 from .session import SessionRecorder
 from .snapshot_meta import write_snapshot_metadata
 from .stabilize import VideoStabilizer
@@ -38,7 +39,15 @@ def parse_class_filter(text: str) -> set[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="SpectraTrack PC v0.2 local object detection/tracking HUD")
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument("--config", default="", help="Optional validated JSON runtime preset")
+    pre_args, _ = pre_parser.parse_known_args()
+    config_defaults = load_runtime_config(pre_args.config) if pre_args.config else {}
+
+    parser = argparse.ArgumentParser(
+        description="SpectraTrack PC v0.2 local object detection/tracking HUD",
+        parents=[pre_parser],
+    )
     parser.add_argument("--model", required=True, help="Path to YOLOv8/YOLO11-style ONNX model")
     parser.add_argument("--model-sha256", default="", help="Expected model SHA-256; abort on mismatch")
     parser.add_argument("--model-manifest", default="", help="Optional JSON model manifest with hash/provenance/input size")
@@ -46,6 +55,9 @@ def main() -> int:
     parser.add_argument("--camera-width", type=int, default=0, help="Requested webcam width; camera sources only")
     parser.add_argument("--camera-height", type=int, default=0, help="Requested webcam height; camera sources only")
     parser.add_argument("--camera-fps", type=float, default=0.0, help="Requested webcam FPS; camera sources only")
+    parser.add_argument("--camera-backend", choices=("auto", "dshow", "msmf"), default="auto")
+    parser.add_argument("--reconnect-attempts", type=int, default=3, help="Bounded webcam reconnect attempts")
+    parser.add_argument("--reconnect-delay-ms", type=int, default=250, help="Delay between reconnect attempts")
     parser.add_argument("--input-size", type=int, default=640)
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--iou", type=float, default=0.45)
@@ -64,6 +76,7 @@ def main() -> int:
     parser.add_argument("--record", default="", help="Optional output video path")
     parser.add_argument("--headless", action="store_true", help="Do not create an OpenCV window; useful for batch video processing")
     parser.add_argument("--max-frames", type=int, default=0, help="Stop after N processed frames; 0 means unlimited")
+    parser.set_defaults(**config_defaults)
     args = parser.parse_args()
 
     model = Path(args.model)
@@ -96,34 +109,32 @@ def main() -> int:
     timings = StageTimer()
 
     source = parse_source(args.source)
-    if os.name == "nt" and isinstance(source, int):
-        cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
-    else:
-        cap = cv2.VideoCapture(source)
-    if not cap.isOpened():
+    capture = RobustCapture(
+        source,
+        CaptureConfig(
+            width=args.camera_width,
+            height=args.camera_height,
+            fps=args.camera_fps,
+            backend=args.camera_backend,
+            reconnect_attempts=args.reconnect_attempts,
+            reconnect_delay_ms=args.reconnect_delay_ms,
+        ),
+    )
+    if not capture.is_opened():
+        capture.release()
         raise SystemExit(f"Cannot open source: {args.source}")
 
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-    if isinstance(source, int):
-        if args.camera_width > 0:
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.camera_width)
-        if args.camera_height > 0:
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.camera_height)
-        if args.camera_fps > 0:
-            cap.set(cv2.CAP_PROP_FPS, args.camera_fps)
-
-    capture_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
-    capture_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
-    capture_fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
+    actual_capture = capture.actual_properties()
+    capture_width = int(actual_capture["width"])
+    capture_height = int(actual_capture["height"])
+    capture_fps = float(actual_capture["fps"])
     requested_capture = {
         "width": args.camera_width or None,
         "height": args.camera_height or None,
         "fps": args.camera_fps or None,
-    }
-    actual_capture = {
-        "width": capture_width,
-        "height": capture_height,
-        "fps": round(capture_fps, 3),
+        "backend": args.camera_backend,
+        "reconnect_attempts": args.reconnect_attempts,
+        "reconnect_delay_ms": args.reconnect_delay_ms,
     }
     if isinstance(source, int) and any(v is not None for v in requested_capture.values()):
         print(f"camera_requested={requested_capture}")
@@ -155,6 +166,7 @@ def main() -> int:
         "class_filter": sorted(class_filter),
         "calibration": args.calibration or None,
         "headless": bool(args.headless),
+        "runtime_config": args.config or None,
         "capture_requested": requested_capture,
         "capture_actual": actual_capture,
         "calibration_resolution_match": (
@@ -195,10 +207,21 @@ def main() -> int:
 
     try:
         while True:
-            ok, raw_frame = cap.read()
-            if not ok:
+            with timings.measure("capture"):
+                capture_read = capture.read()
+            if not capture_read.ok or capture_read.frame is None:
                 break
+            raw_frame = capture_read.frame
             frame_index += 1
+
+            if capture_read.reconnected:
+                motion.reset()
+                stabilizer.reset()
+                tracker.reset()
+                state.selected_id = None
+                previous_track_state.clear()
+                if recorder:
+                    recorder.event("capture_reconnected", **capture.stats())
             state.frame_width = raw_frame.shape[1]
 
             with timings.measure("camera_motion"):
@@ -283,6 +306,7 @@ def main() -> int:
                 camera_motion_info = (cam.dx, cam.dy, cam.rotation_rad)
 
             timing_snapshot = {
+                "capture": round(timings.latest("capture"), 3),
                 "detect": round(timings.latest("detect"), 3),
                 "track": round(timings.latest("track"), 3),
                 "cmc": round(timings.latest("camera_motion"), 3),
@@ -400,17 +424,18 @@ def main() -> int:
     except KeyboardInterrupt:
         pass
     finally:
-        cap.release()
+        capture.release()
         if writer is not None:
             writer.release()
         if recorder is not None:
+            recorder.event("capture_summary", **capture.stats())
             recorder.close()
         if not args.headless:
             cv2.destroyAllWindows()
 
     print(
         f"processed_frames={frame_index} capture={capture_width}x{capture_height}@{capture_fps:.2f} "
-        f"profile={args.profile} detect_every={detect_every} model_sha256={model_hash} "
+        f"profile={args.profile} detect_every={detect_every} capture_stats={capture.stats()} model_sha256={model_hash} "
         f"detect_avg_ms={timings.average('detect'):.2f} track_avg_ms={timings.average('track'):.2f}"
     )
     return 0
