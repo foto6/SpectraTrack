@@ -324,6 +324,10 @@ def main() -> int:
             failures.append({"video": video_identifier(args.input_dir, path), "error": str(exc)})
             print(f"  FAILED: {exc}")
 
+    if failures and len(failures) == len(videos):
+        details = "; ".join(f"{item['video']}: {item['error']}" for item in failures[:3])
+        raise SystemExit(f"All input videos failed to process. {details}")
+
     review_decisions = {}
     if args.review:
         review_path = Path(args.review)
