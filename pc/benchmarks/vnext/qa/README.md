@@ -107,6 +107,8 @@ Controls:
 
 - left-drag: draw/update the active person's bbox;
 - `i`: set the stable person ID, for example `p1`;
+- `a`: set/clear comma-separated per-person attributes such as `partial_occlusion`;
+- `g`: toggle `ignore=true` for the active person when a box is too ambiguous to score;
 - `u`: undo the last box;
 - `c`: clear boxes on the current frame;
 - `n` or Enter: save + next frame;
@@ -121,9 +123,9 @@ The output remains the existing canonical `qa_benchmark` JSONL format.
 
 ### Pre-annotation
 
-External auto-labeling may be used to speed up review, but it is only a draft.
+External auto-labeling may be used to speed up review, but it is only a draft. If pre-annotations are converted into the canonical JSONL file first, the annotator will display those existing boxes for manual correction.
 
-Auto-label output is **not** golden ground truth.
+Auto-label output is **not** golden ground truth and is never frozen merely because a model produced it.
 
 Before freeze, every scored GOLDEN frame/box must be visually confirmed by a human. The freeze command requires an explicit human-review confirmation flag and reviewer name.
 
