@@ -247,8 +247,13 @@ def schedule_frame(
     full = 1 if global_scan else 0
     remaining = max(0, config.max_calls_per_frame - full)
 
+    reserved_enhanced = 0
+    if policy == "BUDGETED_ADAPTIVE" and signals.suspect_rois > 0 and signals.enhancement_eligible_rois > 0:
+        reserved_enhanced = min(config.max_enhanced_calls_per_frame, remaining)
+
+    raw_budget = max(0, remaining - reserved_enhanced)
     raw_suspects, raw_tracks = _allocate_rois(
-        remaining_calls=remaining,
+        remaining_calls=raw_budget,
         suspect_rois=signals.suspect_rois,
         track_rois=signals.track_rois,
     )
@@ -261,7 +266,7 @@ def schedule_frame(
         enhanced = min(
             raw_suspects,
             signals.enhancement_eligible_rois,
-            config.max_enhanced_calls_per_frame,
+            reserved_enhanced,
             remaining,
         )
 
