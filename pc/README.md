@@ -1,56 +1,89 @@
-# Windows client
+# SpectraTrack PC v0.2
 
-## 1. Install
+Windows-first local computer-vision HUD. The real-time path is deliberately non-cloud and does not perform biometric identification.
 
-Use 64-bit Python 3.12 on Windows 11.
+## What changed from v0.1
 
-```powershell
+- 8-state Kalman box prediction.
+- Two-stage high/low-confidence association inspired by ByteTrack's core idea.
+- Tentative / LOCK / COAST track states.
+- Sparse optical-flow camera-motion compensation (CMC) before association.
+- Runtime performance counters.
+- JSONL session telemetry for reproducible analysis.
+- Headless benchmark command.
+- Optional calibrated horizontal FOV for relative angle and angular-rate estimates.
+- Four live enhancement modes: off, visibility, lowlight, detail.
+- Existing DirectML preference remains suitable for AMD GPUs on Windows.
+
+No ReID claim is made in v0.2. Real ReID needs a separate appearance embedding model and will be added only with an explicit model contract and provenance.
+
+## Install
+
+Use 64-bit Python 3.12.
+
+~~~
 cd pc
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -U pip
 pip install -r requirements-win.txt
-```
+~~~
 
-## 2. Test immediately
+## Test without a model
 
-```powershell
+~~~
 python -m spectratrack.demo
-```
+~~~
 
-No camera and no neural model are required for this test.
+## Run camera
 
-## 3. Put the model in place
+Put a compatible YOLO ONNX at ../models/yolo11n.onnx, then:
 
-Follow `../models/README.md` so `../models/yolo11n.onnx` exists.
+~~~
+python -m spectratrack.app --model ..\models\yolo11n.onnx --source 0 --cmc
+~~~
 
-## 4. Run a camera
+With optical stabilization and a known/verified 70 degree horizontal FOV:
 
-```powershell
-python -m spectratrack.app --model ..\models\yolo11n.onnx --source 0 --stabilize
-```
+~~~
+python -m spectratrack.app --model ..\models\yolo11n.onnx --source 0 --cmc --stabilize --hfov 70
+~~~
 
-For a video file:
+The --hfov value must come from camera specifications or calibration. It is used only for image-angle geometry. SpectraTrack does not infer metric range from a single uncalibrated RGB camera.
 
-```powershell
-python -m spectratrack.app --model ..\models\yolo11n.onnx --source "D:\video.mp4"
-```
+## Session logging
 
-Controls: `Q/Esc` quit, `E` enhancement, `Z` stabilization, `H` HUD, mouse click target lock, `S` save selected crop, `U` run optional neural SR on the selected crop.
+~~~
+python -m spectratrack.app --model ..\models\yolo11n.onnx --source 0 --session-dir .\sessions
+~~~
 
-## 5. Optional Real-ESRGAN / Vulkan
+Each session gets meta.json and append-only frames.jsonl with tracks, CMC, selection state and rolling performance data.
 
-Install an official `realesrgan-ncnn-vulkan` build yourself. Do not replace it with a random repack. Then pass the exact executable path:
+## Benchmark
 
-```powershell
-python -m spectratrack.app `
-  --model ..\models\yolo11n.onnx `
-  --source 0 `
-  --realesrgan "C:\Tools\realesrgan-ncnn-vulkan.exe"
-```
+~~~
+python -m spectratrack.benchmark --model ..\models\yolo11n.onnx --source "D:\video.mp4" --frames 500 --output benchmark.json
+~~~
 
-Press `U` while a target is locked. SpectraTrack saves the raw crop first and then asks the executable for an x4 image.
+Compare CPU explicitly with the same command plus --cpu.
 
-## AMD note
+## Controls
 
-The Python client uses `onnxruntime-directml`, so it does not require CUDA/NVIDIA. On Windows the detector will display its active ONNX providers in the HUD. Pass `--cpu` to compare performance.
+- Left click: lock/unlock a tracked target.
+- E: cycle enhancement OFF -> VISIBILITY -> LOWLIGHT -> DETAIL.
+- C: toggle camera-motion compensation.
+- Z: toggle optical stabilization.
+- H: toggle HUD.
+- S: save selected raw crop.
+- U: run optional Real-ESRGAN snapshot upscale when configured.
+- Q / Esc: quit.
+
+## Data labels
+
+- [CAL]: derived from supplied camera calibration/specification.
+- [EST]: estimated from image/tracker geometry.
+- No metric range, GPS, thermal reading or physical target velocity is fabricated.
+
+## Optional Real-ESRGAN
+
+Pass a locally installed, trusted realesrgan-ncnn-vulkan.exe with --realesrgan. SpectraTrack contains no downloader for that executable and never runs it through a shell.
