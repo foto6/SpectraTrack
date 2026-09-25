@@ -45,6 +45,10 @@ class SessionRecorder:
                 "age": tr.age,
                 "hits": tr.hits,
                 "missed": tr.missed,
+                "confirmed": tr.confirmed,
+                "lifecycle": tr.lifecycle,
+                "quality": round(tr.quality, 4),
+                "recoveries": tr.recoveries,
             })
         self._write({
             "type": "frame",

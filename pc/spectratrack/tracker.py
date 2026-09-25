@@ -125,6 +125,8 @@ class MultiObjectTracker:
         measured_vy = (new_cy - old_cy) - camera_dy
         track.vx = track.vx * 0.62 + measured_vx * 0.38
         track.vy = track.vy * 0.62 + measured_vy * 0.38
+        if track.missed > 0:
+            track.recoveries += 1
         track.bbox = det.bbox
         track.score = det.score
         track.last_detection_score = det.score

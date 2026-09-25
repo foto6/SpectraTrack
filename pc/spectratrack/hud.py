@@ -40,7 +40,7 @@ def draw_tracks(frame: np.ndarray, tracks: list[Track], selected_id: int | None)
         draw_corner_box(frame, tr.bbox, selected, tr.confirmed)
         x1, y1, _, _ = map(int, tr.bbox)
         state = "" if tr.confirmed else "?"
-        label = f"T{tr.track_id:03d}{state} {tr.label.upper()} {tr.score:.2f}"
+        label = f"T{tr.track_id:03d}{state} {tr.label.upper()} {tr.score:.2f} Q{tr.quality:.2f}"
         cv2.putText(frame, label, (max(4, x1), max(18, y1 - 7)), FONT, 0.48, (225, 225, 225), 1, cv2.LINE_AA)
         pts = list(tr.history)
         for i in range(1, len(pts)):
@@ -121,7 +121,9 @@ def compose_hud(
         speed = math.hypot(selected.vx, selected.vy)
         lines = [
             f"ID       T{selected.track_id:03d}",
-            f"STATE    {'CONFIRMED' if selected.confirmed else 'TENTATIVE'}",
+            f"STATE    {selected.lifecycle}",
+            f"QUALITY  {selected.quality:.3f}",
+            f"RECOVER  {selected.recoveries}",
             f"CLASS    {selected.label.upper()}",
             f"CONF     {selected.score:.3f}",
             f"CENTER   {int(cx):04d},{int(cy):04d}",

@@ -34,6 +34,7 @@ class Track:
     vy: float = 0.0
     confirmed: bool = False
     last_detection_score: float = 0.0
+    recoveries: int = 0
     history: Deque[tuple[int, int]] = field(default_factory=lambda: deque(maxlen=64))
 
     @property
@@ -48,3 +49,19 @@ class Track:
     @property
     def height(self) -> float:
         return max(0.0, self.bbox[3] - self.bbox[1])
+
+    @property
+    def quality(self) -> float:
+        maturity = min(1.0, self.hits / 8.0)
+        score_term = max(0.0, min(1.0, self.last_detection_score or self.score))
+        loss_penalty = 1.0 / (1.0 + self.missed * 0.35)
+        confirmed_factor = 1.0 if self.confirmed else 0.72
+        return max(0.0, min(1.0, maturity * 0.35 + score_term * 0.65)) * loss_penalty * confirmed_factor
+
+    @property
+    def lifecycle(self) -> str:
+        if not self.confirmed:
+            return "TENTATIVE"
+        if self.missed > 0:
+            return "PREDICTED"
+        return "TRACKED"
