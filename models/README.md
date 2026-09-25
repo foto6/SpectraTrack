@@ -26,3 +26,14 @@ It also prints SHA-256. Save that value if you want to verify the file later.
 ## Other models
 
 The decoder is intentionally simple. A different model is fine if it emits the same `xywh + class scores` layout. If your model has objectness as a separate field, end-to-end NMS, segmentation masks, or another output layout, adapt the decoder first.
+
+
+## Provenance manifest
+
+For long-lived setups, store a sidecar manifest with the exact SHA-256 of the ONNX file:
+
+~~~
+python ..\tools\make_model_manifest.py yolo11n.onnx --name yolo11n --source "document the exact upstream/export" --input-size 640
+~~~
+
+The runtime can verify it with --model-manifest. The manifest never downloads anything; it only records provenance and a cryptographic digest.

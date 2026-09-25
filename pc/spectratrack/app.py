@@ -15,8 +15,10 @@ from .enhance import ENHANCE_MODES, apply_enhancement, crop_with_margin, next_en
 from .hud import compose_hud
 from .mask import TargetMaskCache
 from .metrics import RollingProfiler
+from .model_manifest import ModelManifest
 from .model_security import sha256_file, verify_sha256
 from .recording import SessionRecorder
+from .session_video import SessionVideoWriter
 from .scheduler import DetectionScheduler
 from .stabilize import VideoStabilizer
 from .tracker import MultiObjectTracker, TrackerConfig
@@ -33,6 +35,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="SpectraTrack PC v0.2 local object detection/tracking HUD")
     parser.add_argument("--model", required=True, help="Path to YOLOv8/YOLO11-style ONNX model")
     parser.add_argument("--model-sha256", default="", help="Optional expected SHA-256; abort on mismatch")
+    parser.add_argument("--model-manifest", default="", help="Optional SpectraTrack model provenance manifest JSON")
     parser.add_argument("--source", default="0", help="Camera index or video path")
     parser.add_argument("--input-size", type=int, default=640)
     parser.add_argument("--conf", type=float, default=0.35)
@@ -54,6 +57,7 @@ def main() -> int:
     parser.add_argument("--target-fps", type=float, default=30.0)
     parser.add_argument("--max-detect-interval", type=int, default=4)
     parser.add_argument("--session-dir", default="", help="Write JSONL telemetry sessions under this directory")
+    parser.add_argument("--session-video", action="store_true", help="Also save tracking-input.mp4 inside the session")
     parser.add_argument("--realesrgan", default="", help="Optional path to official realesrgan-ncnn-vulkan executable")
     parser.add_argument("--record", default="", help="Optional annotated output video path")
     args = parser.parse_args()
@@ -61,11 +65,22 @@ def main() -> int:
     model = Path(args.model)
     if not model.exists():
         raise SystemExit(f"Model not found: {model}")
+    manifest = None
     try:
-        model_digest = verify_sha256(model, args.model_sha256) if args.model_sha256 else sha256_file(model)
-    except ValueError as exc:
-        raise SystemExit(str(exc)) from exc
+        if args.model_manifest:
+            manifest = ModelManifest.load(args.model_manifest)
+            model_digest = manifest.verify(model)
+            if args.model_sha256:
+                verify_sha256(model, args.model_sha256)
+        else:
+            model_digest = verify_sha256(model, args.model_sha256) if args.model_sha256 else sha256_file(model)
+    except (ValueError, KeyError, OSError) as exc:
+        raise SystemExit(f"Model verification failed: {exc}") from exc
     print(f"model sha256: {model_digest}")
+    if manifest is not None:
+        print(f"model manifest: {manifest.name} | source={manifest.source or 'unspecified'}")
+        if manifest.input_size and manifest.input_size != args.input_size:
+            print(f"warning: manifest input_size={manifest.input_size}, CLI input_size={args.input_size}")
 
     calibration = None
     undistorter = None
@@ -106,6 +121,12 @@ def main() -> int:
         cap = open_capture(args.source)
     except RuntimeError as exc:
         raise SystemExit(str(exc)) from exc
+    if args.session_video and not args.session_dir:
+        cap.release()
+        raise SystemExit("--session-video requires --session-dir")
+    source_fps = float(cap.get(cv2.CAP_PROP_FPS))
+    if source_fps <= 1.0 or source_fps > 240.0:
+        source_fps = 30.0
 
     state = UiState()
     hud_enabled = True
@@ -120,11 +141,13 @@ def main() -> int:
     snapshots.mkdir(exist_ok=True)
     frame_index = 0
     recorder = None
+    session_video_writer = None
     if args.session_dir:
         recorder = SessionRecorder(args.session_dir, {
             "source": args.source,
             "model": str(model),
             "model_sha256": model_digest,
+            "model_manifest": manifest.to_dict() if manifest is not None else None,
             "providers": detector.providers,
             "input_size": args.input_size,
             "horizontal_fov_deg": geometry_hfov,
@@ -134,6 +157,8 @@ def main() -> int:
             "detect_every": args.detect_every,
         })
         print(f"session: {recorder.directory}")
+        if args.session_video:
+            session_video_writer = SessionVideoWriter(recorder.directory / "tracking-input.mp4", source_fps)
 
     window = "SpectraTrack"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
@@ -173,6 +198,10 @@ def main() -> int:
                     base_frame = stabilizer.apply(sensor_frame)
             else:
                 base_frame = sensor_frame
+
+            if session_video_writer is not None:
+                with profiler.measure("session_video"):
+                    session_video_writer.write(base_frame)
 
             previous_boxes = [tr.bbox for tr in state.tracks if tr.confirmed]
             if cmc_enabled:
@@ -313,6 +342,8 @@ def main() -> int:
             writer.release()
         if recorder is not None:
             recorder.close()
+        if session_video_writer is not None:
+            session_video_writer.close()
         cv2.destroyAllWindows()
 
     print("performance:", profiler.summary())

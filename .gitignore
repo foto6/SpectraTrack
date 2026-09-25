@@ -5,6 +5,8 @@
 .export-env/
 .pytest_cache/
 snapshots/
+sessions/
+calibration-images/
 *.mp4
 
 # Models / binaries
@@ -12,6 +14,11 @@ snapshots/
 *.pt
 *.pth
 *.exe
+
+# PyInstaller
+pc/build/
+pc/dist/
+pc/*.spec
 
 # Android
 .gradle/

@@ -18,6 +18,9 @@ The work is staged so CI failures cannot turn into blind retry loops.
 - [x] Session analyzer for track/performance summaries.
 - [x] Environment/model/camera diagnostics CLI.
 - [x] Optional model SHA-256 verification.
+- [x] Model provenance manifest with runtime hash verification.
+- [x] Optional synchronized tracking-input session video.
+- [x] Offline telemetry replay.
 
 ## Milestone C - live UX and throughput
 - [x] HUD performance counters.
@@ -28,6 +31,9 @@ The work is staged so CI failures cannot turn into blind retry loops.
 - [x] Fixed detector cadence with prediction on skipped frames.
 - [x] Adaptive detector cadence with hysteresis.
 - [x] Optional classical GrabCut outline for selected target.
+- [x] Checkerboard capture helper.
+- [x] Checkerboard camera calibration.
+- [x] Optional lens distortion correction before CMC/detection.
 
 ## Milestone D - verification
 - [x] Crossing-target regression test.
@@ -35,19 +41,20 @@ The work is staged so CI failures cannot turn into blind retry loops.
 - [x] Low-confidence recovery regression test.
 - [x] Enhancement and geometry tests.
 - [x] JSONL recorder test.
-- [x] First Windows and Linux PC-only CI green.
+- [x] Windows and Linux PC-only CI green after core layer.
 - [x] Explicit regression for scheduled detector skips.
 - [x] Model hash / mask / scheduler / session-analyzer tests.
-- [ ] Second Windows and Linux CI green after throughput/diagnostics layer.
+- [x] Windows and Linux PC-only CI green after throughput layer.
+- [ ] Calibration/replay/provenance layer CI green.
+- [ ] Standalone Windows artifact build green.
 - [ ] Main branch fast-forward only after final branch CI is green.
 
-## Later, after v0.2 is green
+## Later candidates
 - Optional appearance/ReID model as a separate, explicitly sourced model.
 - Optional neural target segmentation model with a documented ONNX output contract.
 - Stereo depth only with calibrated two-camera geometry.
-- Checkerboard calibration CLI and distortion correction.
-- Offline video + telemetry replay viewer.
-- Model manifest with provenance + SHA-256.
+- Rich offline timeline viewer and export.
+- Performance preset auto-tuner based on benchmark results.
 
 ## Anti-loop rule
 

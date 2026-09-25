@@ -14,6 +14,7 @@ spectratrack-benchmark = "spectratrack.benchmark:main"
 spectratrack-diagnostics = "spectratrack.diagnostics:main"
 spectratrack-session = "spectratrack.session_analyze:main"
 spectratrack-calibrate = "spectratrack.calibrate:main"
+spectratrack-calib-capture = "spectratrack.capture_calibration:main"
 spectratrack-replay = "spectratrack.replay:main"
 
 [tool.setuptools]

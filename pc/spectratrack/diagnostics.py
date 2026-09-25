@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 
+from .model_manifest import ModelManifest
 from .model_security import sha256_file, verify_sha256
 
 
@@ -46,7 +47,7 @@ def inspect_model(path: str | Path, expected_sha256: str = "") -> dict:
     }
 
 
-def collect(model: str = "", expected_sha256: str = "", cameras: list[int] | None = None) -> dict:
+def collect(model: str = "", expected_sha256: str = "", cameras: list[int] | None = None, manifest_path: str = "") -> dict:
     result = {
         "python": sys.version,
         "platform": platform.platform(),
@@ -57,6 +58,11 @@ def collect(model: str = "", expected_sha256: str = "", cameras: list[int] | Non
         "providers_available": ort.get_available_providers(),
     }
     if model:
+        manifest = ModelManifest.load(manifest_path) if manifest_path else None
+        if manifest is not None:
+            manifest.verify(model)
+            result["model_manifest"] = manifest.to_dict()
+            expected_sha256 = manifest.sha256
         result["model"] = inspect_model(model, expected_sha256)
     if cameras:
         result["cameras"] = [probe_camera(i) for i in cameras]
@@ -67,11 +73,12 @@ def main() -> int:
     p = argparse.ArgumentParser(description="SpectraTrack PC environment/model/camera diagnostics")
     p.add_argument("--model", default="")
     p.add_argument("--model-sha256", default="")
+    p.add_argument("--model-manifest", default="")
     p.add_argument("--camera", type=int, action="append", default=[])
     p.add_argument("--output", default="")
     args = p.parse_args()
     try:
-        result = collect(args.model, args.model_sha256, args.camera)
+        result = collect(args.model, args.model_sha256, args.camera, args.model_manifest)
     except Exception as exc:
         result = {"error": str(exc)}
         payload = json.dumps(result, indent=2, sort_keys=True)

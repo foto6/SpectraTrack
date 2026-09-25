@@ -54,15 +54,18 @@ def render_telemetry(frame: np.ndarray, row: dict | None) -> np.ndarray:
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Replay SpectraTrack telemetry over the original video")
-    p.add_argument("--video", required=True, help="Original video used for the session")
+    p.add_argument("--video", default="", help="Tracking-input video; defaults to session/tracking-input.mp4")
     p.add_argument("--session", required=True, help="Session directory or frames.jsonl")
     p.add_argument("--start-frame", type=int, default=1)
     args = p.parse_args()
 
     rows = load_session_rows(args.session)
-    cap = cv2.VideoCapture(args.video)
+    video_path = Path(args.video) if args.video else Path(args.session) / "tracking-input.mp4"
+    if not video_path.is_file():
+        raise SystemExit(f"Replay video not found: {video_path}")
+    cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
-        raise SystemExit(f"Cannot open video: {args.video}")
+        raise SystemExit(f"Cannot open video: {video_path}")
     if args.start_frame > 1:
         cap.set(cv2.CAP_PROP_POS_FRAMES, args.start_frame - 1)
 
