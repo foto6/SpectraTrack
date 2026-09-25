@@ -139,6 +139,7 @@ def test_budgeted_scheduler_enforces_hard_call_limits():
     config = SchedulerConfig(global_period=10, max_calls_per_frame=3, max_enhanced_calls_per_frame=1)
     signals = FrameSignals(track_rois=8, suspect_rois=8, enhancement_eligible_rois=8)
 
+    enhanced_seen = False
     for frame_index in range(30):
         decision = schedule_frame(
             "BUDGETED_ADAPTIVE",
@@ -149,6 +150,9 @@ def test_budgeted_scheduler_enforces_hard_call_limits():
         )
         assert decision.total_calls <= 3
         assert decision.enhanced_roi_calls <= 1
+        enhanced_seen = enhanced_seen or decision.enhanced_roi_calls > 0
+
+    assert enhanced_seen
 
 
 def test_scene_change_and_camera_motion_force_global_rediscovery():
