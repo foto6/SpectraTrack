@@ -26,6 +26,8 @@ if not exist "%INPUT%\" (
 )
 
 set "OUT=%INPUT%\spectratrack_cross_video.json"
+set "REVIEW="
+if exist "%INPUT%\spectratrack_review.json" set "REVIEW=--review "%INPUT%\spectratrack_review.json""
 
 echo.
 echo Model : %MODEL%
@@ -33,7 +35,7 @@ echo Folder: %INPUT%
 echo Graph : %OUT%
 echo.
 
-SpectraTrack-PC.exe batch --model "%MODEL%" --input-dir "%INPUT%" --output "%OUT%" --detect-every 1 --conf 0.20 --iou 0.50 --recursive
+SpectraTrack-PC.exe batch --model "%MODEL%" --input-dir "%INPUT%" --output "%OUT%" --detect-every 1 --conf 0.20 --iou 0.50 --recursive %REVIEW%
 set "CODE=%ERRORLEVEL%"
 
 echo.

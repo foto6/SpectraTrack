@@ -212,14 +212,14 @@ def analyze_video(
         preview_dir.mkdir(parents=True, exist_ok=True)
     safe_stem = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in path.stem)
     for acc in accumulators.values():
-        preview_path = None
+        summary = acc.finish(fps)
+        if summary is None or summary.observations < min_observations:
+            continue
         if preview_dir is not None and acc.best_crop is not None:
             candidate = preview_dir / f"{safe_stem}_T{acc.local_track_id:03d}.jpg"
             if cv2.imwrite(str(candidate), acc.best_crop):
-                preview_path = str(candidate)
-        summary = acc.finish(fps, preview_path=preview_path)
-        if summary is not None and summary.observations >= min_observations:
-            summaries.append(summary)
+                summary.preview_path = str(candidate)
+        summaries.append(summary)
     summaries.sort(key=lambda t: (t.class_id, t.local_track_id))
     return summaries
 
