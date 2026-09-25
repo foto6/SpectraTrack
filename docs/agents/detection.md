@@ -45,11 +45,17 @@ Branch:
 
 - `agent/detection`
 
-Reviewed implementation HEAD before this handoff-file-only commit:
+The branch was synchronized with the current integration baseline by merge commit:
 
-- `4b59cb68b581df6ee798491a816c91f41cb651fd`
+- `48cf7402bbca25be359fed137dbd9e90bdc4d53f`
 
-The final handoff commit changes only this state file; the exact final branch HEAD is therefore reported in the handoff report/PR metadata rather than pretending this file can embed its own commit SHA.
+That merge has exactly two parents: the detection branch and `integration @ ee76f4e...`. No other agent branch was merged.
+
+Reviewed and CI-tested combined-tree HEAD before this final handoff-file-only commit:
+
+- `48cf7402bbca25be359fed137dbd9e90bdc4d53f`
+
+The final handoff commit changes only this state file, so the exact final branch HEAD is reported in the final handoff report/PR metadata rather than pretending this file can embed its own commit SHA.
 
 ## Final implemented changes
 
@@ -65,9 +71,9 @@ The final handoff commit changes only this state file; the exact final branch HE
 - added validation so programmatic batch callers cannot silently fall back to standard mode on an unknown detector mode;
 - kept standard mode as the default;
 - removed the branch-local detector benchmark harness after `integration` introduced the canonical `qa_benchmark.py`, avoiding two independent metric implementations;
-- removed earlier routine edits to shared root coordination docs from the final net diff.
+- removed earlier routine edits to shared root coordination docs from the final detection diff.
 
-## Final net files changed
+## Final detection files changed relative to current integration
 
 - `pc/README.md`
 - `pc/presets/people-recall.json`
@@ -91,17 +97,21 @@ Implementation/history commits:
 - `75d09623ec38e59e209e169e479d6f9067509e7b` — Record actual detector input shape in benchmark
 - `9a21c495baa258c55d74ddc6a4cdde6c88e2867a` — Reuse detector IoU in recall benchmark
 - `4b59cb68b581df6ee798491a816c91f41cb651fd` — Prepare detection branch for integration
+- `9673aa99c4025dbf6b8b629732bd11eb56bcf138` — Record detection agent handoff state
+- `48cf7402bbca25be359fed137dbd9e90bdc4d53f` — Merge integration coordination baseline into detection branch
 
-The benchmark/documentation work from commits `7143ebc`, `89eb256`, `75d0962`, and `9a21c49` was intentionally cleaned out of the final net diff where it duplicated the canonical QA harness or shared coordination docs. History is preserved; no force-push/rewrite was used.
+The benchmark/documentation work from `7143ebc`, `89eb256`, `75d0962`, and `9a21c49` was intentionally cleaned out of the final net diff where it duplicated the canonical QA harness or shared coordination docs. History is preserved; no force-push/rewrite was used.
 
 ## Tests actually run
 
-GitHub Actions PC CI run `36144251342` on `4b59cb68b581df6ee798491a816c91f41cb651fd`: **success**.
+### Final combined-tree validation
 
-Observed results from that run:
+GitHub Actions PC CI run `36144741106` on `48cf7402bbca25be359fed137dbd9e90bdc4d53f`, with `integration @ ee76f4e...` already merged into the detection branch: **success**.
+
+Observed results:
 
 - `ruff check spectratrack tests` — success, `All checks passed!`;
-- compile + pytest — **96 passed in 1.96s**;
+- compile + pytest — **96 passed in 1.07s**;
 - `python -m spectratrack.benchmark --frames 500 --targets 24` — success;
 - diagnostics — success; ONNX Runtime exposed `DmlExecutionProvider,CPUExecutionProvider`, `directml=yes`;
 - self-check — `SELF_CHECK=PASS`;
@@ -110,7 +120,11 @@ Observed results from that run:
 - standalone `SpectraTrack-PC.exe batch --help` — success;
 - PC source / Windows package creation and artifact uploads — success.
 
-Non-blocking build warning observed:
+### Pre-sync cleanup validation
+
+GitHub Actions PC CI run `36144251342` on `4b59cb68b581df6ee798491a816c91f41cb651fd`: **success**, including **96 passed in 1.96s**, standalone build and smoke tests.
+
+Non-blocking build warning observed in both builds:
 
 - PyInstaller could not collect optional `onnxruntime.quantization` because Python package `onnx` was not installed. The standalone build and smoke tests still completed successfully.
 
@@ -136,7 +150,6 @@ The synthetic benchmark in CI is a smoke/regression check, not evidence of detec
 - merge remains hard class-aware NMS; Soft-NMS/WBF were not added without benchmark evidence.
 - tracker `high_conf=0.45` still gates creation of new IDs; weak detections can help existing tracks but do not create stable new tracks by themselves. That boundary belongs to tracking/temporal-confirmation work.
 - the canonical `pc/spectratrack/qa_benchmark.py` currently executes the standard detector path only. Extending it to run people-recall should be coordinated with QA rather than reintroducing a second benchmark implementation.
-- the combined tree with the latest `integration @ ee76f4e...` was not executed locally as a merged checkout. The final detection net diff does not overlap the files newly added to integration by the coordination/QA update, and GitHub currently reports the PR mergeable, but full post-integration CI remains an integrator check.
 
 ## Cross-agent overlaps / conflicts
 
@@ -173,7 +186,7 @@ Integrator should preserve tracking branch association/batch behavior and this b
 
 ### `agent/qa @ 5ff444758ad48ec3d5b52bf1226f181da75c5945`
 
-No duplicate detector benchmark remains in the final detection net diff. QA owns the canonical benchmark harness. Future people-recall benchmark dispatch belongs in coordinated QA integration, not a parallel metric implementation here.
+The QA work present in `integration @ ee76f4e...` is included in the tested combined tree. No duplicate detector benchmark remains in the final detection diff. Future people-recall benchmark dispatch belongs in coordinated QA integration, not a parallel metric implementation here.
 
 ## Handoff notes
 
@@ -181,6 +194,7 @@ No duplicate detector benchmark remains in the final detection net diff. QA owns
 - No model weights were added and no silent model download was introduced.
 - No other agent role file was edited.
 - No agent branch was merged into `agent/detection`.
+- `integration @ ee76f4e...` was merged into `agent/detection` only to resolve the canonical role-file add/add and validate the actual combined tree.
 - No merge into `integration` was performed.
 - No force-push/history rewrite was performed.
 
@@ -188,6 +202,6 @@ No duplicate detector benchmark remains in the final detection net diff. QA owns
 
 **Yes for detection scope, with explicit cross-agent reconciliation required.**
 
-The branch is clean relative to its assigned scope, the final net diff no longer includes routine shared-doc edits or a duplicate QA benchmark, current branch CI is green, and GitHub reports the PR mergeable with `integration`.
+The final detection diff is limited to detection wiring/tests plus this role file, the duplicate benchmark and routine shared-doc edits were removed, the current integration baseline is already in the branch, combined-tree CI is green, and GitHub reported the PR mergeable after the integration sync.
 
-The integrator still must reconcile the known enhancement/performance/tracking overlaps and then run the full merged CI on the actual integration result.
+The integrator still must reconcile enhancement/performance/tracking overlaps intentionally and rerun CI after those other branches are combined.
