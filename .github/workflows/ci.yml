@@ -40,6 +40,8 @@ jobs:
         run: python -m spectratrack.benchmark --frames 500 --targets 24
       - name: Diagnostics
         run: python -m spectratrack.diagnostics
+      - name: Self-check
+        run: python -m spectratrack.selfcheck
       - name: Build standalone Windows app
         run: |
           pyinstaller --noconfirm --clean --onedir --name SpectraTrack-PC --collect-all onnxruntime run_spectratrack.py

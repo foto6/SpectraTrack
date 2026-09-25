@@ -4,19 +4,31 @@ Local-only camera object detection, multi-object tracking, target lock, digital 
 
 This is an engineering-oriented civilian computer-vision project, not a claim of military sensor capability. It operates on ordinary camera pixels and does not invent calibrated range, bearing, thermal data, or sensor measurements that the hardware did not capture.
 
-## What is in v0.1
+## What is in v0.2
 
-### Windows / AMD-friendly
+### Windows / AMD-friendly v0.2
+
+See [docs/PC_V02.md](docs/PC_V02.md) for the full PC guide and
+[docs/PC_V02_PLAN.md](docs/PC_V02_PLAN.md) for the finite engineering checklist.
+
+
 
 - webcam or video input;
 - YOLOv8/YOLO11-style ONNX detection;
 - ONNX Runtime DirectML acceleration with CPU fallback;
-- multi-object stable IDs with short-loss prediction;
+- two-stage multi-object stable IDs with tentative/confirmed/predicted lifecycle;
+- affine optical-flow camera-motion compensation with RANSAC quality gates;
+- detector cadence profiles (quality/balanced/speed) with prediction-only skipped frames;
 - click-to-lock target;
 - target trajectory;
 - enlarged target window;
 - non-generative local-contrast / denoise / sharpen mode;
 - optical-flow camera stabilization;
+- normal / clarity / low-light / edges / explicitly false-color operator views;
+- model SHA-256 verification + model provenance manifests;
+- headless video processing, class filters, diagnostics and synthetic benchmarks;
+- calibrated angular offset/size display without fabricating monocular metric range;
+- JSONL session logging + post-run stability/performance reports;
 - target snapshots;
 - optional Real-ESRGAN ncnn/Vulkan x4 snapshot hook;
 - synthetic visual demo that needs no model;
@@ -82,6 +94,13 @@ docs/      Architecture and test plan
 ```
 
 ## Current status
+
+PC v0.2 is the active development target. Windows CI compiles/tests the package,
+runs a synthetic benchmark and diagnostics, builds a standalone PyInstaller artifact,
+and smoke-tests the generated EXE. Android remains maintained separately and is not
+part of the current PC v0.2 feature work.
+
+
 
 - PC core: syntax checked; tracker unit tests pass.
 - Android: source tree prepared for AGP 9.4 / SDK 36 and intended to be compiled in CI/Android Studio.
