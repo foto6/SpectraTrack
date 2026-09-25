@@ -415,3 +415,40 @@ def test_leaderboard_rejects_tampered_stamped_payload(tmp_path: Path):
             run_paths=[run_path],
         )
 
+
+def test_ignored_person_does_not_satisfy_negative_coverage(monkeypatch, tmp_path: Path):
+    video_root = tmp_path / "videos"
+    video = video_root / "golden" / "clip.mp4"
+    video.parent.mkdir(parents=True)
+    video.write_bytes(b"video")
+    gt = tmp_path / "golden.jsonl"
+    _write_jsonl(
+        gt,
+        [
+            {
+                "video": "golden/clip.mp4",
+                "frame": 0,
+                "tags": _all_coverage_tags(),
+                "objects": [
+                    {
+                        "id": "p1",
+                        "label": "person",
+                        "bbox": [10, 10, 30, 30],
+                        "ignore": True,
+                    }
+                ],
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        vnext_qa,
+        "_video_metadata",
+        lambda _path: {"width": 100, "height": 80, "fps": 25.0, "frame_count": 1},
+    )
+    monkeypatch.setattr(vnext_qa, "sha256_file", lambda _path: "a" * 64)
+
+    report = vnext_qa.inspect_split(gt, video_root, "golden")
+
+    assert report["coverage"]["negative"] == 0
+    assert any("negative" in error for error in report["errors"])
+
