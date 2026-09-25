@@ -23,3 +23,10 @@ local.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# PC build/session outputs
+dist/
+*.spec
+sessions/
+*.jsonl
+*.csv

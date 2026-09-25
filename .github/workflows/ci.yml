@@ -56,7 +56,21 @@ jobs:
       - name: Package PC source
         shell: pwsh
         run: |
-          Compress-Archive -Path * -DestinationPath SpectraTrack-PC-source.zip -Force
+          $items = @(
+            "spectratrack",
+            "tests",
+            "README.md",
+            "pyproject.toml",
+            "requirements-win.txt",
+            "requirements-build.txt",
+            "run_spectratrack.py",
+            "run_camera.bat",
+            "run_demo.bat",
+            "RUN_CAMERA.bat",
+            "STANDALONE_README.txt",
+            "calibration.example.json"
+          )
+          Compress-Archive -Path $items -DestinationPath SpectraTrack-PC-source.zip -Force
       - name: Package Windows app
         shell: pwsh
         run: |
