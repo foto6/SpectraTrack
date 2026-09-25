@@ -837,6 +837,7 @@ def stamp_external_evidence(
     *,
     manifest_path: str | Path,
     evidence_path: str | Path,
+    source_artifact_path: str | Path,
 ) -> dict[str, Any]:
     manifest = load_frozen_manifest(manifest_path)
     evidence = _json_load(evidence_path)
@@ -865,6 +866,14 @@ def stamp_external_evidence(
     source_artifact_sha = evidence.get("source_artifact_sha256")
     if not _is_hex(source_artifact_sha, 64):
         raise ValueError("evidence source_artifact_sha256 must be 64-hex")
+    source_artifact = Path(source_artifact_path)
+    if not source_artifact.is_file():
+        raise FileNotFoundError(source_artifact)
+    actual_source_artifact_sha = sha256_file(source_artifact)
+    if source_artifact_sha != actual_source_artifact_sha:
+        raise ValueError(
+            "evidence source_artifact_sha256 does not match the supplied source artifact"
+        )
     for field_name in ("config", "evaluation", "quality", "compute", "provenance"):
         if not isinstance(evidence.get(field_name), dict):
             raise ValueError(f"evidence {field_name} must be an object")
@@ -900,6 +909,7 @@ def stamp_external_evidence(
         "corpus_sha256": manifest["corpus_sha256"],
         "source_commit": source_commit,
         "source_evidence_sha256": sha256_file(evidence_path),
+        "source_artifact_sha256": actual_source_artifact_sha,
         "evidence_payload_sha256": _canonical_sha256(evidence),
         "settings_sha256": _canonical_sha256(evidence["config"]),
         "evaluation_sha256": _canonical_sha256(evidence["evaluation"]),
@@ -1177,6 +1187,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     evidence.add_argument("--manifest", required=True)
     evidence.add_argument("--evidence", required=True)
+    evidence.add_argument("--source-artifact", required=True)
     evidence.add_argument("--output", required=True)
 
     leaderboard = sub.add_parser("leaderboard", help="Assemble comparable stamped runs without ranking them")
@@ -1253,6 +1264,7 @@ def main() -> int:
             stamped = stamp_external_evidence(
                 manifest_path=args.manifest,
                 evidence_path=args.evidence,
+                source_artifact_path=args.source_artifact,
             )
             _json_dump(args.output, stamped)
             print(f"stamped={args.output} settings_sha256={stamped['settings_sha256']}")
