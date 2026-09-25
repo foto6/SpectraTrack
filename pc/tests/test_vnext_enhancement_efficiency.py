@@ -1,9 +1,11 @@
 import json
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
 from spectratrack.enhance import assess_frame_quality
+import spectratrack.research.enhancement_efficiency as efficiency
 from spectratrack.research.enhancement_efficiency import (
     ROI_SCHEMA,
     _jitter,
@@ -171,3 +173,114 @@ def test_jitter_uses_gt_relative_localization_residuals():
     assert jitter["steps"] == 1
     assert jitter["center_residual_step_mean"] == pytest.approx(0.2)
     assert jitter["size_residual_step_mean"] == pytest.approx(0.0)
+
+
+def test_run_profile_counts_raw_and_enhanced_calls_and_recovery(tmp_path, monkeypatch):
+    manifest = tmp_path / "regions.jsonl"
+    manifest.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "type": "metadata",
+                        "schema": efficiency.ROI_SCHEMA,
+                        "source": "synthetic-test",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "roi",
+                        "video": "clip.mp4",
+                        "frame": 0,
+                        "roi_id": "r0",
+                        "bbox": [0, 0, 64, 64],
+                        "signals": {},
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    model = tmp_path / "model.onnx"
+    model.write_bytes(b"fake-model")
+    frame = np.full((64, 64, 3), 10, dtype=np.uint8)
+
+    truth = efficiency.GroundTruthFrame(
+        video="clip.mp4",
+        frame=0,
+        tags=("dark",),
+        objects=(
+            efficiency.GroundTruthObject(
+                "p1",
+                "person",
+                (10.0, 10.0, 30.0, 50.0),
+            ),
+        ),
+    )
+
+    class FakeDetector:
+        def __init__(self, *_args, **_kwargs):
+            self.providers = ["FakeExecutionProvider"]
+            self.input_w = 640
+            self.input_h = 640
+            self.class_thresholds = {}
+            self.last_stage_ms = {}
+            self.last_inference_calls = 0
+
+        def _reset_policy_metrics(self):
+            self.last_stage_ms = {}
+            self.last_inference_calls = 0
+
+        def _detect_once(self, image, thresholds):
+            self.last_inference_calls += 1
+            self.last_stage_ms["inference"] = self.last_stage_ms.get("inference", 0.0) + 1.0
+            threshold = thresholds["person"]
+            if threshold <= 0.08:
+                return [Detection((10.0, 10.0, 30.0, 50.0), 0.10, 0, "person")]
+            if float(image.mean()) > 10.0:
+                return [Detection((10.0, 10.0, 30.0, 50.0), 0.40, 0, "person")]
+            return []
+
+    monkeypatch.setattr("spectratrack.detector.YoloOnnxDetector", FakeDetector)
+    monkeypatch.setattr(
+        efficiency,
+        "_read_frames",
+        lambda _root, _records: ({("clip.mp4", 0): frame}, {"clip.mp4": 25.0}, {"clip.mp4": "video-hash"}),
+    )
+    monkeypatch.setattr(
+        efficiency,
+        "_truth_index",
+        lambda _path: ({("clip.mp4", 0): truth}, "gt-hash"),
+    )
+
+    args = SimpleNamespace(
+        roi_manifest=str(manifest),
+        video_root=str(tmp_path),
+        ground_truth="gt.jsonl",
+        corpus_revision="synthetic-r1",
+        source_commit="deadbeef",
+        immutable_baseline="baseline",
+        model=str(model),
+        input_size=640,
+        conf=0.35,
+        nms_iou=0.45,
+        cpu=True,
+        operations=["gamma"],
+        probe_conf=0.08,
+        person_conf=0.12,
+        label="person",
+        match_iou=0.5,
+        selective_gate="quality",
+        corroboration_iou=0.10,
+        experiment_id="synthetic",
+    )
+
+    result = efficiency.run_profile(args)
+    gamma = result["operations"]["gamma"]
+
+    assert gamma["cost"]["raw_probe_calls"] == 1
+    assert gamma["cost"]["enhanced_inference_calls"] == 1
+    assert gamma["cost"]["total_inference_calls_if_run_independently"] == 2
+    assert gamma["quality"]["recovered_gt_persons"] == 1
+    assert gamma["quality"]["lost_gt_persons"] == 0
