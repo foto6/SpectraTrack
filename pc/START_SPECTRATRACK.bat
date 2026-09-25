@@ -1,24 +1,30 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 cd /d "%~dp0"
 
-if not exist model.onnx (
+set "MODEL="
+if exist "model.onnx" set "MODEL=model.onnx"
+if not defined MODEL if exist "yolo11x.onnx" set "MODEL=yolo11x.onnx"
+if not defined MODEL for %%F in (*.onnx) do if not defined MODEL set "MODEL=%%F"
+
+if not defined MODEL (
   echo.
-  echo [SpectraTrack] model.onnx not found.
-  echo Copy your verified ONNX model into this folder and name it model.onnx.
-  echo Optional: also place model.manifest.json next to it for SHA-256 verification.
+  echo [SpectraTrack] No .onnx model found in this folder.
+  echo Copy a compatible fixed-size YOLO ONNX model here.
+  echo Preferred names: model.onnx or yolo11x.onnx.
   echo.
   pause
   exit /b 1
 )
 
-set MANIFEST=
-if exist model.manifest.json set MANIFEST=--model-manifest model.manifest.json
+set "MANIFEST="
+if exist "model.manifest.json" set "MANIFEST=--model-manifest model.manifest.json"
 
 if not exist sessions mkdir sessions
 
 echo Starting SpectraTrack PC...
-SpectraTrack-PC.exe --model model.onnx %MANIFEST% --source 0 --profile balanced --session-log "sessions\latest.jsonl"
+echo Model: %MODEL%
+SpectraTrack-PC.exe --model "%MODEL%" %MANIFEST% --source 0 --profile balanced --session-log "sessions\latest.jsonl"
 
 echo.
 echo SpectraTrack exited with code %ERRORLEVEL%.
