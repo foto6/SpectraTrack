@@ -116,6 +116,18 @@ def test_reference_style_candidates_use_strong_only_creation():
         assert metrics["matched_gt"] == 0
 
 
+
+
+def test_global_assignment_probe_exposes_current_greedy_conflict():
+    scenario = _scenario("nearby_same_class")
+    current = _run(scenario, CurrentTrackerRunner())
+    global_style = _run(scenario, ReferenceStyleTracker("byte"))
+
+    assert current["id_switches"] >= 2
+    assert global_style["id_switches"] == 0
+    assert global_style["mean_uninterrupted_track_length"] > current["mean_uninterrupted_track_length"]
+
+
 def test_bbox_smoothing_reports_jitter_and_lag_separately():
     metrics = bbox_stability_probe()
     assert set(metrics) == {"raw", "bounded_ema", "motion_state"}
