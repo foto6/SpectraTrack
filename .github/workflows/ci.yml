@@ -31,6 +31,7 @@ jobs:
         run: |
           python -m pip install -U pip
           pip install -r requirements-win.txt
+          pip install -r requirements-build.txt
       - name: Compile and test
         run: |
           python -m compileall -q spectratrack tests
@@ -39,12 +40,26 @@ jobs:
         run: python -m spectratrack.benchmark --frames 500 --targets 24
       - name: Diagnostics
         run: python -m spectratrack.diagnostics
+      - name: Build standalone Windows app
+        run: |
+          pyinstaller --noconfirm --clean --onedir --name SpectraTrack-PC --collect-all onnxruntime run_spectratrack.py
+      - name: Smoke test standalone app
+        run: .\dist\SpectraTrack-PC\SpectraTrack-PC.exe --help
       - name: Package PC source
         shell: pwsh
         run: |
           Compress-Archive -Path * -DestinationPath SpectraTrack-PC-source.zip -Force
-      - name: Upload PC package
+      - name: Package Windows app
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\SpectraTrack-PC\* -DestinationPath SpectraTrack-PC-Windows.zip -Force
+      - name: Upload PC source
         uses: actions/upload-artifact@v4
         with:
           name: SpectraTrack-PC-source
           path: pc/SpectraTrack-PC-source.zip
+      - name: Upload Windows app
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpectraTrack-PC-Windows
+          path: pc/SpectraTrack-PC-Windows.zip
