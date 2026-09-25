@@ -22,6 +22,7 @@ class TrackletSummary:
     best_frame: int
     fps: float
     descriptor: tuple[float, ...] | None
+    preview_path: str | None = None
 
     @property
     def key(self) -> str:

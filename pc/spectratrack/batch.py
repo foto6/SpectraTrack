@@ -5,12 +5,14 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 
+import cv2
 import numpy as np
 
 from .appearance import attach_appearance
 from .capture import CaptureConfig, RobustCapture
 from .crossvideo import TrackletSummary, build_cross_video_graph, normalize_descriptor
 from .detector import YoloOnnxDetector
+from .enhance import crop_with_margin
 from .integrity import sha256_file
 from .tracker import MultiObjectTracker
 
@@ -32,8 +34,17 @@ class _Accumulator:
     best_value: float = -1.0
     best_frame: int = 0
     descriptor_sum: np.ndarray | None = None
+    best_crop: np.ndarray | None = None
 
-    def add(self, frame_index: int, score: float, quality: float, descriptor: tuple[float, ...]) -> None:
+    def add(
+        self,
+        frame_index: int,
+        score: float,
+        quality: float,
+        descriptor: tuple[float, ...],
+        frame: np.ndarray,
+        bbox: tuple[float, float, float, float],
+    ) -> None:
         arr = np.asarray(descriptor, dtype=np.float64)
         if self.descriptor_sum is None:
             self.descriptor_sum = np.zeros_like(arr)
@@ -48,8 +59,9 @@ class _Accumulator:
         if value > self.best_value:
             self.best_value = value
             self.best_frame = frame_index
+            self.best_crop = crop_with_margin(frame, bbox, margin=0.12)
 
-    def finish(self, fps: float) -> TrackletSummary | None:
+    def finish(self, fps: float, preview_path: str | None = None) -> TrackletSummary | None:
         if self.observations <= 0 or self.descriptor_sum is None:
             return None
         descriptor = normalize_descriptor(self.descriptor_sum.tolist())
@@ -66,6 +78,7 @@ class _Accumulator:
             best_frame=self.best_frame,
             fps=float(fps),
             descriptor=descriptor,
+            preview_path=preview_path,
         )
 
 
@@ -91,6 +104,7 @@ def analyze_video(
     class_filter: set[str],
     min_observations: int,
     max_frames: int = 0,
+    preview_dir: Path | None = None,
 ) -> list[TrackletSummary]:
     capture = RobustCapture(str(path), CaptureConfig(backend="auto", reconnect_attempts=0))
     if not capture.is_opened():
@@ -135,7 +149,14 @@ def analyze_video(
                             last_frame=frame_index,
                         )
                         accumulators[tr.track_id] = acc
-                    acc.add(frame_index, tr.last_detection_score or tr.score, tr.quality, tr.appearance)
+                    acc.add(
+                        frame_index,
+                        tr.last_detection_score or tr.score,
+                        tr.quality,
+                        tr.appearance,
+                        frame,
+                        tr.bbox,
+                    )
 
             if max_frames > 0 and frame_index >= max_frames:
                 break
@@ -143,8 +164,16 @@ def analyze_video(
         capture.release()
 
     summaries = []
+    if preview_dir is not None:
+        preview_dir.mkdir(parents=True, exist_ok=True)
+    safe_stem = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in path.stem)
     for acc in accumulators.values():
-        summary = acc.finish(fps)
+        preview_path = None
+        if preview_dir is not None and acc.best_crop is not None:
+            candidate = preview_dir / f"{safe_stem}_T{acc.local_track_id:03d}.jpg"
+            if cv2.imwrite(str(candidate), acc.best_crop):
+                preview_path = str(candidate)
+        summary = acc.finish(fps, preview_path=preview_path)
         if summary is not None and summary.observations >= min_observations:
             summaries.append(summary)
     summaries.sort(key=lambda t: (t.class_id, t.local_track_id))
@@ -170,6 +199,8 @@ def main() -> int:
     parser.add_argument("--recursive", action="store_true")
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--max-frames-per-video", type=int, default=0)
+    parser.add_argument("--no-previews", action="store_true", help="Do not save one best crop per tracklet")
+    parser.add_argument("--no-html", action="store_true", help="Do not generate the local HTML review report")
     args = parser.parse_args()
 
     if args.detect_every < 1:
@@ -180,6 +211,9 @@ def main() -> int:
     videos = discover_videos(args.input_dir, recursive=args.recursive)
     if not videos:
         raise SystemExit(f"No supported videos found in: {args.input_dir}")
+
+    output = Path(args.output)
+    preview_dir = None if args.no_previews else output.with_name(output.stem + "_samples")
 
     detector = YoloOnnxDetector(
         args.model,
@@ -202,6 +236,7 @@ def main() -> int:
                 class_filter=class_filter,
                 min_observations=args.min_observations,
                 max_frames=args.max_frames_per_video,
+                preview_dir=preview_dir,
             )
             all_tracklets.extend(tracklets)
             print(f"  tracklets={len(tracklets)}")
@@ -226,9 +261,14 @@ def main() -> int:
         "failures": failures,
     }
 
-    output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(graph, ensure_ascii=False, indent=2), encoding="utf-8")
+    if not args.no_html:
+        from .crossvideo_report import write_html_report
+
+        report_path = output.with_suffix(".html")
+        write_html_report(graph, report_path)
+        print(f"report={report_path}")
     print(
         f"done videos={len(videos)} failed={len(failures)} "
         f"tracklets={len(graph['tracklets'])} entities={len(graph['entities'])} edges={len(graph['edges'])}"
