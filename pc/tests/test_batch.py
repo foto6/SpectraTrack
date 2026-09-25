@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from spectratrack.batch import discover_videos
+from spectratrack.batch import discover_videos, video_identifier
 
 
 def test_discover_videos_filters_and_sorts(tmp_path):
@@ -37,3 +37,18 @@ def test_discover_videos_skips_spectratrack_outputs_by_default(tmp_path):
         "camera_SpectraTrack.mp4",
         "RESULT_MAX.mp4",
     ]
+
+
+def test_video_identifier_preserves_relative_subfolders(tmp_path):
+    left = tmp_path / "left"
+    right = tmp_path / "right"
+    left.mkdir()
+    right.mkdir()
+    a = left / "clip.mp4"
+    b = right / "clip.mp4"
+    a.write_bytes(b"x")
+    b.write_bytes(b"x")
+
+    assert video_identifier(tmp_path, a) == "left/clip.mp4"
+    assert video_identifier(tmp_path, b) == "right/clip.mp4"
+    assert video_identifier(tmp_path, a) != video_identifier(tmp_path, b)

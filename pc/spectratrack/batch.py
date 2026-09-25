@@ -127,6 +127,15 @@ def _parse_classes(text: str) -> set[str]:
     return {part.strip().lower() for part in text.split(",") if part.strip()}
 
 
+def video_identifier(input_dir: str | Path, path: str | Path) -> str:
+    root = Path(input_dir).resolve()
+    candidate = Path(path).resolve()
+    try:
+        return candidate.relative_to(root).as_posix()
+    except ValueError:
+        return candidate.name
+
+
 def analyze_video(
     path: Path,
     detector: YoloOnnxDetector,
@@ -135,6 +144,7 @@ def analyze_video(
     min_observations: int,
     max_frames: int = 0,
     preview_dir: Path | None = None,
+    video_id: str | None = None,
 ) -> list[TrackletSummary]:
     capture = RobustCapture(str(path), CaptureConfig(backend="auto", reconnect_attempts=0))
     if not capture.is_opened():
@@ -143,6 +153,7 @@ def analyze_video(
 
     props = capture.actual_properties()
     fps = float(props["fps"])
+    identifier = video_id or path.name
     tracker = MultiObjectTracker()
     motion = GlobalMotionEstimator()
     accumulators: dict[int, _Accumulator] = {}
@@ -182,7 +193,7 @@ def analyze_video(
                     acc = accumulators.get(tr.track_id)
                     if acc is None:
                         acc = _Accumulator(
-                            video=path.name,
+                            video=identifier,
                             local_track_id=tr.track_id,
                             class_id=tr.class_id,
                             label=tr.label,
@@ -210,7 +221,7 @@ def analyze_video(
     summaries = []
     if preview_dir is not None:
         preview_dir.mkdir(parents=True, exist_ok=True)
-    safe_stem = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in path.stem)
+    safe_stem = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in identifier)
     for acc in accumulators.values():
         summary = acc.finish(fps)
         if summary is None or summary.observations < min_observations:
@@ -291,6 +302,7 @@ def main() -> int:
                 min_observations=args.min_observations,
                 max_frames=args.max_frames_per_video,
                 preview_dir=preview_dir,
+                video_id=video_identifier(args.input_dir, path),
             )
             all_tracklets.extend(tracklets)
             print(f"  tracklets={len(tracklets)}")
