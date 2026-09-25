@@ -1,0 +1,241 @@
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass
+import json
+from pathlib import Path
+
+import numpy as np
+
+from .appearance import attach_appearance
+from .capture import CaptureConfig, RobustCapture
+from .crossvideo import TrackletSummary, build_cross_video_graph, normalize_descriptor
+from .detector import YoloOnnxDetector
+from .integrity import sha256_file
+from .tracker import MultiObjectTracker
+
+
+VIDEO_SUFFIXES = {".mp4", ".mov", ".mkv", ".avi", ".m4v", ".webm"}
+
+
+@dataclass
+class _Accumulator:
+    video: str
+    local_track_id: int
+    class_id: int
+    label: str
+    first_frame: int
+    last_frame: int
+    observations: int = 0
+    score_sum: float = 0.0
+    quality_sum: float = 0.0
+    best_value: float = -1.0
+    best_frame: int = 0
+    descriptor_sum: np.ndarray | None = None
+
+    def add(self, frame_index: int, score: float, quality: float, descriptor: tuple[float, ...]) -> None:
+        arr = np.asarray(descriptor, dtype=np.float64)
+        if self.descriptor_sum is None:
+            self.descriptor_sum = np.zeros_like(arr)
+        if self.descriptor_sum.shape != arr.shape:
+            return
+        self.descriptor_sum += arr
+        self.last_frame = frame_index
+        self.observations += 1
+        self.score_sum += float(score)
+        self.quality_sum += float(quality)
+        value = float(score) * 0.65 + float(quality) * 0.35
+        if value > self.best_value:
+            self.best_value = value
+            self.best_frame = frame_index
+
+    def finish(self, fps: float) -> TrackletSummary | None:
+        if self.observations <= 0 or self.descriptor_sum is None:
+            return None
+        descriptor = normalize_descriptor(self.descriptor_sum.tolist())
+        return TrackletSummary(
+            video=self.video,
+            local_track_id=self.local_track_id,
+            class_id=self.class_id,
+            label=self.label,
+            first_frame=self.first_frame,
+            last_frame=self.last_frame,
+            observations=self.observations,
+            mean_score=self.score_sum / self.observations,
+            mean_quality=self.quality_sum / self.observations,
+            best_frame=self.best_frame,
+            fps=float(fps),
+            descriptor=descriptor,
+        )
+
+
+def discover_videos(input_dir: str | Path, recursive: bool = False) -> list[Path]:
+    root = Path(input_dir)
+    if not root.exists() or not root.is_dir():
+        raise FileNotFoundError(f"Input directory not found: {root}")
+    iterator = root.rglob("*") if recursive else root.glob("*")
+    return sorted(
+        (p for p in iterator if p.is_file() and p.suffix.lower() in VIDEO_SUFFIXES),
+        key=lambda p: str(p).lower(),
+    )
+
+
+def _parse_classes(text: str) -> set[str]:
+    return {part.strip().lower() for part in text.split(",") if part.strip()}
+
+
+def analyze_video(
+    path: Path,
+    detector: YoloOnnxDetector,
+    detect_every: int,
+    class_filter: set[str],
+    min_observations: int,
+    max_frames: int = 0,
+) -> list[TrackletSummary]:
+    capture = RobustCapture(str(path), CaptureConfig(backend="auto", reconnect_attempts=0))
+    if not capture.is_opened():
+        capture.release()
+        raise RuntimeError(f"Cannot open video: {path}")
+
+    props = capture.actual_properties()
+    fps = float(props["fps"])
+    tracker = MultiObjectTracker()
+    accumulators: dict[int, _Accumulator] = {}
+    frame_index = 0
+
+    try:
+        while True:
+            read = capture.read()
+            if not read.ok or read.frame is None:
+                break
+            frame = read.frame
+            frame_index += 1
+            should_detect = ((frame_index - 1) % detect_every) == 0
+            if should_detect:
+                detections = detector.detect(frame)
+                if class_filter:
+                    detections = [d for d in detections if d.label.lower() in class_filter]
+                attach_appearance(frame, detections)
+                tracks = tracker.update(detections)
+            else:
+                tracks = tracker.predict_only()
+
+            if should_detect:
+                for tr in tracks:
+                    if not tr.confirmed or tr.missed != 0 or tr.appearance is None:
+                        continue
+                    acc = accumulators.get(tr.track_id)
+                    if acc is None:
+                        acc = _Accumulator(
+                            video=path.name,
+                            local_track_id=tr.track_id,
+                            class_id=tr.class_id,
+                            label=tr.label,
+                            first_frame=frame_index,
+                            last_frame=frame_index,
+                        )
+                        accumulators[tr.track_id] = acc
+                    acc.add(frame_index, tr.last_detection_score or tr.score, tr.quality, tr.appearance)
+
+            if max_frames > 0 and frame_index >= max_frames:
+                break
+    finally:
+        capture.release()
+
+    summaries = []
+    for acc in accumulators.values():
+        summary = acc.finish(fps)
+        if summary is not None and summary.observations >= min_observations:
+            summaries.append(summary)
+    summaries.sort(key=lambda t: (t.class_id, t.local_track_id))
+    return summaries
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Analyze a folder of videos and build a conservative cross-video appearance graph.",
+        allow_abbrev=False,
+    )
+    parser.add_argument("--model", required=True, help="Compatible fixed-size YOLO ONNX model")
+    parser.add_argument("--input-dir", required=True, help="Folder containing videos")
+    parser.add_argument("--output", default="cross_video_graph.json")
+    parser.add_argument("--input-size", type=int, default=640)
+    parser.add_argument("--conf", type=float, default=0.35)
+    parser.add_argument("--iou", type=float, default=0.45)
+    parser.add_argument("--detect-every", type=int, default=1)
+    parser.add_argument("--classes", default="")
+    parser.add_argument("--candidate-threshold", type=float, default=0.86)
+    parser.add_argument("--strong-threshold", type=float, default=0.94)
+    parser.add_argument("--min-observations", type=int, default=3)
+    parser.add_argument("--recursive", action="store_true")
+    parser.add_argument("--cpu", action="store_true")
+    parser.add_argument("--max-frames-per-video", type=int, default=0)
+    args = parser.parse_args()
+
+    if args.detect_every < 1:
+        raise SystemExit("--detect-every must be >= 1")
+    if args.min_observations < 1:
+        raise SystemExit("--min-observations must be >= 1")
+
+    videos = discover_videos(args.input_dir, recursive=args.recursive)
+    if not videos:
+        raise SystemExit(f"No supported videos found in: {args.input_dir}")
+
+    detector = YoloOnnxDetector(
+        args.model,
+        input_size=args.input_size,
+        conf_threshold=args.conf,
+        iou_threshold=args.iou,
+        prefer_gpu=not args.cpu,
+    )
+    class_filter = _parse_classes(args.classes)
+    all_tracklets: list[TrackletSummary] = []
+    failures: list[dict[str, str]] = []
+
+    for index, path in enumerate(videos, start=1):
+        print(f"[{index}/{len(videos)}] analyzing {path.name}")
+        try:
+            tracklets = analyze_video(
+                path,
+                detector,
+                detect_every=args.detect_every,
+                class_filter=class_filter,
+                min_observations=args.min_observations,
+                max_frames=args.max_frames_per_video,
+            )
+            all_tracklets.extend(tracklets)
+            print(f"  tracklets={len(tracklets)}")
+        except Exception as exc:
+            failures.append({"video": path.name, "error": str(exc)})
+            print(f"  FAILED: {exc}")
+
+    graph = build_cross_video_graph(
+        all_tracklets,
+        candidate_threshold=args.candidate_threshold,
+        strong_threshold=args.strong_threshold,
+    )
+    graph["run"] = {
+        "model": str(Path(args.model)),
+        "model_sha256": sha256_file(args.model),
+        "providers": detector.providers,
+        "input_dir": str(Path(args.input_dir)),
+        "videos_seen": len(videos),
+        "videos_failed": len(failures),
+        "detect_every": args.detect_every,
+        "classes": sorted(class_filter),
+        "failures": failures,
+    }
+
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(graph, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(
+        f"done videos={len(videos)} failed={len(failures)} "
+        f"tracklets={len(graph['tracklets'])} entities={len(graph['entities'])} edges={len(graph['edges'])}"
+    )
+    print(f"graph={output}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
