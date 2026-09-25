@@ -45,7 +45,7 @@ def load_runtime_config(path: str | Path) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in data.items():
         expected = _ALLOWED[key]
-        if isinstance(value, bool) and expected != bool:
+        if isinstance(value, bool) and expected is not bool:
             raise ValueError(f"{key} must be {expected}, not bool")
         if not isinstance(value, expected):
             raise ValueError(f"{key} has invalid type: {type(value).__name__}")
