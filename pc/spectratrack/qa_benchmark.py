@@ -605,6 +605,9 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     inference_seconds = 0.0
     detector_policy_runs = 0
     onnx_inference_calls = 0
+    source_seconds = 0.0
+    source_seconds_known = True
+    input_videos: list[dict[str, Any]] = []
     total_start = time.perf_counter()
 
     for video, video_annotations in sorted(grouped.items()):
@@ -616,9 +619,14 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             raise RuntimeError(f"Cannot open benchmark video: {video_path}")
         annotated_frames = {item.frame for item in video_annotations}
         last_needed = max(annotated_frames)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = float(cap.get(cv2.CAP_PROP_FPS))
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         motion = GlobalMotionEstimator()
         tracker = MultiObjectTracker()
         frame_index = 0
+        video_processed_frames = 0
         try:
             while frame_index <= last_needed:
                 ok, frame = cap.read()
@@ -642,6 +650,7 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                     camera_transform=camera_transform,
                 )
                 processed_frames += 1
+                video_processed_frames += 1
                 if frame_index in annotated_frames:
                     key = (video, frame_index)
                     predictions_by_frame[key] = [
@@ -654,8 +663,24 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 frame_index += 1
         finally:
             cap.release()
+        if math.isfinite(fps) and fps > 0.0:
+            source_seconds += video_processed_frames / fps
+        else:
+            source_seconds_known = False
+        input_videos.append(
+            {
+                "video": video,
+                "sha256": sha256_file(video_path),
+                "width": width,
+                "height": height,
+                "fps": fps if math.isfinite(fps) and fps > 0.0 else None,
+                "frame_count": frame_count if frame_count > 0 else None,
+                "processed_frames": video_processed_frames,
+            }
+        )
 
     wall_seconds = time.perf_counter() - total_start
+    measured_source_seconds = source_seconds if source_seconds_known and source_seconds > 0.0 else None
     metrics = evaluate_frames(
         ground_truth,
         predictions_by_frame,
@@ -669,6 +694,7 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "revision": args.revision,
         "ground_truth_sha256": ground_truth_sha256(args.ground_truth),
+        "input_videos": input_videos,
         "model": {
             "path": str(args.model),
             "sha256": sha256_file(args.model),
@@ -700,6 +726,13 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "detector_fps": processed_frames / inference_seconds if inference_seconds > 0 else None,
             "detector_policy_runs": detector_policy_runs,
             "onnx_inference_calls": onnx_inference_calls,
+            "onnx_calls_per_frame": (
+                onnx_inference_calls / processed_frames if processed_frames > 0 else None
+            ),
+            "source_seconds": measured_source_seconds,
+            "processing_seconds_per_source_second": (
+                wall_seconds / measured_source_seconds if measured_source_seconds else None
+            ),
             "peak_vram_mb": args.peak_vram_mb,
             "vram_source": args.vram_source if args.peak_vram_mb is not None else None,
         },
