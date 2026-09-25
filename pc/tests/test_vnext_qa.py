@@ -428,7 +428,7 @@ def test_ignored_person_does_not_satisfy_negative_coverage(monkeypatch, tmp_path
             {
                 "video": "golden/clip.mp4",
                 "frame": 0,
-                "tags": _all_coverage_tags(),
+                "tags": _all_coverage_tags() + ["negative"],
                 "objects": [
                     {
                         "id": "p1",
