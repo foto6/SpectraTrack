@@ -1,0 +1,78 @@
+name: SpectraTrack CI
+
+on:
+  push:
+    branches: [spectratrack-v1]
+    paths:
+      - 'SpectraTrack/**'
+      - '.github/workflows/spectratrack-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  pc-tests:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: SpectraTrack/pc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements-win.txt
+      - name: Compile and test
+        run: |
+          python -m compileall -q spectratrack tests
+          pytest -q
+      - name: Package PC source
+        shell: pwsh
+        run: |
+          Compress-Archive -Path * -DestinationPath SpectraTrack-PC-source.zip -Force
+      - name: Upload PC package
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpectraTrack-PC-source
+          path: SpectraTrack/pc/SpectraTrack-PC-source.zip
+
+  android-build:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Locate sdkmanager
+        shell: bash
+        run: |
+          SDKMANAGER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          echo "Using $SDKMANAGER"
+      - name: Accept Android SDK licenses
+        shell: bash
+        run: |
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Build debug APK
+        working-directory: SpectraTrack/android
+        run: |
+          gradle :app:assembleDebug --stacktrace
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpectraTrack-Android-debug
+          path: SpectraTrack/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
