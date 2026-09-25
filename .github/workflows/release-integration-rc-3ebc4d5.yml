@@ -1,0 +1,209 @@
+name: Publish SpectraTrack integration RC 3ebc4d5
+
+on:
+  push:
+    branches:
+      - 'release/integration-rc-3ebc4d5'
+    paths:
+      - '.github/workflows/release-integration-rc-3ebc4d5.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  TAG_NAME: integration-rc-3ebc4d5
+  TARGET_SHA: 3ebc4d50213593cac62b97399447fccf6bbc1755
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: pc
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build dependencies
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements-win.txt
+          pip install -r requirements-build.txt
+      - name: Verify PC source
+        run: |
+          ruff check spectratrack tests
+          python -m compileall -q spectratrack tests
+          pytest -q
+          python -m spectratrack.benchmark --frames 500 --targets 24
+          python -m spectratrack.diagnostics
+          python -m spectratrack.selfcheck
+      - name: Build standalone Windows app
+        run: |
+          pyinstaller --noconfirm --clean --onedir --name SpectraTrack-PC --collect-all onnxruntime run_spectratrack.py
+      - name: Smoke test executable
+        run: |
+          .\dist\SpectraTrack-PC\SpectraTrack-PC.exe --help
+          .\dist\SpectraTrack-PC\SpectraTrack-PC.exe batch --help
+      - name: Add runtime files
+        shell: pwsh
+        run: |
+          Copy-Item START_SPECTRATRACK.bat dist\SpectraTrack-PC\START_SPECTRATRACK.bat
+          Copy-Item PROCESS_VIDEO.bat dist\SpectraTrack-PC\PROCESS_VIDEO.bat
+          Copy-Item ANALYZE_VIDEO_FOLDER.bat dist\SpectraTrack-PC\ANALYZE_VIDEO_FOLDER.bat
+          Copy-Item calibration.example.json dist\SpectraTrack-PC\calibration.example.json
+          Copy-Item STANDALONE_README.txt dist\SpectraTrack-PC\README.txt
+          Copy-Item -Recurse presets dist\SpectraTrack-PC\presets
+          Copy-Item ..\docs\CROSS_VIDEO.md dist\SpectraTrack-PC\CROSS_VIDEO.md
+          Copy-Item ..\models\README.md dist\SpectraTrack-PC\MODEL_SETUP.md
+          Copy-Item ..\models\model-manifest.example.json dist\SpectraTrack-PC\model-manifest.example.json
+          "integration RC commit: $env:TARGET_SHA" | Set-Content dist\SpectraTrack-PC\RC_BUILD.txt
+      - name: Package Windows release
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\SpectraTrack-PC\* -DestinationPath ..\SpectraTrack-PC-Windows.zip -Force
+      - name: Package PC source
+        shell: pwsh
+        run: |
+          $items = @(
+            "spectratrack",
+            "tests",
+            "README.md",
+            "pyproject.toml",
+            "requirements-win.txt",
+            "requirements-build.txt",
+            "run_spectratrack.py",
+            "run_camera.bat",
+            "run_demo.bat",
+            "START_SPECTRATRACK.bat",
+            "PROCESS_VIDEO.bat",
+            "ANALYZE_VIDEO_FOLDER.bat",
+            "STANDALONE_README.txt",
+            "calibration.example.json",
+            "presets"
+          )
+          Compress-Archive -Path $items -DestinationPath ..\SpectraTrack-PC-source.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: |
+            SpectraTrack-PC-Windows.zip
+            SpectraTrack-PC-source.zip
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Locate sdkmanager
+        shell: bash
+        run: |
+          SDKMANAGER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+      - name: Accept Android SDK licenses
+        shell: bash
+        run: yes | "$SDKMANAGER" --licenses > /dev/null || true
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Build Android APK
+        working-directory: android
+        run: gradle :app:assembleDebug --stacktrace
+      - name: Normalize APK filename
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk SpectraTrack-Android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: SpectraTrack-Android.apk
+          if-no-files-found: error
+
+  release:
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-windows
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-android
+          path: release
+      - name: Generate checksums and notes
+        shell: bash
+        run: |
+          cd release
+          sha256sum SpectraTrack-PC-Windows.zip SpectraTrack-PC-source.zip SpectraTrack-Android.apk > SHA256SUMS.txt
+          cd ..
+          cat > RELEASE_NOTES.md <<'EOF'
+          # SpectraTrack Integration RC 3ebc4d5
+
+          This prerelease is built from the reviewed integration merge commit:
+          `3ebc4d50213593cac62b97399447fccf6bbc1755`.
+
+          ## Downloads
+
+          - `SpectraTrack-PC-Windows.zip` — standalone Windows build.
+          - `SpectraTrack-PC-source.zip` — PC source snapshot used for this RC.
+          - `SpectraTrack-Android.apk` — Android debug/sideload APK rebuilt from the same commit.
+          - `SHA256SUMS.txt` — SHA-256 checksums for all three files.
+
+          ## Integrated PC work
+
+          - opt-in people-recall detector mode;
+          - full-frame + tiled person detection;
+          - class-specific person threshold;
+          - adaptive low-light enhancement with raw corroboration;
+          - dormant-track reactivation and cross-video Re-ID improvements;
+          - pipeline/inference profiling and JSON performance reports;
+          - QA benchmark support for standard, people-recall and adaptive people-recall;
+          - B1 runtime guard preventing ordinary enhancement from invalidating adaptive raw corroboration.
+
+          ## Validation
+
+          CI reruns lint, compile, full pytest suite, synthetic tracker benchmark, diagnostics,
+          self-check, PyInstaller build and both standalone CLI smoke tests before publishing.
+
+          This is a release candidate for local real-video testing. It is not evidence of a
+          measured real-world recall/precision improvement because a representative annotated
+          CCTV validation corpus is not yet available.
+
+          Model weights are not bundled. Put a compatible fixed-size YOLO ONNX model next to
+          the Windows executable, for example `yolo11x.onnx`.
+          EOF
+      - name: Publish GitHub prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" release/SpectraTrack-PC-Windows.zip release/SpectraTrack-PC-source.zip release/SpectraTrack-Android.apk release/SHA256SUMS.txt --clobber
+            gh release edit "$TAG_NAME" --title "SpectraTrack Integration RC 3ebc4d5" --notes-file RELEASE_NOTES.md --prerelease
+          else
+            gh release create "$TAG_NAME" \
+              --target "$TARGET_SHA" \
+              --title "SpectraTrack Integration RC 3ebc4d5" \
+              --notes-file RELEASE_NOTES.md \
+              --prerelease \
+              release/SpectraTrack-PC-Windows.zip \
+              release/SpectraTrack-PC-source.zip \
+              release/SpectraTrack-Android.apk \
+              release/SHA256SUMS.txt
+          fi
