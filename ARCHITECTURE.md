@@ -229,6 +229,10 @@ Current default tracker parameters:
 - `high_conf = 0.45`
 - `low_conf = 0.12`
 - `min_hits = 3`
+- `reactivation_window = 30` detector-observed frames
+- `reactivation_min_appearance = 0.90`
+- `reactivation_min_score = 0.90`
+- `reactivation_max_center_ratio = 4.0`
 
 Behavior:
 
@@ -239,10 +243,15 @@ Behavior:
 - only strong/high-confidence detections may create new IDs;
 - detector-skipped frames call `predict_only()` and do not increment `missed`;
 - confirmed tracks can survive short detector dropouts;
+- confirmed tracks with an appearance cue can enter a bounded dormant pool after `max_missed`;
+- dormant reactivation keeps the original local `track_id` only when class, appearance, shape/size, spatial plausibility and optional motion direction agree;
+- dormant bbox geometry continues to follow CMC on both `update()` and `predict_only()` frames so camera pan/rotation/scale does not leave the hidden spatial prior stale;
+- the dormant-window age advances only on detector-observed `update()` calls, not scheduled `predict_only()` frames;
+- tracks without appearance evidence are never dormant-reactivated;
 - track velocity is an exponentially smoothed residual image velocity, not metric world velocity;
 - track history stores up to 64 center points.
 
-Current association is greedy over candidate scores. It is **not** Hungarian assignment, Kalman-filter tracking, ByteTrack, or BoT-SORT.
+Current live association is still greedy over candidate scores. It is **not** Hungarian assignment, a Kalman-filter tracker, ByteTrack, BoT-SORT, or OC-SORT. The existing high/low-confidence stages are ByteTrack-like in purpose, but remain SpectraTrack's own dependency-light implementation.
 
 ### Appearance cue
 
@@ -403,6 +412,8 @@ Important functions:
 - `crossvideo_descriptor()`
 - `build_cross_video_graph()`
 - `tracklet_similarity()`
+- `same_object_score()`
+- `reid_signal_scores()`
 - `write_html_report()`
 
 Batch defaults:
@@ -425,9 +436,15 @@ The current cross-video descriptor is model-free:
 - edge-orientation histogram;
 - up to six diverse tracklet gallery entries.
 
-Grouping is conservative complete-link clustering. Manual `SAME`, `DIFFERENT`, and `UNSURE` decisions can be exported from the HTML report and re-applied.
+Each retained tracklet also carries lightweight non-biometric summary cues: a live color histogram summary, mean box aspect ratio, mean frame-relative area, normalized start/end centers, and coarse motion direction when measurable.
 
-For `person`, graph semantics are explicitly `same_appearance_candidate`, not biometric identity.
+`same_object_score()` combines available evidence with explicit weights: appearance/gallery 0.45, color 0.20, shape 0.12, relative size 0.08, direction 0.08 and temporal context 0.07. Missing signals are omitted and the remaining weights are renormalized. Direction and temporal continuity are used only when two fragments come from the same video; cross-video camera geometry is not assumed comparable. The score is an engineering similarity score in `[0, 1]`, **not a calibrated probability**.
+
+Grouping remains conservative complete-link clustering. Non-overlapping fragments from the same video can rejoin one global object when all strong-match gates pass; overlapping same-video tracks remain incompatible unless a manual `SAME` decision is supplied. Manual `SAME`, `DIFFERENT`, and `UNSURE` decisions can still be exported from the HTML report and re-applied.
+
+Cross-video graph schema version 2 preserves legacy `entity_id` and edge `similarity` while adding `global_object_id`, per-signal scores and scoring metadata. A local `track_id` remains scoped to one video/track trajectory; `global_object_id` belongs to the graph grouping layer.
+
+For `person`, graph semantics remain explicitly `same_appearance_candidate`, not biometric identity.
 
 ## 13. Calibration
 
@@ -456,6 +473,8 @@ A synthetic tracker benchmark exists and CI runs:
 ```text
 python -m spectratrack.benchmark --frames 500 --targets 24
 ```
+
+The benchmark also runs deterministic identity-quality probes for a same-class crossing and for reappearance after a dropout longer than `max_missed`; either probe fails the benchmark when it produces an ID switch.
 
 Important gap: there is currently **no representative annotated detector benchmark for small-person recall in poor high-angle/night/compressed CCTV footage**. That is a top-priority task in `docs/PC_V03_PLAN.md`.
 

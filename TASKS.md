@@ -97,8 +97,9 @@ Engineering targets for the first offline validation set are recorded in `docs/P
 - There is no multi-scale or dedicated second person pass.
 - There is no annotated real-world person-recall benchmark.
 - Cross-video hand-built descriptors can confuse visually similar vehicles/animals.
-- Cross-video similarity thresholds are engineering defaults, not dataset-calibrated probabilities.
-- Greedy tracker association can make suboptimal assignments in dense crossings.
+- Cross-video multi-signal thresholds/weights are engineering defaults, not dataset-calibrated probabilities.
+- Dormant reactivation is conservative but can still confuse visually similar same-class objects; representative real occlusion data is not yet calibrated.
+- Greedy live tracker association can make suboptimal assignments in dense crossings.
 - Output video currently drops source audio.
 - Current HUD can become visually dense with many detections/tracks.
 - Lock refinement is display-side and is not fused back into tracker state.
@@ -118,7 +119,7 @@ Engineering targets for the first offline validation set are recorded in `docs/P
 - Consider a learned non-biometric object embedding for vehicles/animals if the hand-built descriptor ceiling is reached.
 - Decide whether LockRefiner should remain display-only or become a controlled tracker measurement source.
 - Consolidate older docs under `docs/` with this root architecture so stale descriptions do not diverge.
-- Version the session/cross-video schemas explicitly if they evolve beyond compatible additive changes.
+- Version the session schema explicitly if it evolves beyond compatible additive changes; cross-video graph is now schema version 2.
 
 ## Ideas not implemented
 
@@ -159,3 +160,17 @@ Profile DirectML pipeline, capture, detector cadence, future tiling, encoding an
 ### agent/qa
 
 Build real validation assets, benchmark harness, regression tests, branch-integration checks and release verification.
+
+## Active parallel work — Tracking / Re-ID
+
+Owner branch: `agent/tracking`.
+
+Implemented on the branch, pending merge:
+
+1. bounded multi-cue dormant reactivation for confirmed local tracks after long occlusion;
+2. deterministic crossing and long-reappearance ID-switch probes in the synthetic benchmark;
+3. multi-signal cross-video Re-ID scoring on top of the existing graph;
+4. explicit `global_object_id` separate from video-local `track_id`;
+5. regression coverage for long reappearance, false reactivation, missing appearance, dormant expiry/reset, same-video fragments, overlap rejection and graph compatibility.
+
+Deliberately not implemented in this pass: a new neural Re-ID dependency, biometric/person identification, detector changes, UI redesign, global/Hungarian assignment, Kalman-filter replacement, or a wholesale ByteTrack/BoT-SORT/OC-SORT rewrite. Those require representative real-video benchmark evidence first.
