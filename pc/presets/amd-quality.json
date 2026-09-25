@@ -1,0 +1,15 @@
+{
+  "camera_width": 1920,
+  "camera_height": 1080,
+  "camera_fps": 30,
+  "camera_backend": "dshow",
+  "reconnect_attempts": 4,
+  "reconnect_delay_ms": 250,
+  "profile": "quality",
+  "detect_every": 1,
+  "enhance": false,
+  "view": "normal",
+  "stabilize": false,
+  "no_cmc": false,
+  "no_appearance": false
+}

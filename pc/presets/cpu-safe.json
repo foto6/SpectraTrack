@@ -1,0 +1,16 @@
+{
+  "camera_width": 1280,
+  "camera_height": 720,
+  "camera_fps": 30,
+  "camera_backend": "dshow",
+  "reconnect_attempts": 3,
+  "reconnect_delay_ms": 350,
+  "profile": "speed",
+  "detect_every": 3,
+  "cpu": true,
+  "enhance": false,
+  "view": "normal",
+  "stabilize": false,
+  "no_cmc": false,
+  "no_appearance": false
+}
