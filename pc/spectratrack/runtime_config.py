@@ -5,6 +5,33 @@ from pathlib import Path
 from typing import Any
 
 
+PROFILE_NAMES = ("fast", "balanced", "high-quality", "max-recall")
+_PROFILE_ALIASES = {
+    "speed": "fast",
+    "quality": "high-quality",
+}
+_PROFILE_DETECT_EVERY = {
+    "fast": 3,
+    "balanced": 2,
+    "high-quality": 1,
+    "max-recall": 1,
+}
+
+
+def canonical_profile(value: str) -> str:
+    profile = _PROFILE_ALIASES.get(value, value)
+    if profile not in PROFILE_NAMES:
+        raise ValueError(
+            "profile must be fast, balanced, high-quality or max-recall "
+            "(legacy speed/quality aliases are still supported)"
+        )
+    return profile
+
+
+def profile_detect_every(value: str) -> int:
+    return _PROFILE_DETECT_EVERY[canonical_profile(value)]
+
+
 _ALLOWED: dict[str, type | tuple[type, ...]] = {
     "camera_width": int,
     "camera_height": int,
@@ -32,6 +59,7 @@ _ALLOWED: dict[str, type | tuple[type, ...]] = {
     "no_appearance": bool,
     "calibration": str,
     "session_log": str,
+    "perf_report": str,
     "record": str,
     "headless": bool,
     "max_frames": int,
@@ -59,8 +87,7 @@ def load_runtime_config(path: str | Path) -> dict[str, Any]:
 
     if out.get("camera_backend", "auto") not in {"auto", "dshow", "msmf"}:
         raise ValueError("camera_backend must be auto, dshow or msmf")
-    if out.get("profile", "balanced") not in {"quality", "balanced", "speed"}:
-        raise ValueError("profile must be quality, balanced or speed")
+    canonical_profile(out.get("profile", "balanced"))
     if out.get("detector_mode", "standard") not in {"standard", "people-recall"}:
         raise ValueError("detector_mode must be standard or people-recall")
     if not 0.0 <= float(out.get("person_conf", 0.12)) <= 1.0:

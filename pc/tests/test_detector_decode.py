@@ -204,3 +204,74 @@ def test_people_recall_adaptive_still_uses_a1_final_nms(monkeypatch):
     assert captured["regions"] == [(0, 0, 400, 400), (400, 0, 800, 400)]
     assert len(detections) == 1
     assert detections[0].score == pytest.approx(0.80)
+
+
+
+def _instrumented_fake_detector():
+    class FakeSession:
+        def __init__(self):
+            self.calls = 0
+
+        def run(self, _outputs, _feeds):
+            self.calls += 1
+            rows = [
+                [5 + i, 5 + i, 20 + i, 30 + i, 0.9, 0]
+                for i in range(10)
+            ]
+            return [np.asarray([rows], dtype=np.float32)]
+
+    detector = YoloOnnxDetector.__new__(YoloOnnxDetector)
+    detector.input_w = 64
+    detector.input_h = 64
+    detector.input_name = "images"
+    detector.session = FakeSession()
+    detector.labels = ["person"] + [f"c{i}" for i in range(1, 80)]
+    detector.conf_threshold = 0.3
+    detector.iou_threshold = 0.45
+    detector.class_thresholds = {}
+    detector.last_stage_ms = {}
+    detector.last_inference_calls = 0
+    return detector
+
+
+def test_detector_records_preprocess_inference_and_postprocess_timings():
+    detector = _instrumented_fake_detector()
+    detections = detector.detect(np.zeros((64, 64, 3), dtype=np.uint8))
+
+    assert detections
+    assert set(detector.last_stage_ms) == {"preprocess", "inference", "postprocess"}
+    assert all(value >= 0.0 for value in detector.last_stage_ms.values())
+    assert detector.last_inference_calls == 1
+
+
+def test_people_recall_counts_all_raw_tile_inference_calls():
+    detector = _instrumented_fake_detector()
+    frame = np.zeros((64, 128, 3), dtype=np.uint8)
+
+    detector.detect_people_recall(
+        frame,
+        person_threshold=0.18,
+        tile_size=64,
+        tile_overlap=0.0,
+        enhancement_mode="off",
+    )
+
+    assert detector.last_inference_calls == 3
+    assert detector.session.calls == 3
+    assert detector.last_stage_ms["inference"] >= 0.0
+
+
+def test_adaptive_people_recall_counts_enhanced_inference_calls():
+    detector = _instrumented_fake_detector()
+    frame = np.full((64, 128, 3), 12, dtype=np.uint8)
+
+    detector.detect_people_recall(
+        frame,
+        person_threshold=0.18,
+        tile_size=64,
+        tile_overlap=0.0,
+        enhancement_mode="adaptive",
+    )
+
+    assert detector.last_inference_calls == 5
+    assert detector.session.calls == 5

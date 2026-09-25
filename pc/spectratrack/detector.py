@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 from typing import Iterable, Mapping
 
 import cv2
@@ -204,6 +205,8 @@ class YoloOnnxDetector:
         self.conf_threshold = float(conf_threshold)
         self.iou_threshold = float(iou_threshold)
         self.labels = list(labels or COCO80)
+        self.last_stage_ms: dict[str, float] = {}
+        self.last_inference_calls = 0
         self.class_thresholds = {
             str(label).lower(): float(value)
             for label, value in (class_thresholds or {}).items()
@@ -253,7 +256,16 @@ class YoloOnnxDetector:
         canvas[top:top + nh, left:left + nw] = resized
         return canvas, scale, float(left), float(top)
 
+    def _reset_policy_metrics(self) -> None:
+        self.last_stage_ms = {}
+        self.last_inference_calls = 0
+
+    def _add_stage_ms(self, name: str, started: float) -> None:
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        self.last_stage_ms[name] = self.last_stage_ms.get(name, 0.0) + elapsed_ms
+
     def detect(self, frame_bgr: np.ndarray) -> list[Detection]:
+        self._reset_policy_metrics()
         return self._detect_once(frame_bgr, self.class_thresholds)
 
     def detect_people_recall(
@@ -278,6 +290,7 @@ class YoloOnnxDetector:
         if enhancement_mode == "adaptive" and person_threshold <= 0.0:
             raise ValueError("adaptive people-recall requires person_threshold > 0")
 
+        self._reset_policy_metrics()
         thresholds = dict(self.class_thresholds)
         thresholds["person"] = float(person_threshold)
         combined = self._detect_once(frame_bgr, thresholds)
@@ -332,12 +345,19 @@ class YoloOnnxDetector:
         frame_bgr: np.ndarray,
         class_thresholds: Mapping[str, float] | None = None,
     ) -> list[Detection]:
+        preprocess_started = time.perf_counter()
         image, scale, pad_x, pad_y = self._letterbox(frame_bgr)
         rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         blob = rgb.astype(np.float32) / 255.0
         blob = np.transpose(blob, (2, 0, 1))[None, ...]
+        self._add_stage_ms("preprocess", preprocess_started)
 
+        inference_started = time.perf_counter()
         outputs = self.session.run(None, {self.input_name: blob})
+        self.last_inference_calls += 1
+        self._add_stage_ms("inference", inference_started)
+
+        postprocess_started = time.perf_counter()
         pred = np.asarray(outputs[0])
         pred = np.squeeze(pred)
         if pred.ndim != 2:
@@ -351,11 +371,13 @@ class YoloOnnxDetector:
 
         h, w = frame_bgr.shape[:2]
         if _looks_like_end2end(pred, len(self.labels)):
-            return decode_end2end_predictions(
+            detections = decode_end2end_predictions(
                 pred, w, h, self.input_w, self.input_h,
                 scale, pad_x, pad_y, self.labels,
                 self.conf_threshold, self.iou_threshold, class_thresholds,
             )
+            self._add_stage_ms("postprocess", postprocess_started)
+            return detections
 
         boxes_xywh = pred[:, :4]
         class_scores = pred[:, 4:]
@@ -369,6 +391,7 @@ class YoloOnnxDetector:
             class_thresholds,
         )
         if not np.any(mask):
+            self._add_stage_ms("postprocess", postprocess_started)
             return []
 
         boxes_xywh = boxes_xywh[mask]
@@ -400,4 +423,5 @@ class YoloOnnxDetector:
             cid = int(class_ids[i])
             label = self.labels[cid] if 0 <= cid < len(self.labels) else f"class_{cid}"
             detections.append(Detection((x1, y1, x2, y2), float(scores[i]), cid, label))
+        self._add_stage_ms("postprocess", postprocess_started)
         return detections
