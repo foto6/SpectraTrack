@@ -17,6 +17,7 @@ from .metrics import StageTimer
 from .model_manifest import ModelManifest
 from .motion import GlobalMotionEstimator
 from .session import SessionRecorder
+from .snapshot_meta import write_snapshot_metadata
 from .stabilize import VideoStabilizer
 from .tracker import MultiObjectTracker
 
@@ -355,7 +356,18 @@ def main() -> int:
                         if crop is not None:
                             stamp = time.strftime("%Y%m%d-%H%M%S")
                             raw_path = snapshots / f"T{tr.track_id:03d}-{stamp}.png"
-                            cv2.imwrite(str(raw_path), crop)
+                            if not cv2.imwrite(str(raw_path), crop):
+                                raise RuntimeError(f"Failed to write snapshot: {raw_path}")
+                            write_snapshot_metadata(
+                                raw_path,
+                                track=tr,
+                                frame_index=frame_index,
+                                model_sha256=model_hash,
+                                view_mode=view_mode,
+                                calibration=calibration,
+                                source=str(args.source),
+                                classification="SOURCE_CROP",
+                            )
                             print(f"saved {raw_path}")
                             if recorder:
                                 recorder.event("snapshot", track_id=tr.track_id, path=str(raw_path))
@@ -366,6 +378,17 @@ def main() -> int:
                                     out_path = raw_path.with_name(raw_path.stem + "-x4.png")
                                     try:
                                         run_realesrgan_snapshot(args.realesrgan, raw_path, out_path, 4)
+                                        write_snapshot_metadata(
+                                            out_path,
+                                            track=tr,
+                                            frame_index=frame_index,
+                                            model_sha256=model_hash,
+                                            view_mode=view_mode,
+                                            calibration=calibration,
+                                            source=str(args.source),
+                                            classification="AI_ENHANCED",
+                                            derived_from=raw_path,
+                                        )
                                         print(f"upscaled {out_path}")
                                         if recorder:
                                             recorder.event("ai_upscale", track_id=tr.track_id, path=str(out_path))
