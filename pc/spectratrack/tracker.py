@@ -206,6 +206,17 @@ class MultiObjectTracker:
         )
         return score if score >= self.reactivation_min_score else None
 
+    def _advance_dormant_geometry(
+        self,
+        camera_motion: tuple[float, float],
+        camera_transform: tuple[float, float, float, float, float, float] | None,
+    ) -> None:
+        for track, _ in self._dormant_tracks.values():
+            if camera_transform is not None:
+                track.bbox = transform_box(track.bbox, camera_transform)
+            else:
+                track.bbox = shift_box(track.bbox, *camera_motion)
+
     def _age_dormant_tracks(self) -> None:
         if not self._dormant_tracks:
             return
@@ -331,6 +342,8 @@ class MultiObjectTracker:
         This does not increment missed because no detector observation was
         expected on this frame.
         """
+        if self._dormant_tracks:
+            self._advance_dormant_geometry(camera_motion, camera_transform)
         for track in self.tracks.values():
             track.bbox = self._predicted_box(track, camera_motion, camera_transform)
             track.age += 1
@@ -345,6 +358,7 @@ class MultiObjectTracker:
         camera_transform: tuple[float, float, float, float, float, float] | None = None,
     ) -> list[Track]:
         if self._dormant_tracks:
+            self._advance_dormant_geometry(camera_motion, camera_transform)
             self._age_dormant_tracks()
         detections = [d for d in detections if d.score >= self.low_conf]
         all_tracks = set(self.tracks)
