@@ -5,7 +5,7 @@
   "camera_backend": "dshow",
   "reconnect_attempts": 4,
   "reconnect_delay_ms": 250,
-  "profile": "high-quality",
+  "profile": "quality",
   "detect_every": 1,
   "enhance": false,
   "view": "normal",
