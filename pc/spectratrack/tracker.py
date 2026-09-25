@@ -66,9 +66,10 @@ def transform_box(box: BBox, affine: tuple[float, float, float, float, float, fl
 class MultiObjectTracker:
     """Dependency-light two-stage tracker with camera-motion compensation.
 
-    High-confidence detections can create tracks. Lower-confidence detections are
-    used only to keep an existing track alive. Track velocity is stored as
-    residual image motion after subtracting estimated global camera translation.
+    High-confidence detections create tracks by default. Optional class-specific
+    creation thresholds can admit lower-confidence tentative tracks; confirmation
+    still requires repeated hits. Track velocity is stored as residual image
+    motion after subtracting estimated global camera translation.
     """
 
     def __init__(
