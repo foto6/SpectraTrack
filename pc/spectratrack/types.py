@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from collections import deque
+from dataclasses import dataclass, field
 from typing import Deque, Tuple
 
 BBox = Tuple[float, float, float, float]
@@ -32,7 +32,9 @@ class Track:
     missed: int = 0
     vx: float = 0.0
     vy: float = 0.0
-    history: Deque[tuple[int, int]] = field(default_factory=lambda: deque(maxlen=48))
+    confirmed: bool = False
+    association_score: float = 0.0
+    history: Deque[tuple[int, int]] = field(default_factory=lambda: deque(maxlen=64))
 
     @property
     def center(self) -> tuple[float, float]:
@@ -46,3 +48,13 @@ class Track:
     @property
     def height(self) -> float:
         return max(0.0, self.bbox[3] - self.bbox[1])
+
+    @property
+    def speed_px_per_frame(self) -> float:
+        return (self.vx * self.vx + self.vy * self.vy) ** 0.5
+
+    @property
+    def state(self) -> str:
+        if self.missed > 0:
+            return "COAST"
+        return "LOCK" if self.confirmed else "TENTATIVE"
