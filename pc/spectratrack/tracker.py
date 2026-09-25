@@ -85,8 +85,8 @@ class MultiObjectTracker:
         if not 0.0 <= low_conf <= high_conf <= 1.0:
             raise ValueError("Require 0 <= low_conf <= high_conf <= 1")
         creation_thresholds = dict(creation_thresholds or {})
-        if any(not low_conf <= threshold <= 1.0 for threshold in creation_thresholds.values()):
-            raise ValueError("creation thresholds must be between low_conf and 1")
+        if any(not 0.0 <= threshold <= 1.0 for threshold in creation_thresholds.values()):
+            raise ValueError("creation thresholds must be between 0 and 1")
         self.max_missed = int(max_missed)
         self.min_iou = float(min_iou)
         self.max_center_ratio = float(max_center_ratio)
@@ -224,7 +224,11 @@ class MultiObjectTracker:
         camera_motion: tuple[float, float] = (0.0, 0.0),
         camera_transform: tuple[float, float, float, float, float, float] | None = None,
     ) -> list[Track]:
-        detections = [d for d in detections if d.score >= self.low_conf]
+        detections = [
+            d
+            for d in detections
+            if d.score >= min(self.low_conf, self.creation_thresholds.get(d.class_id, self.low_conf))
+        ]
         all_tracks = set(self.tracks)
         high = {i for i, d in enumerate(detections) if d.score >= self.high_conf}
         low = set(range(len(detections))) - high

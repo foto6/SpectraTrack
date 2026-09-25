@@ -186,8 +186,30 @@ def test_weak_class_specific_candidate_requires_repeated_hits_to_confirm():
     assert third.confirmed
 
 
-def test_creation_threshold_cannot_bypass_tracker_low_conf_floor():
+def test_class_specific_creation_threshold_can_lower_floor_only_for_that_class():
+    tracker = MultiObjectTracker(
+        high_conf=0.45,
+        low_conf=0.12,
+        min_hits=3,
+        creation_thresholds={0: 0.08},
+    )
+    people = tracker.update([d(10, 10, cls=0, score=0.09)])
+    assert len(people) == 1
+    assert not people[0].confirmed
+
+    other = MultiObjectTracker(
+        high_conf=0.45,
+        low_conf=0.12,
+        min_hits=3,
+        creation_thresholds={0: 0.08},
+    )
+    assert other.update([d(10, 10, cls=2, score=0.09)]) == []
+
+
+def test_creation_threshold_rejects_out_of_range_values():
     import pytest
 
     with pytest.raises(ValueError):
-        MultiObjectTracker(low_conf=0.12, creation_thresholds={0: 0.08})
+        MultiObjectTracker(creation_thresholds={0: -0.01})
+    with pytest.raises(ValueError):
+        MultiObjectTracker(creation_thresholds={0: 1.01})
