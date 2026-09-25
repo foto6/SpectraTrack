@@ -14,6 +14,7 @@ from .crossvideo import TrackletSummary, build_cross_video_graph, normalize_desc
 from .detector import YoloOnnxDetector
 from .enhance import crop_with_margin
 from .integrity import sha256_file
+from .motion import GlobalMotionEstimator
 from .tracker import MultiObjectTracker
 
 
@@ -114,6 +115,7 @@ def analyze_video(
     props = capture.actual_properties()
     fps = float(props["fps"])
     tracker = MultiObjectTracker()
+    motion = GlobalMotionEstimator()
     accumulators: dict[int, _Accumulator] = {}
     frame_index = 0
 
@@ -124,15 +126,25 @@ def analyze_video(
                 break
             frame = read.frame
             frame_index += 1
+            cam = motion.update(frame)
+            camera_shift = (cam.dx, cam.dy) if cam.valid else (0.0, 0.0)
+            camera_transform = cam.affine if cam.valid else None
             should_detect = ((frame_index - 1) % detect_every) == 0
             if should_detect:
                 detections = detector.detect(frame)
                 if class_filter:
                     detections = [d for d in detections if d.label.lower() in class_filter]
                 attach_appearance(frame, detections)
-                tracks = tracker.update(detections)
+                tracks = tracker.update(
+                    detections,
+                    camera_motion=camera_shift,
+                    camera_transform=camera_transform,
+                )
             else:
-                tracks = tracker.predict_only()
+                tracks = tracker.predict_only(
+                    camera_motion=camera_shift,
+                    camera_transform=camera_transform,
+                )
 
             if should_detect:
                 for tr in tracks:
