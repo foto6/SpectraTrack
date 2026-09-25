@@ -117,15 +117,40 @@ def _video_metadata(path: Path) -> dict[str, Any]:
 
 
 def _coverage_for_frame(frame) -> set[str]:
-    coverage = {_normalize_token(tag) for tag in frame.tags}
+    frame_tags = {_normalize_token(tag) for tag in frame.tags}
     people = [obj for obj in frame.objects if obj.label == "person"]
     valid_people = [obj for obj in people if not obj.ignore]
-    if people:
-        coverage.discard("negative")
-    else:
+
+    coverage = {
+        tag
+        for tag in frame_tags
+        if tag
+        in {
+            "night_dark",
+            "motion_blur",
+            "compression",
+            "high_angle_cctv",
+            "camera_motion",
+        }
+    }
+    if not people:
         coverage.add("negative")
+
+    person_categories = {
+        "tiny_person",
+        "distant_person",
+        "normal_person",
+        "partial_occlusion",
+        "heavy_occlusion",
+    }
+    if valid_people:
+        coverage.update(frame_tags & person_categories)
+    if len(valid_people) >= 2 and "crossing_people" in frame_tags:
+        coverage.add("crossing_people")
+
     for obj in valid_people:
-        coverage.update(_normalize_token(attribute) for attribute in obj.attributes)
+        object_tags = {_normalize_token(attribute) for attribute in obj.attributes}
+        coverage.update(object_tags & person_categories)
         if obj.bbox[3] - obj.bbox[1] < 24:
             coverage.add("tiny_person")
     return coverage
