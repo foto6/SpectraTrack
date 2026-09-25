@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
 import time
@@ -504,7 +504,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         "corpus_revision": args.corpus_revision,
         "ground_truth_sha256": ground_truth_sha256(args.ground_truth),
         "backend": args.backend,
-        "backend_spec": BACKEND_SPECS[args.backend].__dict__,
+        "backend_spec": asdict(BACKEND_SPECS[args.backend]),
         "model": str(args.model),
         "model_sha256": sha256_file(args.model),
         "providers": adapter.providers,
@@ -574,7 +574,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _build_parser().parse_args()
     if args.command == "specs":
-        payload = {name: spec.__dict__ for name, spec in BACKEND_SPECS.items()}
+        payload = {name: asdict(spec) for name, spec in BACKEND_SPECS.items()}
         text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
         if args.output:
             Path(args.output).write_text(text, encoding="utf-8")
@@ -593,7 +593,7 @@ def main() -> int:
             "backend": args.backend,
             "model": str(model_path),
             "model_sha256": sha256_file(model_path),
-            "spec": BACKEND_SPECS[args.backend].__dict__,
+            "spec": asdict(BACKEND_SPECS[args.backend]),
             "contract": adapter.contract(),
             "providers": adapter.providers,
             "quality_evidence": False,
