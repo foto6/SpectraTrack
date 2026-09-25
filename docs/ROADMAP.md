@@ -15,6 +15,11 @@
 
 ## PC
 
+Highest-priority next milestone: **high-recall small-pedestrian detection for high-angle/night/compressed footage**.
+See [PC_V03_PLAN.md](PC_V03_PLAN.md). The implementation path is person-only high-resolution/tiled inference,
+class-specific thresholds, temporal confirmation/recovery, benchmark-driven model selection, and explicit
+offline quality-max vs live performance modes.
+
 1. Upgrade tracker to BoT-SORT/ByteTrack-style association with optional ReID.
 2. Camera-motion compensation before association.
 3. Optional SAM-style target segmentation for precise mask lock.
