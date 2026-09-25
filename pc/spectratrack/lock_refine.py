@@ -24,11 +24,13 @@ class LockRefiner:
         self.track_id: int | None = None
         self.prev_gray: np.ndarray | None = None
         self.points: np.ndarray | None = None
+        self.prev_bbox: BBox | None = None
 
     def reset(self) -> None:
         self.track_id = None
         self.prev_gray = None
         self.points = None
+        self.prev_bbox = None
 
     def initialize(self, frame_bgr: np.ndarray, track_id: int, bbox: BBox) -> bool:
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
@@ -59,6 +61,7 @@ class LockRefiner:
         self.track_id = track_id
         self.prev_gray = gray
         self.points = points
+        self.prev_bbox = bbox
         return points is not None and len(points) >= 6
 
     def update(self, frame_bgr: np.ndarray, track_id: int, bbox: BBox) -> RefineResult:
@@ -103,7 +106,8 @@ class LockRefiner:
             self.initialize(frame_bgr, track_id, bbox)
             return RefineResult(bbox, False, count, ratio)
 
-        x1, y1, x2, y2 = bbox
+        source_bbox = self.prev_bbox if self.prev_bbox is not None else bbox
+        x1, y1, x2, y2 = source_bbox
         corners = np.array([
             [x1, y1, 1.0],
             [x2, y1, 1.0],
@@ -114,4 +118,5 @@ class LockRefiner:
         xs = transformed[:, 0]
         ys = transformed[:, 1]
         refined = (float(xs.min()), float(ys.min()), float(xs.max()), float(ys.max()))
+        self.prev_bbox = refined
         return RefineResult(refined, True, count, ratio)

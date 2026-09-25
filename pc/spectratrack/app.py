@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import time
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from .detector import YoloOnnxDetector
 from .enhance import DISPLAY_MODES, apply_display_mode, crop_with_margin, enhance_visibility, run_realesrgan_snapshot
 from .hud import compose_hud
 from .integrity import sha256_file, verify_sha256
+from .lock_refine import LockRefiner
 from .metrics import StageTimer
 from .model_manifest import ModelManifest
 from .motion import GlobalMotionEstimator
@@ -107,6 +109,7 @@ def main() -> int:
     tracker = MultiObjectTracker()
     stabilizer = VideoStabilizer()
     motion = GlobalMotionEstimator()
+    lock_refiner = LockRefiner()
     timings = StageTimer()
 
     source = parse_source(args.source)
@@ -219,6 +222,7 @@ def main() -> int:
                 motion.reset()
                 stabilizer.reset()
                 tracker.reset()
+                lock_refiner.reset()
                 state.selected_id = None
                 previous_track_state.clear()
                 if recorder:
@@ -296,6 +300,36 @@ def main() -> int:
                 if recorder:
                     recorder.event("target_lost", selected_id=state.selected_id)
                 state.selected_id = None
+                lock_refiner.reset()
+
+            display_tracks = tracks
+            lock_refine_info = None
+            if state.selected_id is None:
+                if lock_refiner.track_id is not None:
+                    lock_refiner.reset()
+            else:
+                selected = next((t for t in tracks if t.track_id == state.selected_id), None)
+                if selected is not None:
+                    # Re-anchor optical flow whenever the detector has a fresh
+                    # observation. Use flow only between detector observations
+                    # or during a short detector miss to avoid double-applying
+                    # the same motion to an already-current detector box.
+                    if should_detect and selected.missed == 0:
+                        lock_refiner.initialize(frame, selected.track_id, selected.bbox)
+                    else:
+                        refined = lock_refiner.update(frame, selected.track_id, selected.bbox)
+                        lock_refine_info = {
+                            "valid": bool(refined.valid),
+                            "inliers": int(refined.inliers),
+                            "inlier_ratio": round(float(refined.inlier_ratio), 4),
+                        }
+                        if refined.valid:
+                            refined_track = copy.copy(selected)
+                            refined_track.bbox = refined.bbox
+                            display_tracks = [
+                                refined_track if t.track_id == selected.track_id else t
+                                for t in tracks
+                            ]
 
             now = time.perf_counter()
             inst = 1.0 / max(now - last_tick, 1e-6)
@@ -320,13 +354,14 @@ def main() -> int:
             if hud_enabled:
                 with timings.measure("hud"):
                     output = compose_hud(
-                        display_frame, tracks, state.selected_id, fps,
+                        display_frame, display_tracks, state.selected_id, fps,
                         "+".join(detector.providers), enhancement,
                         timings_ms=timing_snapshot,
                         camera_motion=camera_motion_info,
                         calibration=calibration,
                         view_mode=view_mode,
                         capture_stats=capture.stats(),
+                        lock_refine=lock_refine_info,
                     )
             else:
                 output = display_frame
@@ -336,6 +371,7 @@ def main() -> int:
                     frame_index, tracks, state.selected_id, fps,
                     timings_ms=timing_snapshot,
                     camera_motion=camera_motion_info,
+                    selected_refine=lock_refine_info,
                 )
 
             if args.record:
@@ -373,11 +409,13 @@ def main() -> int:
                     stabilizer.reset()
                     motion.reset()
                     tracker.reset()
+                    lock_refiner.reset()
                     state.selected_id = None
                     if recorder:
                         recorder.event("stabilize", enabled=stabilization)
                 elif key == ord("r"):
                     tracker.reset()
+                    lock_refiner.reset()
                     state.selected_id = None
                     if recorder:
                         recorder.event("tracker_reset")

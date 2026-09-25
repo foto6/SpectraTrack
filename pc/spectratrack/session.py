@@ -28,6 +28,7 @@ class SessionRecorder:
         fps: float,
         timings_ms: dict[str, float] | None = None,
         camera_motion: tuple[float, float, float] | None = None,
+        selected_refine: dict | None = None,
     ) -> None:
         packed = []
         for tr in tracks:
@@ -56,6 +57,7 @@ class SessionRecorder:
             "fps": round(float(fps), 3),
             "selected_id": selected_id,
             "camera_motion": list(camera_motion) if camera_motion is not None else None,
+            "selected_refine": selected_refine,
             "timings_ms": timings_ms or {},
             "tracks": packed,
         })

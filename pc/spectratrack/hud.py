@@ -84,6 +84,7 @@ def compose_hud(
     calibration: CameraCalibration | None = None,
     view_mode: str = "normal",
     capture_stats: dict[str, int] | None = None,
+    lock_refine: dict | None = None,
 ) -> np.ndarray:
     base = frame.copy()
     h, w = base.shape[:2]
@@ -159,6 +160,14 @@ def compose_hud(
             f"AGE      {selected.age}",
             f"MISSED   {selected.missed}",
         ]
+        if lock_refine is not None:
+            if lock_refine.get("valid"):
+                lines.append(
+                    f"LOCKFLOW {lock_refine.get('inliers', 0)} "
+                    f"R{float(lock_refine.get('inlier_ratio', 0.0)):.2f}"
+                )
+            else:
+                lines.append("LOCKFLOW RE-ANCHOR")
         if calibration is not None:
             lines += _calibrated_lines(calibration, selected, w, h)
         for line in lines:
