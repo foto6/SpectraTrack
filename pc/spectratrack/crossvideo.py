@@ -23,6 +23,7 @@ class TrackletSummary:
     fps: float
     descriptor: tuple[float, ...] | None
     preview_path: str | None = None
+    gallery: tuple[tuple[float, ...], ...] = ()
 
     @property
     def key(self) -> str:
@@ -34,6 +35,7 @@ class TrackletSummary:
         data["start_s"] = round(self.first_frame / self.fps, 3) if self.fps > 0 else None
         data["end_s"] = round(self.last_frame / self.fps, 3) if self.fps > 0 else None
         data.pop("descriptor", None)
+        data.pop("gallery", None)
         return data
 
 
@@ -53,6 +55,27 @@ def descriptor_similarity(a: tuple[float, ...] | None, b: tuple[float, ...] | No
     if na <= 1e-12 or nb <= 1e-12:
         return None
     return max(0.0, min(1.0, sum(x * y for x, y in zip(a, b)) / (na * nb)))
+
+
+def tracklet_similarity(left: TrackletSummary, right: TrackletSummary) -> float | None:
+    base = descriptor_similarity(left.descriptor, right.descriptor)
+    if not left.gallery or not right.gallery:
+        return base
+
+    pair_scores = []
+    for a in left.gallery:
+        for b in right.gallery:
+            score = descriptor_similarity(a, b)
+            if score is not None:
+                pair_scores.append(score)
+    if not pair_scores:
+        return base
+    pair_scores.sort(reverse=True)
+    count = min(3, len(pair_scores))
+    gallery_score = sum(pair_scores[:count]) / count
+    if base is None:
+        return gallery_score
+    return max(0.0, min(1.0, gallery_score * 0.70 + base * 0.30))
 
 
 def _relation(label: str) -> str:
@@ -88,7 +111,7 @@ def build_cross_video_graph(
             right = items[j]
             if left.video == right.video or left.class_id != right.class_id:
                 continue
-            sim = descriptor_similarity(left.descriptor, right.descriptor)
+            sim = tracklet_similarity(left, right)
             if sim is None:
                 continue
             similarities[(i, j)] = sim
@@ -150,7 +173,7 @@ def build_cross_video_graph(
     edges.sort(key=lambda e: (-e["similarity"], e["left"], e["right"]))
     return {
         "schema_version": 1,
-        "descriptor": "hsv-track-appearance-v1",
+        "descriptor": "spatial-hsv-gray-edge-gallery-v2",
         "thresholds": {
             "candidate": float(candidate_threshold),
             "strong": float(strong_threshold),

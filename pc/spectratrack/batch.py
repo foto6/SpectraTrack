@@ -8,7 +8,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .appearance import attach_appearance
+from .appearance import attach_appearance, crossvideo_descriptor
 from .capture import CaptureConfig, RobustCapture
 from .crossvideo import TrackletSummary, build_cross_video_graph, normalize_descriptor
 from .detector import YoloOnnxDetector
@@ -36,6 +36,7 @@ class _Accumulator:
     best_frame: int = 0
     descriptor_sum: np.ndarray | None = None
     best_crop: np.ndarray | None = None
+    gallery: list[tuple[float, ...]] | None = None
 
     def add(
         self,
@@ -47,11 +48,24 @@ class _Accumulator:
         bbox: tuple[float, float, float, float],
     ) -> None:
         arr = np.asarray(descriptor, dtype=np.float64)
+        if self.gallery is None:
+            self.gallery = []
         if self.descriptor_sum is None:
             self.descriptor_sum = np.zeros_like(arr)
         if self.descriptor_sum.shape != arr.shape:
             return
         self.descriptor_sum += arr
+        if len(self.gallery) < 6:
+            keep = True
+            for existing in self.gallery:
+                a = np.asarray(existing, dtype=np.float64)
+                denom = float(np.linalg.norm(a) * np.linalg.norm(arr))
+                similarity = float(np.dot(a, arr) / denom) if denom > 1e-12 else 0.0
+                if similarity >= 0.985:
+                    keep = False
+                    break
+            if keep:
+                self.gallery.append(tuple(float(v) for v in arr))
         self.last_frame = frame_index
         self.observations += 1
         self.score_sum += float(score)
@@ -80,6 +94,7 @@ class _Accumulator:
             fps=float(fps),
             descriptor=descriptor,
             preview_path=preview_path,
+            gallery=tuple(self.gallery or ()),
         )
 
 
@@ -175,11 +190,14 @@ def analyze_video(
                             last_frame=frame_index,
                         )
                         accumulators[tr.track_id] = acc
+                    descriptor = crossvideo_descriptor(frame, tr.bbox)
+                    if descriptor is None:
+                        continue
                     acc.add(
                         frame_index,
                         tr.last_detection_score or tr.score,
                         tr.quality,
-                        tr.appearance,
+                        descriptor,
                         frame,
                         tr.bbox,
                     )
