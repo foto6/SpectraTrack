@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 import argparse
-import os
 import time
 from pathlib import Path
 
 import cv2
 
+from .calibration import CameraGeometry
+from .capture import open_capture
+from .cmc import CameraMotionEstimator, MotionEstimate
 from .detector import YoloOnnxDetector
-from .enhance import crop_with_margin, enhance_visibility, run_realesrgan_snapshot
+from .enhance import ENHANCE_MODES, apply_enhancement, crop_with_margin, next_enhancement_mode, run_realesrgan_snapshot
 from .hud import compose_hud
-from .tracker import MultiObjectTracker
+from .metrics import RollingProfiler
+from .recording import SessionRecorder
 from .stabilize import VideoStabilizer
+from .tracker import MultiObjectTracker, TrackerConfig
 
 
 class UiState:
@@ -21,22 +25,25 @@ class UiState:
         self.frame_width = 0
 
 
-def parse_source(text: str):
-    return int(text) if text.isdigit() else text
-
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description="SpectraTrack local object detection/tracking HUD")
+    parser = argparse.ArgumentParser(description="SpectraTrack PC v0.2 local object detection/tracking HUD")
     parser.add_argument("--model", required=True, help="Path to YOLOv8/YOLO11-style ONNX model")
     parser.add_argument("--source", default="0", help="Camera index or video path")
     parser.add_argument("--input-size", type=int, default=640)
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--iou", type=float, default=0.45)
     parser.add_argument("--cpu", action="store_true", help="Disable DirectML preference")
-    parser.add_argument("--enhance", action="store_true", help="Start with visibility enhancement enabled")
+    parser.add_argument("--enhance-mode", choices=ENHANCE_MODES, default="off")
     parser.add_argument("--stabilize", action="store_true", help="Start with optical stabilization enabled")
+    parser.add_argument("--cmc", action=argparse.BooleanOptionalAction, default=True, help="Camera-motion compensation")
+    parser.add_argument("--hfov", type=float, default=None, help="Calibrated/known horizontal camera FOV in degrees")
+    parser.add_argument("--track-high", type=float, default=0.45)
+    parser.add_argument("--track-low", type=float, default=0.12)
+    parser.add_argument("--new-track", type=float, default=0.55)
+    parser.add_argument("--max-missed", type=int, default=24)
+    parser.add_argument("--session-dir", default="", help="Write JSONL telemetry sessions under this directory")
     parser.add_argument("--realesrgan", default="", help="Optional path to official realesrgan-ncnn-vulkan executable")
-    parser.add_argument("--record", default="", help="Optional output video path")
+    parser.add_argument("--record", default="", help="Optional annotated output video path")
     args = parser.parse_args()
 
     model = Path(args.model)
@@ -44,27 +51,43 @@ def main() -> int:
         raise SystemExit(f"Model not found: {model}")
 
     detector = YoloOnnxDetector(model, args.input_size, args.conf, args.iou, prefer_gpu=not args.cpu)
-    tracker = MultiObjectTracker()
+    tracker = MultiObjectTracker(config=TrackerConfig(
+        high_conf=args.track_high,
+        low_conf=args.track_low,
+        new_track_conf=args.new_track,
+        max_missed=args.max_missed,
+    ))
     stabilizer = VideoStabilizer()
+    cmc = CameraMotionEstimator()
+    profiler = RollingProfiler()
+    geometry = CameraGeometry(args.hfov)
 
-    source = parse_source(args.source)
-    if os.name == "nt" and isinstance(source, int):
-        cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
-    else:
-        cap = cv2.VideoCapture(source)
-    if not cap.isOpened():
-        raise SystemExit(f"Cannot open source: {args.source}")
+    try:
+        cap = open_capture(args.source)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
 
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     state = UiState()
     hud_enabled = True
-    enhancement = bool(args.enhance)
+    enhancement_mode = args.enhance_mode
     stabilization = bool(args.stabilize)
+    cmc_enabled = bool(args.cmc)
     last_tick = time.perf_counter()
     fps = 0.0
     writer = None
     snapshots = Path("snapshots")
     snapshots.mkdir(exist_ok=True)
+    frame_index = 0
+    recorder = None
+    if args.session_dir:
+        recorder = SessionRecorder(args.session_dir, {
+            "source": args.source,
+            "model": str(model),
+            "providers": detector.providers,
+            "input_size": args.input_size,
+            "horizontal_fov_deg": args.hfov,
+        })
+        print(f"session: {recorder.directory}")
 
     window = "SpectraTrack"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
@@ -73,7 +96,7 @@ def main() -> int:
         if event != cv2.EVENT_LBUTTONDOWN or x >= state.frame_width:
             return
         hit = None
-        for tr in state.tracks:
+        for tr in reversed(state.tracks):
             x1, y1, x2, y2 = tr.bbox
             if x1 <= x <= x2 and y1 <= y <= y2:
                 hit = tr.track_id
@@ -84,15 +107,39 @@ def main() -> int:
 
     try:
         while True:
+            frame_start = time.perf_counter()
             ok, frame = cap.read()
             if not ok:
                 break
+            frame_index += 1
             state.frame_width = frame.shape[1]
+
             if stabilization:
-                frame = stabilizer.apply(frame)
-            input_frame = enhance_visibility(frame) if enhancement else frame
-            detections = detector.detect(input_frame)
-            tracks = tracker.update(detections)
+                with profiler.measure("stabilize"):
+                    base_frame = stabilizer.apply(frame)
+            else:
+                base_frame = frame
+
+            previous_boxes = [tr.bbox for tr in state.tracks if tr.confirmed]
+            if cmc_enabled:
+                with profiler.measure("cmc"):
+                    motion = cmc.update(base_frame, previous_boxes)
+            else:
+                motion = MotionEstimate.identity()
+                cmc.reset()
+
+            with profiler.measure("enhance"):
+                analysis_frame = apply_enhancement(base_frame, enhancement_mode)
+
+            with profiler.measure("detect"):
+                detections = detector.detect(analysis_frame)
+
+            with profiler.measure("track"):
+                tracks = tracker.update(
+                    detections,
+                    camera_affine=motion.matrix if (cmc_enabled and motion.valid) else None,
+                )
+
             state.tracks = tracks
             if state.selected_id is not None and all(t.track_id != state.selected_id for t in tracks):
                 state.selected_id = None
@@ -101,11 +148,35 @@ def main() -> int:
             inst = 1.0 / max(now - last_tick, 1e-6)
             fps = inst if fps <= 0 else fps * 0.88 + inst * 0.12
             last_tick = now
+            profiler.add("frame", (now - frame_start) * 1000.0)
+            summary = profiler.summary()
 
             if hud_enabled:
-                output = compose_hud(input_frame, tracks, state.selected_id, fps, "+".join(detector.providers), enhancement)
+                output = compose_hud(
+                    analysis_frame,
+                    tracks,
+                    state.selected_id,
+                    fps,
+                    "+".join(detector.providers),
+                    enhancement_mode,
+                    metrics=summary,
+                    motion=motion,
+                    geometry=geometry,
+                    cmc_enabled=cmc_enabled,
+                    stabilization_enabled=stabilization,
+                )
             else:
-                output = input_frame
+                output = analysis_frame
+
+            if recorder is not None:
+                recorder.write_frame(
+                    frame_index,
+                    now,
+                    tracks,
+                    state.selected_id,
+                    motion.to_dict() if cmc_enabled else None,
+                    summary,
+                )
 
             if args.record:
                 if writer is None:
@@ -119,16 +190,20 @@ def main() -> int:
             if key in (ord("q"), 27):
                 break
             if key == ord("e"):
-                enhancement = not enhancement
+                enhancement_mode = next_enhancement_mode(enhancement_mode)
             elif key == ord("h"):
                 hud_enabled = not hud_enabled
+            elif key == ord("c"):
+                cmc_enabled = not cmc_enabled
+                cmc.reset()
             elif key == ord("z"):
                 stabilization = not stabilization
                 stabilizer.reset()
+                cmc.reset()
             elif key in (ord("s"), ord("u")) and state.selected_id is not None:
                 tr = next((t for t in tracks if t.track_id == state.selected_id), None)
                 if tr is not None:
-                    crop = crop_with_margin(frame, tr.bbox)
+                    crop = crop_with_margin(base_frame, tr.bbox)
                     if crop is not None:
                         stamp = time.strftime("%Y%m%d-%H%M%S")
                         raw_path = snapshots / f"T{tr.track_id:03d}-{stamp}.png"
@@ -148,7 +223,11 @@ def main() -> int:
         cap.release()
         if writer is not None:
             writer.release()
+        if recorder is not None:
+            recorder.close()
         cv2.destroyAllWindows()
+
+    print("performance:", profiler.summary())
     return 0
 
 

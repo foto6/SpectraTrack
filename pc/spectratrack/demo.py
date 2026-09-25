@@ -6,6 +6,8 @@ import time
 import cv2
 import numpy as np
 
+from .calibration import CameraGeometry
+from .cmc import MotionEstimate
 from .hud import compose_hud
 from .tracker import MultiObjectTracker
 from .types import Detection
@@ -28,14 +30,26 @@ def main() -> int:
             ("airplane", 4, 0.84, 510 + 300 * math.sin(t * 0.32), 115 + 38 * math.cos(t * 0.4), 210, 70),
         ]
         for label, cid, score, cx, cy, bw, bh in specs:
-            # Simulate short detector dropouts.
             if not (label == "person" and frame_i % 120 in range(78, 86)):
                 detections.append(Detection((cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2), score, cid, label))
 
         tracks = tracker.update(detections)
-        if selected is None and tracks:
-            selected = tracks[0].track_id
-        output = compose_hud(frame, tracks, selected, fps, "DEMO/SYNTHETIC", False)
+        confirmed = [tr for tr in tracks if tr.confirmed]
+        if selected is None and confirmed:
+            selected = confirmed[0].track_id
+        output = compose_hud(
+            frame,
+            tracks,
+            selected,
+            fps,
+            "DEMO/SYNTHETIC",
+            "off",
+            metrics={"detect_avg_ms": 0.0, "track_avg_ms": 0.2},
+            motion=MotionEstimate.identity(),
+            geometry=CameraGeometry(70.0),
+            cmc_enabled=False,
+            stabilization_enabled=False,
+        )
         cv2.imshow("SpectraTrack demo", output)
         key = cv2.waitKey(16) & 0xFF
         if key in (27, ord("q")):
