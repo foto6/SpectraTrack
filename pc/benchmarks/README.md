@@ -88,7 +88,7 @@ Saved results include:
 - false negatives;
 - false positives;
 - recall by apparent person height;
-- metrics by frame/object tags;
+- metrics by frame tags and recall by object attributes;
 - tracking recall on annotated frames;
 - ID switches;
 - track fragmentation;
@@ -96,7 +96,7 @@ Saved results include:
 - detector-only FPS;
 - exact model SHA-256 and providers;
 - exact ground-truth SHA-256;
-- detector settings.
+- requested and actual detector input dimensions plus threshold/provider settings.
 
 Portable DirectML/AMD VRAM measurement is not available through ONNX Runtime. `peak_vram_mb` remains null unless a real externally measured value is supplied with both `--peak-vram-mb` and `--vram-source`. Never fill it with an estimate.
 
