@@ -1,0 +1,2 @@
+{"type":"metadata","schema":"spectratrack-vnext-enhancement-roi-v1","source":"example-only","corpus_revision":null}
+{"type":"roi","video":"clip.mp4","frame":12,"roi_id":"clip-12-r0","bbox":[100,80,740,720],"signals":{"weak_person":true,"known_track":false,"uncertainty":true}}
