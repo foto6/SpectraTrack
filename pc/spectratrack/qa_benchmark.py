@@ -204,6 +204,81 @@ def _rates(counts: dict[str, int]) -> dict[str, float | int]:
     return {**counts, "precision": precision, "recall": recall}
 
 
+def _mean(values: list[float] | list[int]) -> float | None:
+    if not values:
+        return None
+    return float(sum(values)) / len(values)
+
+
+def _gt_relative_box(
+    truth_bbox: tuple[float, float, float, float],
+    predicted_bbox: tuple[float, float, float, float],
+) -> tuple[float, float, float, float]:
+    tx1, ty1, tx2, ty2 = truth_bbox
+    px1, py1, px2, py2 = predicted_bbox
+    truth_w = max(tx2 - tx1, 1e-12)
+    truth_h = max(ty2 - ty1, 1e-12)
+    truth_cx = (tx1 + tx2) * 0.5
+    truth_cy = (ty1 + ty2) * 0.5
+    return (
+        (px1 - truth_cx) / truth_w,
+        (py1 - truth_cy) / truth_h,
+        (px2 - truth_cx) / truth_w,
+        (py2 - truth_cy) / truth_h,
+    )
+
+
+def _bbox_stability_metrics(
+    samples: dict[
+        tuple[str, str],
+        list[
+            tuple[
+                int,
+                tuple[float, float, float, float],
+                tuple[float, float, float, float],
+            ]
+        ],
+    ],
+) -> dict[str, Any]:
+    center_jitter: list[float] = []
+    width_jitter: list[float] = []
+    height_jitter: list[float] = []
+    area_jitter: list[float] = []
+    temporal_iou: list[float] = []
+
+    for identity_samples in samples.values():
+        normalized: list[tuple[int, tuple[float, float, float, float]]] = []
+        for frame_index, truth_bbox, predicted_bbox in sorted(identity_samples):
+            normalized.append((frame_index, _gt_relative_box(truth_bbox, predicted_bbox)))
+        for (_, previous), (_, current) in zip(normalized, normalized[1:]):
+            prev_w = max(previous[2] - previous[0], 1e-12)
+            prev_h = max(previous[3] - previous[1], 1e-12)
+            curr_w = max(current[2] - current[0], 1e-12)
+            curr_h = max(current[3] - current[1], 1e-12)
+            prev_cx = (previous[0] + previous[2]) * 0.5
+            prev_cy = (previous[1] + previous[3]) * 0.5
+            curr_cx = (current[0] + current[2]) * 0.5
+            curr_cy = (current[1] + current[3]) * 0.5
+            center_jitter.append(math.hypot(curr_cx - prev_cx, curr_cy - prev_cy))
+            width_jitter.append(abs(math.log(curr_w / prev_w)))
+            height_jitter.append(abs(math.log(curr_h / prev_h)))
+            area_jitter.append(abs(math.log((curr_w * curr_h) / (prev_w * prev_h))))
+            temporal_iou.append(bbox_iou(previous, current))
+
+    return {
+        "pair_count": len(center_jitter),
+        "normalized_center_jitter_mean": _mean(center_jitter),
+        "width_log_jitter_mean": _mean(width_jitter),
+        "height_log_jitter_mean": _mean(height_jitter),
+        "area_log_jitter_mean": _mean(area_jitter),
+        "temporal_iou_mean": _mean(temporal_iou),
+        "note": (
+            "Consecutive matched boxes are expressed relative to each frame's GT center/size before "
+            "differencing, reducing genuine person/camera motion from the stability signal."
+        ),
+    }
+
+
 def evaluate_frames(
     frames: Iterable[GroundTruthFrame],
     predictions_by_frame: dict[tuple[str, int], list[PredictedObject]],
@@ -228,6 +303,28 @@ def evaluate_frames(
     id_switches = 0
     fragmentations = 0
     identity_state: dict[tuple[str, str], dict[str, Any]] = {}
+    detection_stability_samples: dict[
+        tuple[str, str],
+        list[
+            tuple[
+                int,
+                tuple[float, float, float, float],
+                tuple[float, float, float, float],
+            ]
+        ],
+    ] = defaultdict(list)
+    tracking_stability_samples: dict[
+        tuple[str, str],
+        list[
+            tuple[
+                int,
+                tuple[float, float, float, float],
+                tuple[float, float, float, float],
+            ]
+        ],
+    ] = defaultdict(list)
+    uninterrupted_track_lengths: list[int] = []
+    recovery_latencies: list[int] = []
 
     for frame in ordered:
         key = (frame.video, frame.frame)
@@ -260,6 +357,10 @@ def evaluate_frames(
             matched = truth_index in matches
             if matched:
                 matched_keys.append(object_key)
+                if obj.object_id is not None:
+                    detection_stability_samples[(frame.video, obj.object_id)].append(
+                        (frame.frame, obj.bbox, predictions[matches[truth_index]].bbox)
+                    )
             else:
                 missed_keys.append(object_key)
             size_counts = by_size[_size_bin(obj)]
@@ -286,20 +387,46 @@ def evaluate_frames(
             if obj.object_id is None:
                 continue
             state_key = (frame.video, obj.object_id)
-            state = identity_state.setdefault(state_key, {"last_track_id": None, "gap": False, "seen_match": False})
+            state = identity_state.setdefault(
+                state_key,
+                {
+                    "last_track_id": None,
+                    "gap": False,
+                    "seen_match": False,
+                    "current_run": 0,
+                    "last_match_frame": None,
+                },
+            )
             pred_index = track_matches.get(truth_index)
             if pred_index is None:
+                if state["current_run"] > 0:
+                    uninterrupted_track_lengths.append(int(state["current_run"]))
+                    state["current_run"] = 0
                 if state["seen_match"]:
                     state["gap"] = True
                 continue
             current_track_id = tracks[pred_index].track_id
+            tracking_stability_samples[state_key].append(
+                (frame.frame, obj.bbox, tracks[pred_index].bbox)
+            )
             if state["seen_match"] and state["last_track_id"] != current_track_id:
                 id_switches += 1
+                if state["current_run"] > 0:
+                    uninterrupted_track_lengths.append(int(state["current_run"]))
+                    state["current_run"] = 0
             if state["seen_match"] and state["gap"]:
                 fragmentations += 1
+                if state["last_match_frame"] is not None:
+                    recovery_latencies.append(frame.frame - int(state["last_match_frame"]))
             state["last_track_id"] = current_track_id
             state["seen_match"] = True
             state["gap"] = False
+            state["current_run"] += 1
+            state["last_match_frame"] = frame.frame
+
+    for state in identity_state.values():
+        if state["current_run"] > 0:
+            uninterrupted_track_lengths.append(int(state["current_run"]))
 
     metrics = _rates(overall)
     metrics["false_negatives"] = overall["fn"]
@@ -325,7 +452,20 @@ def evaluate_frames(
         "recall": track_tp / track_total if track_total else None,
         "id_switches": id_switches,
         "fragmentations": fragmentations,
-        "note": "ID metrics use stable GT ids across annotated frames; unannotated intervals are not scored.",
+        "mean_uninterrupted_track_length_annotated_frames": _mean(uninterrupted_track_lengths),
+        "uninterrupted_track_segments": len(uninterrupted_track_lengths),
+        "mean_recovery_latency_frames": _mean(recovery_latencies),
+        "max_recovery_latency_frames": max(recovery_latencies) if recovery_latencies else None,
+        "recovery_events": len(recovery_latencies),
+        "note": (
+            "ID/continuity metrics require stable GT ids. Track length counts consecutive annotated "
+            "matches; recovery latency uses source-frame index distance and unannotated intervals are "
+            "otherwise not scored."
+        ),
+    }
+    metrics["bbox_stability"] = {
+        "detection": _bbox_stability_metrics(detection_stability_samples),
+        "tracking": _bbox_stability_metrics(tracking_stability_samples),
     }
     return metrics
 
