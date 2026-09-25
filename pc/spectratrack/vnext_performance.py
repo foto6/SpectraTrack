@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import statistics
 import time
-from typing import Iterable, Sequence
+from typing import Sequence
 
 import numpy as np
 
