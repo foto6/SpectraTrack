@@ -10,8 +10,15 @@ import cv2
 from .appearance import attach_appearance
 from .calibration import CameraCalibration
 from .capture import CaptureConfig, RobustCapture
-from .detector import YoloOnnxDetector
-from .enhance import DISPLAY_MODES, apply_display_mode, crop_with_margin, enhance_visibility, run_realesrgan_snapshot
+from .detector import YoloOnnxDetector, merge_detections
+from .enhance import (
+    DISPLAY_MODES,
+    adaptive_analysis_frame,
+    apply_display_mode,
+    crop_with_margin,
+    enhance_visibility,
+    run_realesrgan_snapshot,
+)
 from .hud import compose_hud
 from .integrity import sha256_file, verify_sha256
 from .lock_refine import LockRefiner
@@ -69,6 +76,11 @@ def main() -> int:
     parser.add_argument("--detect-every", type=int, default=0, help="Run detector every N frames; 0 uses profile default")
     parser.add_argument("--cpu", action="store_true", help="Disable DirectML preference")
     parser.add_argument("--enhance", action="store_true", help="Enhance the detector analysis image with non-generative clarity processing")
+    parser.add_argument("--people-recall", action="store_true", help="Enable conservative person-only overlapping-tile recall pass")
+    parser.add_argument("--person-conf", type=float, default=0.18, help="Accepted person confidence in people-recall mode")
+    parser.add_argument("--person-probe-conf", type=float, default=0.08, help="Raw-frame corroboration floor for adaptive person candidates")
+    parser.add_argument("--tile-size", type=int, default=512, help="Square tile size for people-recall inference")
+    parser.add_argument("--tile-overlap", type=float, default=0.20, help="Fractional tile overlap for people-recall inference")
     parser.add_argument("--view", choices=DISPLAY_MODES, default="normal", help="Operator display mode; pseudo-thermal is false-color only")
     parser.add_argument("--stabilize", action="store_true", help="Start with optical stabilization enabled")
     parser.add_argument("--no-cmc", action="store_true", help="Disable camera-motion compensation for tracking")
@@ -81,6 +93,12 @@ def main() -> int:
     parser.add_argument("--max-frames", type=int, default=0, help="Stop after N processed frames; 0 means unlimited")
     parser.set_defaults(**config_defaults)
     args = parser.parse_args()
+    if not 0.0 < args.person_probe_conf <= args.person_conf <= 1.0:
+        parser.error("require 0 < --person-probe-conf <= --person-conf <= 1")
+    if args.tile_size < 64:
+        parser.error("--tile-size must be at least 64")
+    if not 0.0 <= args.tile_overlap < 0.8:
+        parser.error("--tile-overlap must be in [0, 0.8)")
 
     model = Path(args.model)
     if not model.exists():
@@ -106,7 +124,13 @@ def main() -> int:
     detect_every = args.detect_every if args.detect_every > 0 else profile_detect_every
 
     detector = YoloOnnxDetector(model, args.input_size, args.conf, args.iou, prefer_gpu=not args.cpu)
-    tracker = MultiObjectTracker()
+    people_allowed = not class_filter or "person" in class_filter
+    person_creation_thresholds = {
+        class_id: args.person_conf
+        for class_id, label in enumerate(detector.labels)
+        if args.people_recall and people_allowed and label.lower() == "person"
+    }
+    tracker = MultiObjectTracker(creation_thresholds=person_creation_thresholds)
     stabilizer = VideoStabilizer()
     motion = GlobalMotionEstimator()
     lock_refiner = LockRefiner()
@@ -181,6 +205,11 @@ def main() -> int:
         ),
         "view_mode": view_mode,
         "analysis_enhance": enhancement,
+        "people_recall": bool(args.people_recall),
+        "person_conf": args.person_conf if args.people_recall else None,
+        "person_probe_conf": args.person_probe_conf if args.people_recall else None,
+        "tile_size": args.tile_size if args.people_recall else None,
+        "tile_overlap": args.tile_overlap if args.people_recall else None,
         "profile": args.profile,
         "detect_every": detect_every,
         "appearance_cue": not args.no_appearance,
@@ -246,6 +275,18 @@ def main() -> int:
             if should_detect:
                 with timings.measure("detect"):
                     detections = detector.detect(analysis_frame)
+                    if args.people_recall and people_allowed:
+                        people_frame, _quality, operations = adaptive_analysis_frame(frame)
+                        enhanced_people_frame = people_frame if operations else None
+                        people = detector.detect_people_recall(
+                            frame,
+                            enhanced_people_frame,
+                            person_conf=args.person_conf,
+                            probe_conf=args.person_probe_conf,
+                            tile_size=args.tile_size,
+                            overlap=args.tile_overlap,
+                        )
+                        detections = merge_detections([*detections, *people], args.iou)
                     if class_filter:
                         detections = [d for d in detections if d.label.lower() in class_filter]
                     if not args.no_appearance:

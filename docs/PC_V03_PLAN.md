@@ -32,27 +32,36 @@ The goal is **high pedestrian recall**, not a blanket confidence-threshold drop.
 - [ ] Keep the validation clips out of tuning decisions after thresholds are frozen.
 
 ### B2 — quality-max person pipeline
-- [ ] Add a dedicated `people-recall` / `quality-max` mode.
-- [ ] Run the normal full-frame detector for cars/large objects.
-- [ ] Add a second **person-only high-resolution pass**.
-- [ ] Add tiled/sliced inference with overlap so tiny people are presented to the model at a useful scale.
-- [ ] Merge full-frame and tile detections with class-aware NMS/WBF without duplicate boxes.
-- [ ] Support class-specific thresholds: lower threshold for `person`, normal thresholds for other classes.
-- [ ] Keep a hard minimum quality gate so lowering person confidence does not flood the scene with single-frame junk.
+- [x] Add a dedicated `people-recall` / `quality-max` mode.
+- [x] Run the normal full-frame detector for cars/large objects.
+- [x] Add a second **person-only high-resolution pass**.
+- [x] Add tiled/sliced inference with overlap so tiny people are presented to the model at a useful scale.
+- [x] Merge full-frame and tile detections with class-aware NMS/WBF without duplicate boxes.
+- [x] Support class-specific thresholds: lower threshold for `person`, normal thresholds for other classes.
+- [x] Keep a hard minimum quality gate so lowering person confidence does not flood the scene with single-frame junk.
 
 ### B3 — temporal recovery of weak people
-- [ ] Keep weak person candidates for a short temporal window instead of discarding them immediately.
-- [ ] Confirm a weak candidate when spatially consistent evidence appears across multiple frames.
-- [ ] Allow confirmed person tracks to survive short detector dropouts.
-- [ ] Permit temporally consistent low-confidence person detections to recover an existing track.
-- [ ] Do not create a stable person track from one isolated low-confidence frame.
+- [x] Keep weak person candidates for a short temporal window instead of discarding them immediately.
+- [x] Confirm a weak candidate when spatially consistent evidence appears across multiple frames.
+- [x] Allow confirmed person tracks to survive short detector dropouts.
+- [x] Permit temporally consistent low-confidence person detections to recover an existing track.
+- [x] Do not create a stable person track from one isolated low-confidence frame.
+
+Implementation note: `people-recall` lowers only the `person` tentative-track creation gate. The existing two-stage tracker still requires repeated hits (`min_hits=3`) before confirmation and already supports short dropout prediction/recovery; other classes retain the normal high-confidence creation gate.
 
 ### B4 — image-analysis variants
 - [ ] Benchmark original RGB vs non-generative low-light/contrast analysis for the person pass.
+- [x] Add adaptive non-generative routing for blur/darkness/compression/resolution/noise; processed-only people require raw-frame corroboration.
 - [ ] Benchmark multiple detector input sizes.
 - [ ] Benchmark tile sizes/overlap and detector cadence.
 - [ ] Do **not** use generative super-resolution as ground truth for detection; it can hallucinate detail.
 - [ ] If neural restoration is tested, evaluate it only as an optional analysis branch and measure whether recall actually improves.
+
+### Agent 3 investigation notes
+
+- **Candidate/ROI-only second pass:** keep as a performance experiment, not a recall replacement. A second pass around weak full-frame/raw-tile candidates can spend fewer detector calls, but it cannot recover a person for which the first pass produced no candidate at all. Benchmark ROI-only against full overlapping tiles after the validation set exists.
+- **Temporal image enhancement:** do not average/stack raw neighboring frames in the detection path yet. Camera/object motion can create ghost structure unless frames and moving targets are aligned. The implemented temporal evidence stays at the detection/tracker level: weak person candidates form tentative tracks and require repeated spatially consistent hits before confirmation.
+- **Neural/generative restoration:** remains excluded from accepted detection evidence. Optional restoration can be benchmarked later, but a processed-only person is never accepted without raw-frame detector corroboration.
 
 ### B5 — model selection / training
 - [ ] Compare the current generic YOLO model with at least one small-object/overhead-friendly detector configuration.
