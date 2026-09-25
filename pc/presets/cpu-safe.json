@@ -5,7 +5,7 @@
   "camera_backend": "dshow",
   "reconnect_attempts": 3,
   "reconnect_delay_ms": 350,
-  "profile": "speed",
+  "profile": "fast",
   "detect_every": 3,
   "cpu": true,
   "enhance": false,
