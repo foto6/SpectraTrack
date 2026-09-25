@@ -2,6 +2,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import pytest
 
 from spectratrack.batch import analyze_video
 from spectratrack.types import Detection
@@ -88,3 +89,16 @@ def test_analyze_video_dispatches_people_recall_mode(tmp_path):
 
     assert len(tracklets) == 1
     assert tracklets[0].label == "person"
+
+
+def test_analyze_video_rejects_unknown_detector_mode(tmp_path):
+    with pytest.raises(ValueError, match="detector_mode"):
+        analyze_video(
+            tmp_path / "unused.avi",
+            FakeDetector(),
+            detect_every=1,
+            class_filter=set(),
+            min_observations=1,
+            progress_every=0,
+            detector_mode="typo",
+        )

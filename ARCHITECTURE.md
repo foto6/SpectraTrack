@@ -114,12 +114,8 @@ Important methods/functions:
 - `YoloOnnxDetector.__init__()`
 - `YoloOnnxDetector._letterbox()`
 - `YoloOnnxDetector.detect()`
-- `YoloOnnxDetector.detect_people_recall()`
-- `YoloOnnxDetector._detect_once()`
 - `decode_end2end_predictions()`
 - `_classwise_nms()`
-- `_merge_detections()`
-- `_tile_starts()`
 
 ### Runtime provider selection
 
@@ -153,35 +149,6 @@ Default CLI detector settings in `app.py`:
 A fixed-size compatible YOLO ONNX model is expected. A model manifest can provide input size and SHA-256/provenance verification.
 
 Model weights are not included in Git or silently downloaded by the runtime.
-
-### People-recall mode
-
-`--detector-mode people-recall` is an additive high-recall path. Standard mode is still the default.
-
-The recall path:
-
-1. runs a normal full-frame pass with a lower threshold for the `person` class only;
-2. slices the source frame into overlapping source-pixel tiles;
-3. runs the same verified ONNX detector on each tile;
-4. retains person detections from the tiled pass;
-5. offsets tile boxes into full-frame coordinates;
-6. merges full-frame and tile results with the existing class-aware NMS.
-
-Default recall-mode tuning parameters are currently engineering defaults, not calibrated values:
-
-- person confidence: `0.12`
-- source tile size: `640` px
-- tile overlap: `0.20`
-- merge IoU: `0.55`
-
-A `pc/presets/people-recall.json` preset exposes the mode without changing normal defaults.
-
-Important limitations:
-
-- tiled inference increases detector latency roughly with the number of tiles/inference calls;
-- actual DirectML FPS/VRAM is not yet benchmarked on representative footage;
-- an end-to-end ONNX graph may already have internal confidence/NMS filtering that external thresholds cannot undo;
-- tracker `high_conf=0.45` still gates creation of new track IDs, so weak detections below that threshold do not independently create tracks.
 
 ### Analysis enhancement vs display enhancement
 
@@ -479,10 +446,8 @@ Files:
 
 - `pc/spectratrack/metrics.py`
 - `pc/spectratrack/benchmark.py`
-- `pc/spectratrack/detection_benchmark.py`
 - `pc/spectratrack/diagnostics.py`
 - `pc/spectratrack/selfcheck.py`
-- `pc/detection_regression/`
 
 `StageTimer` records recent stage timings.
 
@@ -492,7 +457,7 @@ A synthetic tracker benchmark exists and CI runs:
 python -m spectratrack.benchmark --frames 500 --targets 24
 ```
 
-A detector-level benchmark harness now exists, but there is still **no representative real annotated dataset checked into the repository** for small-person recall in poor high-angle/night/compressed footage. Until such a set is supplied, the project must not claim measured recall improvement. See `docs/detection.md` and `docs/PC_V03_PLAN.md`.
+Important gap: there is currently **no representative annotated detector benchmark for small-person recall in poor high-angle/night/compressed CCTV footage**. That is a top-priority task in `docs/PC_V03_PLAN.md`.
 
 ## 15. Android architecture
 

@@ -152,6 +152,9 @@ def analyze_video(
     person_tile_overlap: float = 0.20,
     person_merge_iou: float = 0.55,
 ) -> list[TrackletSummary]:
+    if detector_mode not in {"standard", "people-recall"}:
+        raise ValueError("detector_mode must be standard or people-recall")
+
     capture = RobustCapture(str(path), CaptureConfig(backend="auto", reconnect_attempts=0))
     if not capture.is_opened():
         capture.release()
