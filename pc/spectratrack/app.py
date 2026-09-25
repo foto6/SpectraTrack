@@ -100,7 +100,6 @@ def main() -> int:
     if not 0.0 <= args.tile_overlap < 0.8:
         parser.error("--tile-overlap must be in [0, 0.8)")
 
-
     model = Path(args.model)
     if not model.exists():
         raise SystemExit(f"Model not found: {model}")
