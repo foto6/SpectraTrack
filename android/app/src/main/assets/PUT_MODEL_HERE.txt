@@ -1,0 +1,2 @@
+Place yolo11n.onnx here before building the APK.
+The app intentionally does not auto-download model files.

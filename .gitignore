@@ -1,0 +1,25 @@
+# Python
+**/__pycache__/
+*.py[cod]
+.venv/
+.export-env/
+.pytest_cache/
+snapshots/
+*.mp4
+
+# Models / binaries
+*.onnx
+*.pt
+*.pth
+*.exe
+
+# Android
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
