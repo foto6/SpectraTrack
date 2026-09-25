@@ -13,7 +13,7 @@ from typing import Any, Iterable
 
 from .tracker import bbox_iou
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +72,7 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
             frame = data.get("frame")
             if not isinstance(video, str) or not video.strip():
                 raise ValueError(f"{source}:{line_number}: video must be a non-empty string")
-            if not isinstance(frame, int) or frame < 0:
+            if not isinstance(frame, int) or isinstance(frame, bool) or frame < 0:
                 raise ValueError(f"{source}:{line_number}: frame must be a non-negative integer")
             key = (video, frame)
             if key in seen:
@@ -87,6 +87,7 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
             if not isinstance(objects_raw, list):
                 raise ValueError(f"{source}:{line_number}: objects must be a list")
             objects: list[GroundTruthObject] = []
+            object_ids: set[str] = set()
             for index, item in enumerate(objects_raw):
                 where = f"{source}:{line_number}:objects[{index}]"
                 if not isinstance(item, dict):
@@ -97,6 +98,13 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
                 object_id = item.get("id")
                 if object_id is not None and (not isinstance(object_id, str) or not object_id):
                     raise ValueError(f"{where}: id must be a non-empty string when present")
+                if object_id is not None:
+                    if object_id in object_ids:
+                        raise ValueError(f"{where}: duplicate object id {object_id!r} in frame")
+                    object_ids.add(object_id)
+                ignore = item.get("ignore", False)
+                if not isinstance(ignore, bool):
+                    raise ValueError(f"{where}: ignore must be a boolean")
                 attributes_raw = item.get("attributes", [])
                 if not isinstance(attributes_raw, list) or not all(
                     isinstance(attribute, str) and attribute for attribute in attributes_raw
@@ -107,7 +115,7 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
                         object_id=object_id,
                         label=label,
                         bbox=_validate_bbox(item.get("bbox"), where),
-                        ignore=bool(item.get("ignore", False)),
+                        ignore=ignore,
                         attributes=tuple(sorted(set(attributes_raw))),
                     )
                 )
@@ -300,7 +308,15 @@ def evaluate_frames(
     metrics["missed_ground_truth"] = sorted(missed_keys)
     metrics["missing_prediction_frames"] = sorted(missing_prediction_frames)
     metrics["by_tag"] = {name: _rates(counts) for name, counts in sorted(by_tag.items())}
-    metrics["by_size"] = {name: _rates(counts) for name, counts in sorted(by_size.items())}
+    metrics["by_size"] = {
+        name: {
+            "tp": counts["tp"],
+            "fn": counts["fn"],
+            "gt": counts["gt"],
+            "recall": counts["tp"] / counts["gt"] if counts["gt"] else 1.0,
+        }
+        for name, counts in sorted(by_size.items())
+    }
     metrics["by_attribute"] = {
         name: {
             "tp": counts["tp"],
@@ -332,6 +348,10 @@ def compare_results(
     max_id_switch_increase: int = 0,
     max_fragmentation_increase: int = 0,
 ) -> dict[str, Any]:
+    if baseline.get("schema_version") != candidate.get("schema_version"):
+        raise ValueError("Cannot compare results produced with different result schema versions")
+    if baseline.get("schema_version") != SCHEMA_VERSION:
+        raise ValueError(f"Cannot compare unsupported result schema version {baseline.get('schema_version')!r}")
     if baseline.get("ground_truth_sha256") != candidate.get("ground_truth_sha256"):
         raise ValueError("Cannot compare results produced from different ground-truth files")
     for key in ("label", "match_iou"):
