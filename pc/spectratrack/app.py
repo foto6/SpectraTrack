@@ -11,11 +11,13 @@ from .appearance import attach_appearance
 from .calibration import CameraCalibration
 from .detector import YoloOnnxDetector
 from .enhance import DISPLAY_MODES, apply_display_mode, crop_with_margin, enhance_visibility, run_realesrgan_snapshot
+from .frame_quality import measure_frame_quality
 from .hud import compose_hud
 from .integrity import sha256_file, verify_sha256
 from .metrics import StageTimer
 from .model_manifest import ModelManifest
 from .motion import GlobalMotionEstimator
+from .scheduler import AdaptiveDetectorScheduler
 from .session import SessionRecorder
 from .snapshot_meta import write_snapshot_metadata
 from .stabilize import VideoStabilizer
@@ -52,6 +54,7 @@ def main() -> int:
     parser.add_argument("--classes", default="", help="Comma-separated labels to retain, e.g. person,car,truck")
     parser.add_argument("--profile", choices=("quality", "balanced", "speed"), default="balanced")
     parser.add_argument("--detect-every", type=int, default=0, help="Run detector every N frames; 0 uses profile default")
+    parser.add_argument("--adaptive-cadence", action="store_true", help="Adapt detector cadence from track health and camera motion")
     parser.add_argument("--cpu", action="store_true", help="Disable DirectML preference")
     parser.add_argument("--enhance", action="store_true", help="Enhance the detector analysis image with non-generative clarity processing")
     parser.add_argument("--view", choices=DISPLAY_MODES, default="normal", help="Operator display mode; pseudo-thermal is false-color only")
@@ -88,6 +91,7 @@ def main() -> int:
     class_filter = parse_class_filter(args.classes)
     profile_detect_every = {"quality": 1, "balanced": 2, "speed": 3}[args.profile]
     detect_every = args.detect_every if args.detect_every > 0 else profile_detect_every
+    scheduler = AdaptiveDetectorScheduler(args.profile, max_interval=max(2, detect_every + 1))
 
     detector = YoloOnnxDetector(model, args.input_size, args.conf, args.iou, prefer_gpu=not args.cpu)
     tracker = MultiObjectTracker()
@@ -167,6 +171,7 @@ def main() -> int:
         "analysis_enhance": enhancement,
         "profile": args.profile,
         "detect_every": detect_every,
+        "adaptive_cadence": bool(args.adaptive_cadence),
         "appearance_cue": not args.no_appearance,
     }) if args.session_log else None
 
@@ -209,11 +214,28 @@ def main() -> int:
                 with timings.measure("stabilize"):
                     frame = stabilizer.apply(frame)
 
+            with timings.measure("frame_quality"):
+                frame_quality = measure_frame_quality(frame)
+
             with timings.measure("enhance"):
                 analysis_frame = enhance_visibility(frame) if enhancement else frame
                 display_frame = apply_display_mode(frame, view_mode)
 
-            should_detect = ((frame_index - 1) % detect_every) == 0
+            scheduler_decision = None
+            if args.adaptive_cadence:
+                camera_motion_for_scheduler = None
+                if cam is not None and cam.valid:
+                    camera_motion_for_scheduler = (cam.dx, cam.dy)
+                scheduler_decision = scheduler.decide(
+                    tracker.tracks.values(),
+                    camera_motion=camera_motion_for_scheduler,
+                    frame_low_light=frame_quality.low_light,
+                    frame_blurred=frame_quality.blurred,
+                )
+                should_detect = scheduler_decision.run_detector
+            else:
+                should_detect = ((frame_index - 1) % detect_every) == 0
+
             detections = []
             if should_detect:
                 with timings.measure("detect"):
@@ -222,8 +244,12 @@ def main() -> int:
                         detections = [d for d in detections if d.label.lower() in class_filter]
                     if not args.no_appearance:
                         attach_appearance(frame, detections)
+                if args.adaptive_cadence:
+                    scheduler.mark_detector_ran()
             else:
                 timings.add("detect", 0.0)
+                if args.adaptive_cadence:
+                    scheduler.mark_skipped()
 
             # Stabilization already compensates image motion; do not compensate twice.
             camera_shift = (0.0, 0.0)
@@ -290,6 +316,10 @@ def main() -> int:
                 "stabilize": round(timings.latest("stabilize"), 3),
                 "hud": round(timings.latest("hud"), 3),
                 "detector_ran": 1.0 if should_detect else 0.0,
+                "brightness": round(frame_quality.brightness, 2),
+                "contrast": round(frame_quality.contrast, 2),
+                "sharpness": round(frame_quality.sharpness, 2),
+                "dark_fraction": round(frame_quality.dark_fraction, 4),
             }
 
             if hud_enabled:
@@ -301,6 +331,12 @@ def main() -> int:
                         camera_motion=camera_motion_info,
                         calibration=calibration,
                         view_mode=view_mode,
+                        frame_quality=frame_quality,
+                        detector_reason=(
+                            scheduler_decision.reason
+                            if scheduler_decision is not None
+                            else ("fixed_cadence" if should_detect else "fixed_prediction")
+                        ),
                     )
             else:
                 output = display_frame
@@ -410,7 +446,7 @@ def main() -> int:
 
     print(
         f"processed_frames={frame_index} capture={capture_width}x{capture_height}@{capture_fps:.2f} "
-        f"profile={args.profile} detect_every={detect_every} model_sha256={model_hash} "
+        f"profile={args.profile} detect_every={detect_every} adaptive={args.adaptive_cadence} model_sha256={model_hash} "
         f"detect_avg_ms={timings.average('detect'):.2f} track_avg_ms={timings.average('track'):.2f}"
     )
     return 0

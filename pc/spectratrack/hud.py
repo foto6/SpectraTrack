@@ -7,6 +7,7 @@ import numpy as np
 
 from .calibration import CameraCalibration
 from .enhance import crop_with_margin, upscale_preview
+from .frame_quality import FrameQuality
 from .types import Track
 
 
@@ -83,6 +84,8 @@ def compose_hud(
     camera_motion: tuple[float, float, float] | None = None,
     calibration: CameraCalibration | None = None,
     view_mode: str = "normal",
+    frame_quality: FrameQuality | None = None,
+    detector_reason: str = "",
 ) -> np.ndarray:
     base = frame.copy()
     h, w = base.shape[:2]
@@ -106,6 +109,21 @@ def compose_hud(
     if camera_motion:
         dx, dy, rot = camera_motion
         cv2.putText(canvas, f"CAM IMG MOTION {dx:+.1f},{dy:+.1f}px {math.degrees(rot):+.2f}deg", (16, 115), FONT, 0.40, (185, 185, 185), 1, cv2.LINE_AA)
+    if frame_quality is not None:
+        flags = []
+        if frame_quality.low_light:
+            flags.append("LOW-LIGHT")
+        if frame_quality.blurred:
+            flags.append("BLUR")
+        if frame_quality.low_contrast:
+            flags.append("LOW-CONTRAST")
+        quality_text = (
+            f"IMG B {frame_quality.brightness:.0f} C {frame_quality.contrast:.0f} "
+            f"S {frame_quality.sharpness:.0f} {'/'.join(flags) if flags else 'OK'}"
+        )
+        cv2.putText(canvas, quality_text, (16, 136), FONT, 0.40, (185, 185, 185), 1, cv2.LINE_AA)
+    if detector_reason:
+        cv2.putText(canvas, f"DETECTOR {detector_reason.upper()}", (16, 157), FONT, 0.40, (185, 185, 185), 1, cv2.LINE_AA)
 
     px = w
     cv2.rectangle(canvas, (px, 0), (w + panel_w - 1, h - 1), (32, 32, 32), -1)
