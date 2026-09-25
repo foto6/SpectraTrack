@@ -255,6 +255,43 @@ The stamped envelope records:
 
 A leaderboard row must come from a stamped run.
 
+### Specialist research output
+
+A2/A3/A4 may legitimately produce a research-specific JSON rather than a full `qa_benchmark` result. Do **not** disguise those partial measurements as an end-to-end detector run.
+
+For those cases, A5 accepts a normalized evidence envelope:
+
+`spectratrack-vnext-evidence-v1`
+
+Required envelope fields:
+
+- `role`, `experiment`, `scope`;
+- exact 40-hex `source_commit`;
+- frozen `corpus_revision` + `corpus_sha256`;
+- GOLDEN `ground_truth_sha256`;
+- SHA-256 of the original specialist research artifact;
+- exact model/provider when the experiment used inference;
+- complete candidate `config`;
+- common `evaluation` settings;
+- normalized `quality` fields actually measured;
+- normalized `compute` fields actually measured;
+- provenance including **all** frozen GOLDEN input-video SHA/dimensions;
+- replay SHA when the experiment is tracker-replay based.
+
+A5 verifies the supplied source artifact bytes against the declared SHA before stamping:
+
+```powershell
+python -m spectratrack.vnext_qa stamp-evidence `
+  --manifest benchmarks/vnext/qa/corpus.manifest.json `
+  --evidence benchmarks/vnext/qa/results/a2-tracking.evidence.json `
+  --source-artifact benchmarks/vnext/qa/results/a2-tracking.raw.json `
+  --output benchmarks/vnext/qa/results/a2-tracking.stamped.json
+```
+
+Partial specialist rows remain visibly labeled by `scope`, for example `tracker-replay` or `enhancement-roi`. Missing quality fields stay null/blank; A5 never fills them from intuition.
+
+A specialist artifact that used only a subset of GOLDEN videos is **not** eligible for the common leaderboard. This prevents a favorable subset from being compared against a full-corpus row.
+
 ## 8. Canonical detection replay validation
 
 A1/A2 use exactly:
