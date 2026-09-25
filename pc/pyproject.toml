@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spectratrack"
+version = "0.1.0"
+description = "Local-only object detection/tracking HUD for Windows and camera feeds"
+requires-python = ">=3.12"
+
+[tool.setuptools]
+packages = ["spectratrack"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

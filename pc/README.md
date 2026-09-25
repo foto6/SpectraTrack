@@ -1,0 +1,56 @@
+# Windows client
+
+## 1. Install
+
+Use 64-bit Python 3.12 on Windows 11.
+
+```powershell
+cd pc
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -U pip
+pip install -r requirements-win.txt
+```
+
+## 2. Test immediately
+
+```powershell
+python -m spectratrack.demo
+```
+
+No camera and no neural model are required for this test.
+
+## 3. Put the model in place
+
+Follow `../models/README.md` so `../models/yolo11n.onnx` exists.
+
+## 4. Run a camera
+
+```powershell
+python -m spectratrack.app --model ..\models\yolo11n.onnx --source 0 --stabilize
+```
+
+For a video file:
+
+```powershell
+python -m spectratrack.app --model ..\models\yolo11n.onnx --source "D:\video.mp4"
+```
+
+Controls: `Q/Esc` quit, `E` enhancement, `Z` stabilization, `H` HUD, mouse click target lock, `S` save selected crop, `U` run optional neural SR on the selected crop.
+
+## 5. Optional Real-ESRGAN / Vulkan
+
+Install an official `realesrgan-ncnn-vulkan` build yourself. Do not replace it with a random repack. Then pass the exact executable path:
+
+```powershell
+python -m spectratrack.app `
+  --model ..\models\yolo11n.onnx `
+  --source 0 `
+  --realesrgan "C:\Tools\realesrgan-ncnn-vulkan.exe"
+```
+
+Press `U` while a target is locked. SpectraTrack saves the raw crop first and then asks the executable for an x4 image.
+
+## AMD note
+
+The Python client uses `onnxruntime-directml`, so it does not require CUDA/NVIDIA. On Windows the detector will display its active ONNX providers in the HUD. Pass `--cpu` to compare performance.
