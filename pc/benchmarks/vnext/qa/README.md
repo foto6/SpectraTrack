@@ -53,7 +53,9 @@ The first usable frozen revision must cover all of:
 
 A frame may have multiple tags.
 
-The validator also treats a scored person with bbox height < 24 px as `tiny_person`, and an annotated frame with no scored people as `negative`.
+Person-specific coverage is evidence-backed: `tiny_person`, `distant_person`, `normal_person`, `partial_occlusion`, and `heavy_occlusion` count only when the frame has at least one scored person box. `crossing_people` requires at least two scored people. A tag on an empty frame cannot satisfy those categories.
+
+The validator also treats a scored person with bbox height < 24 px as `tiny_person`, and an annotated frame with no person objects at all as `negative`. A frame containing only `ignore=true` people is not a true negative.
 
 ## 1. Put user videos in the corpus folders
 
