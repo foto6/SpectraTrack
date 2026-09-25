@@ -13,7 +13,7 @@ from typing import Any, Iterable
 
 from .tracker import bbox_iou
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -308,15 +308,7 @@ def evaluate_frames(
     metrics["missed_ground_truth"] = sorted(missed_keys)
     metrics["missing_prediction_frames"] = sorted(missing_prediction_frames)
     metrics["by_tag"] = {name: _rates(counts) for name, counts in sorted(by_tag.items())}
-    metrics["by_size"] = {
-        name: {
-            "tp": counts["tp"],
-            "fn": counts["fn"],
-            "gt": counts["gt"],
-            "recall": counts["tp"] / counts["gt"] if counts["gt"] else 1.0,
-        }
-        for name, counts in sorted(by_size.items())
-    }
+    metrics["by_size"] = {name: _rates(counts) for name, counts in sorted(by_size.items())}
     metrics["by_attribute"] = {
         name: {
             "tp": counts["tp"],
@@ -348,10 +340,6 @@ def compare_results(
     max_id_switch_increase: int = 0,
     max_fragmentation_increase: int = 0,
 ) -> dict[str, Any]:
-    if baseline.get("schema_version") != candidate.get("schema_version"):
-        raise ValueError("Cannot compare results produced with different result schema versions")
-    if baseline.get("schema_version") != SCHEMA_VERSION:
-        raise ValueError(f"Cannot compare unsupported result schema version {baseline.get('schema_version')!r}")
     if baseline.get("ground_truth_sha256") != candidate.get("ground_truth_sha256"):
         raise ValueError("Cannot compare results produced from different ground-truth files")
     for key in ("label", "match_iou"):
