@@ -160,3 +160,18 @@ Profile DirectML pipeline, capture, detector cadence, future tiling, encoding an
 ### agent/qa
 
 Benchmark harness/regression checks are implemented. Next collect real validation assets, establish BASELINE, then use the same result schema for branch-integration and release checks.
+## Active parallel work — Tracking / Re-ID
+
+Owner branch: `agent/tracking`.
+
+Current scoped goals:
+
+1. measure and reduce local ID fragmentation after occlusion/reappearance without replacing the whole tracker;
+2. add explicit ID-switch/reappearance quality probes to the synthetic tracker benchmark;
+3. evolve the existing cross-video graph to a multi-signal Re-ID score;
+4. expose `global_object_id` separately from video-local `track_id`;
+5. add regression tests for long reappearance, false reactivation, same-video fragments, and graph compatibility.
+
+Out of scope for this pass: a new neural Re-ID dependency, biometric/person identification, detector changes, UI redesign, and large tracker rewrites.
+
+
