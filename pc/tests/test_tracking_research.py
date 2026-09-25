@@ -2,6 +2,7 @@ import json
 
 from spectratrack.tracking_research import (
     CurrentTrackerRunner,
+    GlobalAssignmentCurrentRunner,
     ReferenceStyleTracker,
     bbox_stability_probe,
     current_failure_audit,
@@ -121,11 +122,13 @@ def test_reference_style_candidates_use_strong_only_creation():
 def test_global_assignment_probe_exposes_current_greedy_conflict():
     scenario = _scenario("nearby_same_class")
     current = _run(scenario, CurrentTrackerRunner())
-    global_style = _run(scenario, ReferenceStyleTracker("byte"))
+    isolated_global = _run(scenario, GlobalAssignmentCurrentRunner())
+    byte_style = _run(scenario, ReferenceStyleTracker("byte"))
 
     assert current["id_switches"] >= 2
-    assert global_style["id_switches"] == 0
-    assert global_style["mean_uninterrupted_track_length"] > current["mean_uninterrupted_track_length"]
+    assert isolated_global["id_switches"] == 0
+    assert byte_style["id_switches"] == 0
+    assert isolated_global["mean_uninterrupted_track_length"] > current["mean_uninterrupted_track_length"]
 
 
 def test_bbox_smoothing_reports_jitter_and_lag_separately():
