@@ -192,7 +192,9 @@ def run_benchmark(
         "manifest": str(manifest_file),
         "mode": mode,
         "settings": {
-            "input_size": input_size,
+            "requested_input_size": input_size,
+            "model_input_width": detector.input_w,
+            "model_input_height": detector.input_h,
             "conf": conf,
             "iou": iou,
             "person_conf": person_conf if mode == "people-recall" else None,
