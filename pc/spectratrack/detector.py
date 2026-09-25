@@ -52,6 +52,76 @@ def _classwise_nms(boxes: np.ndarray, scores: np.ndarray, classes: np.ndarray, t
     return keep
 
 
+def _looks_like_end2end(pred: np.ndarray, label_count: int) -> bool:
+    if pred.ndim != 2:
+        return False
+    if pred.shape[1] == 7:
+        # Common [batch,x1,y1,x2,y2,score,class] layout.
+        batch = pred[:, 0]
+        if len(batch) and np.all(np.isfinite(batch)) and np.max(np.abs(batch - np.rint(batch))) < 1e-3:
+            pred = pred[:, 1:]
+        else:
+            return False
+    if pred.shape[1] != 6 or label_count <= 2 or len(pred) == 0:
+        return False
+    scores = pred[:, 4]
+    classes = pred[:, 5]
+    return (
+        np.all(np.isfinite(scores))
+        and np.all(np.isfinite(classes))
+        and float(np.min(scores)) >= -1e-4
+        and float(np.max(scores)) <= 1.0001
+        and float(np.max(np.abs(classes - np.rint(classes)))) < 1e-3
+    )
+
+
+def decode_end2end_predictions(
+    pred: np.ndarray,
+    frame_w: int,
+    frame_h: int,
+    input_w: int,
+    input_h: int,
+    scale: float,
+    pad_x: float,
+    pad_y: float,
+    labels: list[str],
+    conf_threshold: float,
+    iou_threshold: float,
+) -> list[Detection]:
+    pred = np.asarray(pred, dtype=np.float32)
+    if pred.shape[1] == 7:
+        pred = pred[:, 1:]
+    mask = pred[:, 4] >= conf_threshold
+    pred = pred[mask]
+    if len(pred) == 0:
+        return []
+    boxes = pred[:, :4].copy()
+    scores = pred[:, 4].copy()
+    class_ids = np.rint(pred[:, 5]).astype(np.int32)
+
+    if float(np.nanmax(np.abs(boxes))) <= 2.5:
+        boxes[:, [0, 2]] *= input_w
+        boxes[:, [1, 3]] *= input_h
+
+    keep = _classwise_nms(boxes, scores, class_ids, iou_threshold)
+    out: list[Detection] = []
+    for i in keep:
+        x1 = (float(boxes[i, 0]) - pad_x) / scale
+        y1 = (float(boxes[i, 1]) - pad_y) / scale
+        x2 = (float(boxes[i, 2]) - pad_x) / scale
+        y2 = (float(boxes[i, 3]) - pad_y) / scale
+        x1 = max(0.0, min(x1, frame_w - 1.0))
+        y1 = max(0.0, min(y1, frame_h - 1.0))
+        x2 = max(0.0, min(x2, frame_w - 1.0))
+        y2 = max(0.0, min(y2, frame_h - 1.0))
+        if x2 <= x1 or y2 <= y1:
+            continue
+        cid = int(class_ids[i])
+        label = labels[cid] if 0 <= cid < len(labels) else f"class_{cid}"
+        out.append(Detection((x1, y1, x2, y2), float(scores[i]), cid, label))
+    return out
+
+
 class YoloOnnxDetector:
     """YOLOv8/YOLO11-style ONNX detector.
 
@@ -133,6 +203,14 @@ class YoloOnnxDetector:
         if pred.shape[1] < 6:
             raise RuntimeError(f"Detector output has too few features: {pred.shape}")
 
+        h, w = frame_bgr.shape[:2]
+        if _looks_like_end2end(pred, len(self.labels)):
+            return decode_end2end_predictions(
+                pred, w, h, self.input_w, self.input_h,
+                scale, pad_x, pad_y, self.labels,
+                self.conf_threshold, self.iou_threshold,
+            )
+
         boxes_xywh = pred[:, :4]
         class_scores = pred[:, 4:]
         class_ids = np.argmax(class_scores, axis=1)
@@ -157,7 +235,6 @@ class YoloOnnxDetector:
         boxes[:, 3] = boxes_xywh[:, 1] + boxes_xywh[:, 3] / 2.0
 
         keep = _classwise_nms(boxes, scores, class_ids, self.iou_threshold)
-        h, w = frame_bgr.shape[:2]
         detections: list[Detection] = []
         for i in keep:
             x1 = (float(boxes[i, 0]) - pad_x) / scale
