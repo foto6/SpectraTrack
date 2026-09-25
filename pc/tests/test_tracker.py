@@ -77,3 +77,62 @@ def test_affine_rotation_preserves_static_target_identity():
     affine = (0.0, -1.0, 0.0, 1.0, 0.0, 0.0)
     tracks = tracker.update([Detection((-200, 100, -100, 200), 0.9, 0, "obj")], camera_transform=affine)
     assert any(t.track_id == first and t.missed == 0 for t in tracks)
+
+
+def test_two_same_class_targets_cross_without_immediate_id_swap():
+    tracker = MultiObjectTracker(min_hits=1, max_center_ratio=2.5)
+    initial = tracker.update([d(100, 100), d(400, 100)])
+    left_id = min(initial, key=lambda t: t.center[0]).track_id
+    right_id = max(initial, key=lambda t: t.center[0]).track_id
+
+    # Approach each other, but do not make positions fully ambiguous in a single frame.
+    for xa, xb in [(140, 360), (180, 320), (220, 280)]:
+        tracks = tracker.update([d(xa, 100), d(xb, 100)])
+        by_id = {t.track_id: t for t in tracks}
+        assert left_id in by_id and right_id in by_id
+
+    tracks = tracker.update([d(260, 100), d(240, 100)])
+    by_id = {t.track_id: t for t in tracks}
+    assert left_id in by_id and right_id in by_id
+
+
+def test_recovery_counter_increments_after_occlusion():
+    tracker = MultiObjectTracker(min_hits=1, max_missed=5)
+    tid = tracker.update([d(50, 50)])[0].track_id
+    tracker.update([])
+    tracker.update([])
+    tr = tracker.update([d(55, 50)])[0]
+    assert tr.track_id == tid
+    assert tr.recoveries == 1
+    assert tr.lifecycle == "TRACKED"
+
+
+def test_predicted_lifecycle_during_short_loss():
+    tracker = MultiObjectTracker(min_hits=1, max_missed=5)
+    tracker.update([d(50, 50)])
+    tr = tracker.update([])[0]
+    assert tr.confirmed
+    assert tr.missed == 1
+    assert tr.lifecycle == "PREDICTED"
+    assert 0.0 <= tr.quality <= 1.0
+
+
+def test_large_camera_pan_with_affine_keeps_id():
+    tracker = MultiObjectTracker(min_hits=1)
+    tid = tracker.update([d(300, 200)])[0].track_id
+    affine = (1.0, 0.0, 180.0, 0.0, 1.0, 40.0)
+    tr = tracker.update([d(480, 240)], camera_transform=affine)[0]
+    assert tr.track_id == tid
+    assert tr.missed == 0
+    assert abs(tr.vx) < 1e-6
+    assert abs(tr.vy) < 1e-6
+
+
+def test_tentative_track_expires_quickly():
+    tracker = MultiObjectTracker(min_hits=3, max_missed=10)
+    tr = tracker.update([d(10, 10)])[0]
+    assert not tr.confirmed
+    tracker.update([])
+    tracker.update([])
+    tracks = tracker.update([])
+    assert all(t.track_id != tr.track_id for t in tracks)
