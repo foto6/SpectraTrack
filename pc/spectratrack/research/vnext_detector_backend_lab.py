@@ -462,11 +462,11 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
     localization: list[float] = []
     benchmark_started = time.perf_counter()
 
-    for video, annotations in sorted(by_video.items()):
+    for video, video_annotations in sorted(by_video.items()):
         path = Path(args.video_root) / video
         if not path.is_file():
             raise FileNotFoundError(f"benchmark video missing: {path}")
-        needed = {item.frame: item for item in annotations}
+        needed = {item.frame: item for item in video_annotations}
         last_needed = max(needed)
         capture = cv2.VideoCapture(str(path))
         if not capture.isOpened():
