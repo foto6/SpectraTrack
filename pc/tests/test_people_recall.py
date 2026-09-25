@@ -67,3 +67,37 @@ def test_merge_detections_keeps_best_same_class_box():
     ])
     assert len(merged) == 2
     assert sorted((d.class_id, d.score) for d in merged) == [(0, 0.8), (2, 0.7)]
+
+
+def test_tiled_regions_small_frame_uses_single_tile():
+    assert tiled_regions(320, 240, tile_size=512, overlap=0.20) == [(0, 0, 320, 240)]
+
+
+def test_tiled_regions_reject_invalid_settings():
+    import pytest
+
+    with pytest.raises(ValueError):
+        tiled_regions(0, 720, tile_size=512, overlap=0.20)
+    with pytest.raises(ValueError):
+        tiled_regions(1280, 720, tile_size=32, overlap=0.20)
+    with pytest.raises(ValueError):
+        tiled_regions(1280, 720, tile_size=512, overlap=0.80)
+
+
+def test_people_recall_rejects_invalid_threshold_order():
+    import pytest
+
+    detector = _fake_detector()
+    frame = np.zeros((240, 320, 3), dtype=np.uint8)
+    with pytest.raises(ValueError):
+        detector.detect_people_recall(frame, person_conf=0.05, probe_conf=0.08)
+
+
+def test_people_recall_rejects_enhanced_shape_mismatch():
+    import pytest
+
+    detector = _fake_detector()
+    frame = np.zeros((240, 320, 3), dtype=np.uint8)
+    enhanced = np.zeros((120, 160, 3), dtype=np.uint8)
+    with pytest.raises(ValueError):
+        detector.detect_people_recall(frame, enhanced, person_conf=0.18, probe_conf=0.08)
