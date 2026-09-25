@@ -361,3 +361,57 @@ def test_stamp_and_leaderboard_require_same_corpus_and_scoring(tmp_path: Path):
             manifest_path=manifest_path,
             run_paths=[run_a, run_bad],
         )
+
+
+def test_stamp_requires_full_subject_commit_sha(tmp_path: Path):
+    manifest = vnext_qa.build_frozen_manifest(
+        _valid_report(),
+        revision="golden-r1",
+        reviewer="human",
+        human_confirmed=True,
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = _qa_result()
+    result["revision"] = "agent/vnext-detection"
+    result_path = tmp_path / "result.json"
+    result_path.write_text(json.dumps(result), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="40-hex"):
+        vnext_qa.stamp_qa_result(
+            manifest_path=manifest_path,
+            result_path=result_path,
+            role="A1",
+            experiment="bad-revision",
+        )
+
+
+def test_leaderboard_rejects_tampered_stamped_payload(tmp_path: Path):
+    manifest = vnext_qa.build_frozen_manifest(
+        _valid_report(),
+        revision="golden-r1",
+        reviewer="human",
+        human_confirmed=True,
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    result_path = tmp_path / "result.json"
+    result_path.write_text(json.dumps(_qa_result()), encoding="utf-8")
+
+    stamped = vnext_qa.stamp_qa_result(
+        manifest_path=manifest_path,
+        result_path=result_path,
+        role="A1",
+        experiment="fusion",
+    )
+    stamped["result"]["settings"]["conf"] = 0.99
+    run_path = tmp_path / "tampered.json"
+    run_path.write_text(json.dumps(stamped), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="payload hash mismatch"):
+        vnext_qa.build_leaderboard(
+            manifest_path=manifest_path,
+            run_paths=[run_path],
+        )
+
