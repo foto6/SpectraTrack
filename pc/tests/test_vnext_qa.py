@@ -497,3 +497,110 @@ def test_replay_appearance_vector_requires_explicit_schema(tmp_path: Path):
     report = vnext_qa.validate_detection_replay(replay)
     assert report["detections"] == 1
 
+
+def _external_evidence():
+    return {
+        "schema": vnext_qa.EVIDENCE_SCHEMA,
+        "role": "A2",
+        "experiment": "tracker-current",
+        "scope": "tracker-replay",
+        "source_commit": "4" * 40,
+        "corpus_revision": "golden-r1",
+        "corpus_sha256": None,
+        "ground_truth_sha256": "1" * 64,
+        "source_artifact_sha256": "5" * 64,
+        "model": {
+            "id": "current-yolo",
+            "sha256": "3" * 64,
+            "provider": "DmlExecutionProvider",
+        },
+        "config": {
+            "tracker_candidate": "current",
+            "replay_sha256": "6" * 64,
+        },
+        "evaluation": {"label": "person", "match_iou": 0.5},
+        "quality": {
+            "track_recall": 0.88,
+            "id_switches": 1,
+            "fragmentations": 2,
+            "mean_track_length_annotated_frames": 8.0,
+            "mean_recovery_latency_frames": 2.0,
+            "tracking_center_jitter": 0.02,
+            "tracking_temporal_iou": 0.91,
+        },
+        "compute": {
+            "onnx_inference_calls": 0,
+            "onnx_calls_per_frame": 0.0,
+            "wall_seconds": 1.2,
+            "processing_seconds_per_source_second": 0.03,
+            "peak_vram_mb": None,
+        },
+        "provenance": {
+            "replay_sha256": "6" * 64,
+            "input_videos": [
+                {
+                    "video": "golden/clip.mp4",
+                    "sha256": "2" * 64,
+                    "width": 1920,
+                    "height": 1080,
+                }
+            ],
+        },
+    }
+
+
+def test_external_specialist_evidence_can_join_common_leaderboard(tmp_path: Path):
+    manifest = vnext_qa.build_frozen_manifest(
+        _valid_report(),
+        revision="golden-r1",
+        reviewer="human",
+        human_confirmed=True,
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    evidence = _external_evidence()
+    evidence["corpus_sha256"] = manifest["corpus_sha256"]
+    evidence_path = tmp_path / "tracking-evidence.json"
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    stamped = vnext_qa.stamp_external_evidence(
+        manifest_path=manifest_path,
+        evidence_path=evidence_path,
+    )
+    run_path = tmp_path / "tracking.stamped.json"
+    run_path.write_text(json.dumps(stamped), encoding="utf-8")
+
+    leaderboard = vnext_qa.build_leaderboard(
+        manifest_path=manifest_path,
+        run_paths=[run_path],
+    )
+    row = leaderboard["rows"][0]
+    assert row["scope"] == "tracker-replay"
+    assert row["track_recall"] == pytest.approx(0.88)
+    assert row["onnx_inference_calls"] == 0
+    assert row["recall"] is None
+
+
+def test_external_evidence_rejects_hidden_corpus_video_change(tmp_path: Path):
+    manifest = vnext_qa.build_frozen_manifest(
+        _valid_report(),
+        revision="golden-r1",
+        reviewer="human",
+        human_confirmed=True,
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    evidence = _external_evidence()
+    evidence["corpus_sha256"] = manifest["corpus_sha256"]
+    evidence["provenance"]["input_videos"][0]["sha256"] = "9" * 64
+    evidence_path = tmp_path / "bad-evidence.json"
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="different sha256"):
+        vnext_qa.stamp_external_evidence(
+            manifest_path=manifest_path,
+            evidence_path=evidence_path,
+        )
+
