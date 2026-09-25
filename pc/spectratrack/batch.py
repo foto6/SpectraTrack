@@ -151,9 +151,16 @@ def analyze_video(
     person_tile_size: int = 640,
     person_tile_overlap: float = 0.20,
     person_merge_iou: float = 0.55,
+    people_recall_enhancement: str = "off",
 ) -> list[TrackletSummary]:
     if detector_mode not in {"standard", "people-recall"}:
         raise ValueError("detector_mode must be standard or people-recall")
+    if people_recall_enhancement not in {"off", "adaptive"}:
+        raise ValueError("people_recall_enhancement must be off or adaptive")
+    if people_recall_enhancement == "adaptive" and detector_mode != "people-recall":
+        raise ValueError("adaptive enhancement requires detector_mode=people-recall")
+    if people_recall_enhancement == "adaptive" and person_conf <= 0.0:
+        raise ValueError("adaptive people-recall requires person_conf > 0")
 
     capture = RobustCapture(str(path), CaptureConfig(backend="auto", reconnect_attempts=0))
     if not capture.is_opened():
@@ -187,6 +194,7 @@ def analyze_video(
                         tile_size=person_tile_size,
                         tile_overlap=person_tile_overlap,
                         merge_iou_threshold=person_merge_iou,
+                        enhancement_mode=people_recall_enhancement,
                     )
                 else:
                     detections = detector.detect(frame)
@@ -272,6 +280,7 @@ def main() -> int:
     parser.add_argument("--person-tile-size", type=int, default=640)
     parser.add_argument("--person-tile-overlap", type=float, default=0.20)
     parser.add_argument("--person-merge-iou", type=float, default=0.55)
+    parser.add_argument("--people-recall-enhancement", choices=("off", "adaptive"), default="off")
     parser.add_argument("--detect-every", type=int, default=1)
     parser.add_argument("--classes", default="")
     parser.add_argument("--candidate-threshold", type=float, default=0.86)
@@ -305,6 +314,10 @@ def main() -> int:
         raise SystemExit("--person-tile-overlap must satisfy 0 <= overlap < 1")
     if not 0.0 < args.person_merge_iou <= 1.0:
         raise SystemExit("--person-merge-iou must be in (0, 1]")
+    if args.people_recall_enhancement == "adaptive" and args.detector_mode != "people-recall":
+        raise SystemExit("--people-recall-enhancement adaptive requires --detector-mode people-recall")
+    if args.people_recall_enhancement == "adaptive" and args.person_conf <= 0.0:
+        raise SystemExit("adaptive people-recall requires --person-conf > 0")
     if not 0.0 <= args.candidate_threshold <= args.strong_threshold <= 1.0:
         raise SystemExit("Require 0 <= --candidate-threshold <= --strong-threshold <= 1")
 
@@ -352,6 +365,7 @@ def main() -> int:
                 person_tile_size=args.person_tile_size,
                 person_tile_overlap=args.person_tile_overlap,
                 person_merge_iou=args.person_merge_iou,
+                people_recall_enhancement=args.people_recall_enhancement,
             )
             all_tracklets.extend(tracklets)
             print(f"  tracklets={len(tracklets)}")
@@ -400,6 +414,9 @@ def main() -> int:
         "person_tile_size": args.person_tile_size if args.detector_mode == "people-recall" else None,
         "person_tile_overlap": args.person_tile_overlap if args.detector_mode == "people-recall" else None,
         "person_merge_iou": args.person_merge_iou if args.detector_mode == "people-recall" else None,
+        "people_recall_enhancement": (
+            args.people_recall_enhancement if args.detector_mode == "people-recall" else None
+        ),
         "classes": sorted(class_filter),
         "failures": failures,
         "review_file": args.review or None,

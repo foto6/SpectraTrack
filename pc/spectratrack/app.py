@@ -69,6 +69,12 @@ def main() -> int:
     parser.add_argument("--person-tile-size", type=int, default=640, help="Source-pixel tile size for people-recall mode")
     parser.add_argument("--person-tile-overlap", type=float, default=0.20, help="Fractional overlap between recall tiles")
     parser.add_argument("--person-merge-iou", type=float, default=0.55, help="IoU used to merge full-frame/tile detections")
+    parser.add_argument(
+        "--people-recall-enhancement",
+        choices=("off", "adaptive"),
+        default="off",
+        help="Optional A3 adaptive preprocessing for A1-owned people-recall tiles",
+    )
     parser.add_argument("--classes", default="", help="Comma-separated labels to retain, e.g. person,car,truck")
     parser.add_argument("--profile", choices=("quality", "balanced", "speed"), default="balanced")
     parser.add_argument("--detect-every", type=int, default=0, help="Run detector every N frames; 0 uses profile default")
@@ -95,6 +101,12 @@ def main() -> int:
         raise SystemExit("--person-tile-overlap must satisfy 0 <= overlap < 1")
     if not 0.0 < args.person_merge_iou <= 1.0:
         raise SystemExit("--person-merge-iou must be in (0, 1]")
+    if args.people_recall_enhancement == "adaptive" and args.detector_mode != "people-recall":
+        raise SystemExit("--people-recall-enhancement adaptive requires --detector-mode people-recall")
+    if args.people_recall_enhancement == "adaptive" and args.person_conf <= 0.0:
+        raise SystemExit("adaptive people-recall requires --person-conf > 0")
+    if args.people_recall_enhancement == "adaptive" and args.enhance:
+        raise SystemExit("--enhance cannot be combined with adaptive people-recall; raw corroboration must stay raw")
 
     model = Path(args.model)
     if not model.exists():
@@ -202,6 +214,9 @@ def main() -> int:
         "person_tile_size": args.person_tile_size if args.detector_mode == "people-recall" else None,
         "person_tile_overlap": args.person_tile_overlap if args.detector_mode == "people-recall" else None,
         "person_merge_iou": args.person_merge_iou if args.detector_mode == "people-recall" else None,
+        "people_recall_enhancement": (
+            args.people_recall_enhancement if args.detector_mode == "people-recall" else None
+        ),
         "appearance_cue": not args.no_appearance,
     }) if args.session_log else None
 
@@ -271,6 +286,7 @@ def main() -> int:
                             tile_size=args.person_tile_size,
                             tile_overlap=args.person_tile_overlap,
                             merge_iou_threshold=args.person_merge_iou,
+                            enhancement_mode=args.people_recall_enhancement,
                         )
                     else:
                         detections = detector.detect(analysis_frame)

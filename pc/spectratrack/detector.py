@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 
+from .enhancement_recall import detect_people_with_adaptive_regions
 from .types import Detection
 
 
@@ -97,6 +98,16 @@ def _tile_starts(length: int, tile_size: int, overlap: float) -> list[int]:
     if starts[-1] != last:
         starts.append(last)
     return starts
+
+
+def _tile_regions(frame_w: int, frame_h: int, tile_size: int, overlap: float) -> list[tuple[int, int, int, int]]:
+    x_starts = _tile_starts(frame_w, tile_size, overlap)
+    y_starts = _tile_starts(frame_h, tile_size, overlap)
+    return [
+        (x, y, min(frame_w, x + tile_size), min(frame_h, y + tile_size))
+        for y in y_starts
+        for x in x_starts
+    ]
 
 
 def _looks_like_end2end(pred: np.ndarray, label_count: int) -> bool:
@@ -252,6 +263,7 @@ class YoloOnnxDetector:
         tile_size: int = 640,
         tile_overlap: float = 0.20,
         merge_iou_threshold: float = 0.55,
+        enhancement_mode: str = "off",
     ) -> list[Detection]:
         if not 0.0 <= person_threshold <= 1.0:
             raise ValueError("person_threshold must be in [0, 1]")
@@ -261,26 +273,44 @@ class YoloOnnxDetector:
             raise ValueError("tile_overlap must satisfy 0 <= overlap < 1")
         if not 0.0 < merge_iou_threshold <= 1.0:
             raise ValueError("merge_iou_threshold must be in (0, 1]")
+        if enhancement_mode not in {"off", "adaptive"}:
+            raise ValueError("enhancement_mode must be off or adaptive")
+        if enhancement_mode == "adaptive" and person_threshold <= 0.0:
+            raise ValueError("adaptive people-recall requires person_threshold > 0")
 
         thresholds = dict(self.class_thresholds)
         thresholds["person"] = float(person_threshold)
         combined = self._detect_once(frame_bgr, thresholds)
 
         h, w = frame_bgr.shape[:2]
-        x_starts = _tile_starts(w, tile_size, tile_overlap)
-        y_starts = _tile_starts(h, tile_size, tile_overlap)
-        if len(x_starts) == 1 and len(y_starts) == 1 and w <= tile_size and h <= tile_size:
+        regions = _tile_regions(w, h, tile_size, tile_overlap)
+        single_full_region = len(regions) == 1 and regions[0] == (0, 0, w, h)
+        if single_full_region and enhancement_mode == "off":
             return combined
 
         person_ids = {index for index, label in enumerate(self.labels) if label.lower() == "person"}
         if not person_ids:
             return combined
 
-        for y in y_starts:
-            for x in x_starts:
-                x2 = min(w, x + tile_size)
-                y2 = min(h, y + tile_size)
-                tile = frame_bgr[y:y2, x:x2]
+        if enhancement_mode == "adaptive":
+            def detect_at_confidence(tile_bgr: np.ndarray, threshold: float) -> list[Detection]:
+                local_thresholds = dict(self.class_thresholds)
+                local_thresholds["person"] = float(threshold)
+                return self._detect_once(tile_bgr, local_thresholds)
+
+            combined.extend(
+                detect_people_with_adaptive_regions(
+                    frame_bgr,
+                    regions,
+                    detect_at_confidence,
+                    person_conf=float(person_threshold),
+                    probe_conf=min(0.08, float(person_threshold)),
+                    corroboration_iou=0.10,
+                )
+            )
+        else:
+            for x1, y1, x2, y2 in regions:
+                tile = frame_bgr[y1:y2, x1:x2]
                 tile_detections = self._detect_once(tile, thresholds)
                 for detection in tile_detections:
                     if detection.class_id not in person_ids:
@@ -288,10 +318,11 @@ class YoloOnnxDetector:
                     bx1, by1, bx2, by2 = detection.bbox
                     combined.append(
                         Detection(
-                            (bx1 + x, by1 + y, bx2 + x, by2 + y),
+                            (bx1 + x1, by1 + y1, bx2 + x1, by2 + y1),
                             detection.score,
                             detection.class_id,
                             detection.label,
+                            detection.appearance,
                         )
                     )
         return _merge_detections(combined, merge_iou_threshold)

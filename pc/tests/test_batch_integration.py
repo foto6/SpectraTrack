@@ -102,3 +102,38 @@ def test_analyze_video_rejects_unknown_detector_mode(tmp_path):
             progress_every=0,
             detector_mode="typo",
         )
+
+
+
+class FakeAdaptiveRecallDetector:
+    def __init__(self):
+        self.enhancement_modes = []
+
+    def detect(self, _frame):
+        raise AssertionError("standard detector path must not be used in people-recall mode")
+
+    def detect_people_recall(self, _frame, **kwargs):
+        self.enhancement_modes.append(kwargs.get("enhancement_mode"))
+        return [Detection((90.0, 60.0, 190.0, 170.0), 0.92, 0, "person")]
+
+
+def test_analyze_video_forwards_adaptive_people_recall_mode(tmp_path):
+    video = tmp_path / "adaptive-recall.avi"
+    _write_test_video(video)
+    detector = FakeAdaptiveRecallDetector()
+
+    tracklets = analyze_video(
+        video,
+        detector,
+        detect_every=1,
+        class_filter=set(),
+        min_observations=3,
+        progress_every=0,
+        detector_mode="people-recall",
+        person_conf=0.12,
+        people_recall_enhancement="adaptive",
+    )
+
+    assert len(tracklets) == 1
+    assert detector.enhancement_modes
+    assert set(detector.enhancement_modes) == {"adaptive"}

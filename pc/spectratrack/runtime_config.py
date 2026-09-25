@@ -20,6 +20,7 @@ _ALLOWED: dict[str, type | tuple[type, ...]] = {
     "person_tile_size": int,
     "person_tile_overlap": (int, float),
     "person_merge_iou": (int, float),
+    "people_recall_enhancement": str,
     "classes": str,
     "profile": str,
     "detect_every": int,
@@ -70,6 +71,13 @@ def load_runtime_config(path: str | Path) -> dict[str, Any]:
         raise ValueError("person_tile_overlap must satisfy 0 <= overlap < 1")
     if not 0.0 < float(out.get("person_merge_iou", 0.55)) <= 1.0:
         raise ValueError("person_merge_iou must be in (0, 1]")
+    if out.get("people_recall_enhancement", "off") not in {"off", "adaptive"}:
+        raise ValueError("people_recall_enhancement must be off or adaptive")
+    if (
+        out.get("people_recall_enhancement", "off") == "adaptive"
+        and float(out.get("person_conf", 0.12)) <= 0.0
+    ):
+        raise ValueError("adaptive people-recall requires person_conf > 0")
     if out.get("view", "normal") not in {"normal", "clarity", "lowlight", "edges", "pseudo-thermal"}:
         raise ValueError("invalid view mode")
     if int(out.get("detect_every", 0)) < 0:

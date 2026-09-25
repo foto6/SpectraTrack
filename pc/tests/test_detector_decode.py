@@ -5,6 +5,7 @@ from spectratrack.detector import (
     YoloOnnxDetector,
     _merge_detections,
     _looks_like_end2end,
+    _tile_regions,
     _tile_starts,
     decode_end2end_predictions,
 )
@@ -126,3 +127,80 @@ def test_people_recall_offsets_tile_detections_to_full_frame():
 
     assert len(detections) == 1
     assert detections[0].bbox == (410.0, 20.0, 430.0, 80.0)
+
+
+
+class _FakeAdaptiveDetector(YoloOnnxDetector):
+    def __init__(self):
+        self.labels = ["person", "car"]
+        self.class_thresholds = {}
+        self.conf_threshold = 0.35
+        self.iou_threshold = 0.45
+        self.calls = []
+
+    def _detect_once(self, frame_bgr, class_thresholds=None):
+        threshold = float((class_thresholds or {}).get("person", self.conf_threshold))
+        self.calls.append((frame_bgr.shape[:2], threshold, float(np.mean(frame_bgr))))
+        if frame_bgr.shape[1] > 400:
+            return []
+        if threshold <= 0.08:
+            return [Detection((50.0, 40.0, 70.0, 100.0), 0.10, 0, "person")]
+        if float(np.mean(frame_bgr)) > 12.5:
+            return [
+                Detection((52.0, 42.0, 72.0, 102.0), 0.30, 0, "person"),
+                Detection((250.0, 40.0, 270.0, 100.0), 0.45, 0, "person"),
+            ]
+        return []
+
+
+def test_people_recall_adaptive_uses_a1_regions_and_raw_corroboration():
+    frame = np.full((400, 800, 3), 12, dtype=np.uint8)
+    detector = _FakeAdaptiveDetector()
+
+    assert _tile_regions(800, 400, 400, 0.0) == [
+        (0, 0, 400, 400),
+        (400, 0, 800, 400),
+    ]
+    detections = detector.detect_people_recall(
+        frame,
+        person_threshold=0.18,
+        tile_size=400,
+        tile_overlap=0.0,
+        merge_iou_threshold=0.5,
+        enhancement_mode="adaptive",
+    )
+
+    # Each tile gets one weak raw probe and one enhanced pass. The unsupported
+    # enhanced candidate at x=250 is rejected because no raw probe corroborates it.
+    assert len(detector.calls) == 5  # one full-frame pass + 2 raw + 2 enhanced
+    assert {(round(d.bbox[0]), round(d.bbox[1])) for d in detections} == {
+        (52, 42),
+        (452, 42),
+    }
+
+
+def test_people_recall_adaptive_still_uses_a1_final_nms(monkeypatch):
+    detector = _FakeTiledDetector()
+    frame = np.zeros((400, 800, 3), dtype=np.uint8)
+    captured = {}
+
+    def fake_adaptive(_frame, regions, _callback, **_kwargs):
+        captured["regions"] = list(regions)
+        return [
+            Detection((100.0, 100.0, 160.0, 220.0), 0.80, 0, "person"),
+            Detection((102.0, 102.0, 158.0, 218.0), 0.55, 0, "person"),
+        ]
+
+    monkeypatch.setattr("spectratrack.detector.detect_people_with_adaptive_regions", fake_adaptive)
+    detections = detector.detect_people_recall(
+        frame,
+        person_threshold=0.18,
+        tile_size=400,
+        tile_overlap=0.0,
+        merge_iou_threshold=0.5,
+        enhancement_mode="adaptive",
+    )
+
+    assert captured["regions"] == [(0, 0, 400, 400), (400, 0, 800, 400)]
+    assert len(detections) == 1
+    assert detections[0].score == pytest.approx(0.80)
