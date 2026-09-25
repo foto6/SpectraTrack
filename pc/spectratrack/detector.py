@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 from typing import Iterable
 
 import cv2
@@ -143,6 +144,7 @@ class YoloOnnxDetector:
         self.conf_threshold = float(conf_threshold)
         self.iou_threshold = float(iou_threshold)
         self.labels = list(labels or COCO80)
+        self.last_stage_ms: dict[str, float] = {}
 
         available = ort.get_available_providers()
         providers: list[str] = []
@@ -186,12 +188,19 @@ class YoloOnnxDetector:
         return canvas, scale, float(left), float(top)
 
     def detect(self, frame_bgr: np.ndarray) -> list[Detection]:
+        self.last_stage_ms = {}
+        preprocess_started = time.perf_counter()
         image, scale, pad_x, pad_y = self._letterbox(frame_bgr)
         rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         blob = rgb.astype(np.float32) / 255.0
         blob = np.transpose(blob, (2, 0, 1))[None, ...]
+        self.last_stage_ms["preprocess"] = (time.perf_counter() - preprocess_started) * 1000.0
 
+        inference_started = time.perf_counter()
         outputs = self.session.run(None, {self.input_name: blob})
+        self.last_stage_ms["inference"] = (time.perf_counter() - inference_started) * 1000.0
+
+        postprocess_started = time.perf_counter()
         pred = np.asarray(outputs[0])
         pred = np.squeeze(pred)
         if pred.ndim != 2:
@@ -205,11 +214,13 @@ class YoloOnnxDetector:
 
         h, w = frame_bgr.shape[:2]
         if _looks_like_end2end(pred, len(self.labels)):
-            return decode_end2end_predictions(
+            detections = decode_end2end_predictions(
                 pred, w, h, self.input_w, self.input_h,
                 scale, pad_x, pad_y, self.labels,
                 self.conf_threshold, self.iou_threshold,
             )
+            self.last_stage_ms["postprocess"] = (time.perf_counter() - postprocess_started) * 1000.0
+            return detections
 
         boxes_xywh = pred[:, :4]
         class_scores = pred[:, 4:]
@@ -217,6 +228,7 @@ class YoloOnnxDetector:
         scores = class_scores[np.arange(class_scores.shape[0]), class_ids]
         mask = scores >= self.conf_threshold
         if not np.any(mask):
+            self.last_stage_ms["postprocess"] = (time.perf_counter() - postprocess_started) * 1000.0
             return []
 
         boxes_xywh = boxes_xywh[mask]
@@ -248,4 +260,5 @@ class YoloOnnxDetector:
             cid = int(class_ids[i])
             label = self.labels[cid] if 0 <= cid < len(self.labels) else f"class_{cid}"
             detections.append(Detection((x1, y1, x2, y2), float(scores[i]), cid, label))
+        self.last_stage_ms["postprocess"] = (time.perf_counter() - postprocess_started) * 1000.0
         return detections

@@ -186,7 +186,7 @@ Presets:
 
 - requested capture: 1920×1080 @ 30
 - backend: DirectShow
-- profile: quality
+- profile: high-quality
 - detect_every: 1
 - CMC on
 - appearance on
@@ -201,10 +201,10 @@ Same requested capture, but `balanced` / `detect_every: 2`.
 
 - requested capture: 1280×720 @ 30
 - CPU inference
-- `speed`
+- `fast`
 - detect_every: 3
 
-A manual stress configuration used during development was YOLO11x ONNX, input size 960, confidence 0.20, IoU 0.50, quality profile, detector every frame. This is **not** the repository default.
+A manual stress configuration used during development was YOLO11x ONNX, input size 960, confidence 0.20, IoU 0.50, high-quality profile, detector every frame. This is **not** the repository default.
 
 ## 6. Tracking
 
@@ -454,8 +454,8 @@ Files:
 - `pc/spectratrack/selfcheck.py`
 
 `StageTimer` records bounded recent samples plus whole-run average/count/max values.
-The live PC path separately measures model inference, appearance extraction, tracking, capture,
-rendering/session/record writes, and full-frame processing. `--perf-report PATH` writes these
+The live PC path separately measures detector preprocessing, ONNX inference, detector postprocessing,
+appearance extraction, tracking, capture, rendering/session/record writes, and full-frame processing. `--perf-report PATH` writes these
 measurements as JSON together with processing FPS, provider selection and dependency-free
 process CPU sampling.
 

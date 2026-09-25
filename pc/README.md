@@ -55,6 +55,13 @@ Press `U` while a target is locked. SpectraTrack saves the raw crop first and th
 
 The Python client uses `onnxruntime-directml`, so it does not require CUDA/NVIDIA. On Windows the detector will display its active ONNX providers in the HUD. Pass `--cpu` to compare performance.
 
+Performance profiles are `fast`, `balanced`, `high-quality`, and `max-recall`.
+Legacy `speed` and `quality` names are still accepted. To capture a machine-readable
+pipeline baseline, pass `--perf-report run-performance.json`. The report separates
+preprocess, ONNX inference, postprocess, appearance, tracker, capture and output-write
+latencies. GPU utilization/VRAM remain explicitly unavailable until validated Windows
+hardware counters are implemented.
+
 ## 6. Cross-video batch graph
 
 Standalone Windows build:

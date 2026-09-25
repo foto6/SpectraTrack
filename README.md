@@ -17,7 +17,7 @@ See [pc/README.md](pc/README.md) for the Windows guide, [ARCHITECTURE.md](ARCHIT
 - ONNX Runtime DirectML acceleration with CPU fallback;
 - two-stage multi-object stable IDs with tentative/confirmed/predicted lifecycle;
 - affine optical-flow camera-motion compensation with RANSAC quality gates;
-- detector cadence profiles (quality/balanced/speed) with prediction-only skipped frames;
+- detector cadence profiles (fast/balanced/high-quality/max-recall; legacy quality/speed aliases) with prediction-only skipped frames;
 - click-to-lock target;
 - target trajectory;
 - enlarged target window;

@@ -260,6 +260,8 @@ def main() -> int:
                 detect_started = time.perf_counter()
                 with timings.measure("detector"):
                     detections = detector.detect(analysis_frame)
+                for detector_stage, elapsed_ms in detector.last_stage_ms.items():
+                    timings.add(f"detector_{detector_stage}", elapsed_ms)
                 if class_filter:
                     detections = [d for d in detections if d.label.lower() in class_filter]
                 if not args.no_appearance:
@@ -511,6 +513,9 @@ def main() -> int:
         "stabilize",
         "enhance",
         "detector",
+        "detector_preprocess",
+        "detector_inference",
+        "detector_postprocess",
         "appearance",
         "detect",
         "track",
@@ -528,8 +533,17 @@ def main() -> int:
         "detect_every": detect_every,
         "detector_runs": timings.count("detector"),
         "providers": detector.providers,
+        "capture_stats": capture.stats(),
         "latency_ms": timings.summaries(stage_names),
         "cpu_process": cpu_usage.summary(),
+        "reid": {
+            "implemented": False,
+            "latency_ms": None,
+            "reason": (
+                "The live tracker has no learned Re-ID stage; its non-biometric HSV appearance cue "
+                "is reported separately as latency_ms.appearance."
+            ),
+        },
         "gpu": {
             "usage_pct": None,
             "vram_mb": None,
