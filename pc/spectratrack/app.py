@@ -161,11 +161,17 @@ def main() -> int:
 
             # Stabilization already compensates image motion; do not compensate twice.
             camera_shift = (0.0, 0.0)
+            camera_transform = None
             if not stabilization and cam is not None and cam.valid:
                 camera_shift = (cam.dx, cam.dy)
+                camera_transform = cam.affine
 
             with timings.measure("track"):
-                tracks = tracker.update(detections, camera_motion=camera_shift)
+                tracks = tracker.update(
+                    detections,
+                    camera_motion=camera_shift,
+                    camera_transform=camera_transform,
+                )
 
             state.tracks = tracks
             if state.selected_id is not None and all(t.track_id != state.selected_id for t in tracks):

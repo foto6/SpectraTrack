@@ -59,3 +59,21 @@ def test_camera_motion_is_removed_from_target_velocity():
     tr = tracker.update([d(120, 100)], camera_motion=(20.0, 0.0))[0]
     assert abs(tr.vx) < 1e-6
     assert abs(tr.vy) < 1e-6
+
+
+def test_affine_translation_compensation():
+    tracker = MultiObjectTracker(min_hits=1)
+    tracker.update([d(100, 100)])
+    affine = (1.0, 0.0, 25.0, 0.0, 1.0, -8.0)
+    tr = tracker.update([d(125, 92)], camera_transform=affine)[0]
+    assert abs(tr.vx) < 1e-6
+    assert abs(tr.vy) < 1e-6
+
+
+def test_affine_rotation_preserves_static_target_identity():
+    tracker = MultiObjectTracker(min_hits=1, max_center_ratio=3.0)
+    first = tracker.update([d(100, 100)])[0].track_id
+    # 90-degree rotation around origin maps center (150,150) -> (-150,150).
+    affine = (0.0, -1.0, 0.0, 1.0, 0.0, 0.0)
+    tracks = tracker.update([Detection((-200, 100, -100, 200), 0.9, 0, "obj")], camera_transform=affine)
+    assert any(t.track_id == first and t.missed == 0 for t in tracks)

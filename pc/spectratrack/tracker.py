@@ -22,6 +22,24 @@ def shift_box(box: BBox, dx: float, dy: float) -> BBox:
     return x1 + dx, y1 + dy, x2 + dx, y2 + dy
 
 
+def transform_point(x: float, y: float, affine: tuple[float, float, float, float, float, float]) -> tuple[float, float]:
+    a, b, tx, c, d, ty = affine
+    return a * x + b * y + tx, c * x + d * y + ty
+
+
+def transform_box(box: BBox, affine: tuple[float, float, float, float, float, float]) -> BBox:
+    x1, y1, x2, y2 = box
+    pts = [
+        transform_point(x1, y1, affine),
+        transform_point(x2, y1, affine),
+        transform_point(x2, y2, affine),
+        transform_point(x1, y2, affine),
+    ]
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
 class MultiObjectTracker:
     """Dependency-light two-stage tracker with camera-motion compensation.
 
@@ -54,25 +72,30 @@ class MultiObjectTracker:
         self._next_id = 1
         self.tracks.clear()
 
-    def _predicted_box(self, track: Track, camera_motion: tuple[float, float]) -> BBox:
-        camera_dx, camera_dy = camera_motion
+    def _predicted_box(
+        self,
+        track: Track,
+        camera_motion: tuple[float, float],
+        camera_transform: tuple[float, float, float, float, float, float] | None,
+    ) -> BBox:
         factor = max(0.25, 1.0 - track.missed * 0.08)
-        return shift_box(
-            track.bbox,
-            camera_dx + track.vx * factor,
-            camera_dy + track.vy * factor,
-        )
+        if camera_transform is not None:
+            camera_box = transform_box(track.bbox, camera_transform)
+            return shift_box(camera_box, track.vx * factor, track.vy * factor)
+        camera_dx, camera_dy = camera_motion
+        return shift_box(track.bbox, camera_dx + track.vx * factor, camera_dy + track.vy * factor)
 
     def _candidate_score(
         self,
         track: Track,
         det: Detection,
         camera_motion: tuple[float, float],
+        camera_transform: tuple[float, float, float, float, float, float] | None,
         loose: bool,
     ) -> float | None:
         if det.class_id != track.class_id:
             return None
-        predicted = self._predicted_box(track, camera_motion)
+        predicted = self._predicted_box(track, camera_motion, camera_transform)
         pcx = (predicted[0] + predicted[2]) * 0.5
         pcy = (predicted[1] + predicted[3]) * 0.5
         dcx, dcy = det.center
@@ -91,13 +114,14 @@ class MultiObjectTracker:
         detections: list[Detection],
         det_ids: set[int],
         camera_motion: tuple[float, float],
+        camera_transform: tuple[float, float, float, float, float, float] | None,
         loose: bool = False,
     ) -> list[tuple[int, int]]:
         candidates: list[tuple[float, int, int]] = []
         for tid in track_ids:
             track = self.tracks[tid]
             for didx in det_ids:
-                score = self._candidate_score(track, detections[didx], camera_motion, loose)
+                score = self._candidate_score(track, detections[didx], camera_motion, camera_transform, loose)
                 if score is not None:
                     candidates.append((score, tid, didx))
         candidates.sort(reverse=True)
@@ -117,12 +141,18 @@ class MultiObjectTracker:
         track: Track,
         det: Detection,
         camera_motion: tuple[float, float],
+        camera_transform: tuple[float, float, float, float, float, float] | None,
     ) -> None:
         old_cx, old_cy = track.center
         new_cx, new_cy = det.center
-        camera_dx, camera_dy = camera_motion
-        measured_vx = (new_cx - old_cx) - camera_dx
-        measured_vy = (new_cy - old_cy) - camera_dy
+        if camera_transform is not None:
+            cam_cx, cam_cy = transform_point(old_cx, old_cy, camera_transform)
+            measured_vx = new_cx - cam_cx
+            measured_vy = new_cy - cam_cy
+        else:
+            camera_dx, camera_dy = camera_motion
+            measured_vx = (new_cx - old_cx) - camera_dx
+            measured_vy = (new_cy - old_cy) - camera_dy
         track.vx = track.vx * 0.62 + measured_vx * 0.38
         track.vy = track.vy * 0.62 + measured_vy * 0.38
         if track.missed > 0:
@@ -141,30 +171,31 @@ class MultiObjectTracker:
         self,
         detections: Iterable[Detection],
         camera_motion: tuple[float, float] = (0.0, 0.0),
+        camera_transform: tuple[float, float, float, float, float, float] | None = None,
     ) -> list[Track]:
         detections = [d for d in detections if d.score >= self.low_conf]
         all_tracks = set(self.tracks)
         high = {i for i, d in enumerate(detections) if d.score >= self.high_conf}
         low = set(range(len(detections))) - high
 
-        matches_high = self._associate(all_tracks, detections, high, camera_motion, loose=False)
+        matches_high = self._associate(all_tracks, detections, high, camera_motion, camera_transform, loose=False)
         used_tracks = {tid for tid, _ in matches_high}
         used_dets = {didx for _, didx in matches_high}
 
         unmatched_tracks = all_tracks - used_tracks
         low_candidates = low | (high - used_dets)
-        matches_low = self._associate(unmatched_tracks, detections, low_candidates, camera_motion, loose=True)
+        matches_low = self._associate(unmatched_tracks, detections, low_candidates, camera_motion, camera_transform, loose=True)
 
         matches = matches_high + matches_low
         used_tracks |= {tid for tid, _ in matches_low}
         used_dets |= {didx for _, didx in matches_low}
 
         for tid, didx in matches:
-            self._apply_match(self.tracks[tid], detections[didx], camera_motion)
+            self._apply_match(self.tracks[tid], detections[didx], camera_motion, camera_transform)
 
         for tid in all_tracks - used_tracks:
             track = self.tracks[tid]
-            track.bbox = self._predicted_box(track, camera_motion)
+            track.bbox = self._predicted_box(track, camera_motion, camera_transform)
             track.age += 1
             track.missed += 1
             cx, cy = track.center

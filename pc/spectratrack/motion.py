@@ -12,6 +12,7 @@ class CameraMotion:
     rotation_rad: float = 0.0
     inliers: int = 0
     valid: bool = False
+    affine: tuple[float, float, float, float, float, float] | None = None
 
 
 class GlobalMotionEstimator:
@@ -65,4 +66,8 @@ class GlobalMotionEstimator:
             rotation_rad=float(np.arctan2(mat[1, 0], mat[0, 0])),
             inliers=count,
             valid=count >= 6,
+            affine=(
+                float(mat[0, 0]), float(mat[0, 1]), float(mat[0, 2]),
+                float(mat[1, 0]), float(mat[1, 1]), float(mat[1, 2]),
+            ),
         )
