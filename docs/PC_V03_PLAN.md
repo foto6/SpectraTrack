@@ -57,6 +57,12 @@ Implementation note: `people-recall` lowers only the `person` tentative-track cr
 - [ ] Do **not** use generative super-resolution as ground truth for detection; it can hallucinate detail.
 - [ ] If neural restoration is tested, evaluate it only as an optional analysis branch and measure whether recall actually improves.
 
+### Agent 3 investigation notes
+
+- **Candidate/ROI-only second pass:** keep as a performance experiment, not a recall replacement. A second pass around weak full-frame/raw-tile candidates can spend fewer detector calls, but it cannot recover a person for which the first pass produced no candidate at all. Benchmark ROI-only against full overlapping tiles after the validation set exists.
+- **Temporal image enhancement:** do not average/stack raw neighboring frames in the detection path yet. Camera/object motion can create ghost structure unless frames and moving targets are aligned. The implemented temporal evidence stays at the detection/tracker level: weak person candidates form tentative tracks and require repeated spatially consistent hits before confirmation.
+- **Neural/generative restoration:** remains excluded from accepted detection evidence. Optional restoration can be benchmarked later, but a processed-only person is never accepted without raw-frame detector corroboration.
+
 ### B5 — model selection / training
 - [ ] Compare the current generic YOLO model with at least one small-object/overhead-friendly detector configuration.
 - [ ] Measure person recall before choosing a larger model solely from model size.
