@@ -437,14 +437,14 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     inference_seconds = 0.0
     total_start = time.perf_counter()
 
-    for video, annotations in sorted(grouped.items()):
+    for video, video_annotations in sorted(grouped.items()):
         video_path = Path(args.video_root) / video
         if not video_path.is_file():
             raise FileNotFoundError(f"Benchmark video is missing: {video_path}")
         cap = cv2.VideoCapture(str(video_path))
         if not cap.isOpened():
             raise RuntimeError(f"Cannot open benchmark video: {video_path}")
-        annotated_frames = {item.frame for item in annotations}
+        annotated_frames = {item.frame for item in video_annotations}
         last_needed = max(annotated_frames)
         motion = GlobalMotionEstimator()
         tracker = MultiObjectTracker()
