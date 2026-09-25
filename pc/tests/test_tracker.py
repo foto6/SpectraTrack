@@ -217,3 +217,28 @@ def test_reset_clears_dormant_tracks():
     assert resumed.track_id == 1
     assert resumed.recoveries == 0
     assert first == 1
+
+
+def test_dormant_reactivation_tracks_camera_motion_across_skipped_frames():
+    appearance = tuple([1.0] + [0.0] * 7)
+    tracker = MultiObjectTracker(
+        max_missed=1,
+        min_hits=1,
+        reactivation_window=6,
+        reactivation_max_center_ratio=4.0,
+    )
+    first = tracker.update([d(50, 50, appearance=appearance)])[0].track_id
+
+    affine_200 = (1.0, 0.0, 200.0, 0.0, 1.0, 0.0)
+    tracker.update([], camera_transform=affine_200)
+    assert tracker.update([], camera_transform=affine_200) == []
+
+    affine_400 = (1.0, 0.0, 400.0, 0.0, 1.0, 0.0)
+    tracker.predict_only(camera_transform=affine_400)
+    resumed = tracker.update(
+        [d(1250, 50, appearance=appearance)],
+        camera_transform=affine_400,
+    )[0]
+
+    assert resumed.track_id == first
+    assert resumed.recoveries == 1

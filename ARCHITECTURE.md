@@ -245,7 +245,8 @@ Behavior:
 - confirmed tracks can survive short detector dropouts;
 - confirmed tracks with an appearance cue can enter a bounded dormant pool after `max_missed`;
 - dormant reactivation keeps the original local `track_id` only when class, appearance, shape/size, spatial plausibility and optional motion direction agree;
-- dormant tracks are aged only on detector-observed `update()` calls, not scheduled `predict_only()` frames;
+- dormant bbox geometry continues to follow CMC on both `update()` and `predict_only()` frames so camera pan/rotation/scale does not leave the hidden spatial prior stale;
+- the dormant-window age advances only on detector-observed `update()` calls, not scheduled `predict_only()` frames;
 - tracks without appearance evidence are never dormant-reactivated;
 - track velocity is an exponentially smoothed residual image velocity, not metric world velocity;
 - track history stores up to 64 center points.
