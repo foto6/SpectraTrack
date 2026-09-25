@@ -32,13 +32,13 @@ The goal is **high pedestrian recall**, not a blanket confidence-threshold drop.
 - [ ] Keep the validation clips out of tuning decisions after thresholds are frozen.
 
 ### B2 — quality-max person pipeline
-- [ ] Add a dedicated `people-recall` / `quality-max` mode.
-- [ ] Run the normal full-frame detector for cars/large objects.
-- [ ] Add a second **person-only high-resolution pass**.
-- [ ] Add tiled/sliced inference with overlap so tiny people are presented to the model at a useful scale.
-- [ ] Merge full-frame and tile detections with class-aware NMS/WBF without duplicate boxes.
-- [ ] Support class-specific thresholds: lower threshold for `person`, normal thresholds for other classes.
-- [ ] Keep a hard minimum quality gate so lowering person confidence does not flood the scene with single-frame junk.
+- [x] Add a dedicated `people-recall` / `quality-max` mode.
+- [x] Run the normal full-frame detector for cars/large objects.
+- [x] Add a second **person-only high-resolution pass**.
+- [x] Add tiled/sliced inference with overlap so tiny people are presented to the model at a useful scale.
+- [x] Merge full-frame and tile detections with class-aware NMS/WBF without duplicate boxes.
+- [x] Support class-specific thresholds: lower threshold for `person`, normal thresholds for other classes.
+- [x] Keep a hard minimum quality gate so lowering person confidence does not flood the scene with single-frame junk.
 
 ### B3 — temporal recovery of weak people
 - [ ] Keep weak person candidates for a short temporal window instead of discarding them immediately.
@@ -49,6 +49,7 @@ The goal is **high pedestrian recall**, not a blanket confidence-threshold drop.
 
 ### B4 — image-analysis variants
 - [ ] Benchmark original RGB vs non-generative low-light/contrast analysis for the person pass.
+- [x] Add adaptive non-generative routing for blur/darkness/compression/resolution/noise; processed-only people require raw-frame corroboration.
 - [ ] Benchmark multiple detector input sizes.
 - [ ] Benchmark tile sizes/overlap and detector cadence.
 - [ ] Do **not** use generative super-resolution as ground truth for detection; it can hallucinate detail.

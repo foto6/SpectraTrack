@@ -38,9 +38,18 @@ def assess_frame_quality(frame: np.ndarray) -> dict[str, float]:
     if frame is None or frame.size == 0 or frame.ndim != 3 or frame.shape[2] != 3:
         raise ValueError("frame must be a non-empty BGR image")
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray_full = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    height, width = gray_full.shape
+    scale = min(1.0, 640.0 / max(height, width))
+    if scale < 1.0:
+        gray = cv2.resize(
+            gray_full,
+            (max(1, int(round(width * scale))), max(1, int(round(height * scale)))),
+            interpolation=cv2.INTER_AREA,
+        )
+    else:
+        gray = gray_full
     gray_f = gray.astype(np.float32)
-    height, width = gray.shape
 
     mean_luma = float(np.mean(gray_f)) / 255.0
     darkness = float(np.clip((0.42 - mean_luma) / 0.42, 0.0, 1.0))
@@ -55,22 +64,23 @@ def assess_frame_quality(frame: np.ndarray) -> dict[str, float]:
 
     block_samples: list[float] = []
     inner_samples: list[float] = []
+    block_gray = gray_full.astype(np.float32)
     if width > 16:
         boundaries = np.arange(8, width, 8)
         if len(boundaries):
-            block_samples.append(float(np.mean(np.abs(gray_f[:, boundaries] - gray_f[:, boundaries - 1]))))
+            block_samples.append(float(np.mean(np.abs(block_gray[:, boundaries] - block_gray[:, boundaries - 1]))))
         inner = np.arange(4, width, 8)
         inner = inner[inner > 0]
         if len(inner):
-            inner_samples.append(float(np.mean(np.abs(gray_f[:, inner] - gray_f[:, inner - 1]))))
+            inner_samples.append(float(np.mean(np.abs(block_gray[:, inner] - block_gray[:, inner - 1]))))
     if height > 16:
         boundaries = np.arange(8, height, 8)
         if len(boundaries):
-            block_samples.append(float(np.mean(np.abs(gray_f[boundaries, :] - gray_f[boundaries - 1, :]))))
+            block_samples.append(float(np.mean(np.abs(block_gray[boundaries, :] - block_gray[boundaries - 1, :]))))
         inner = np.arange(4, height, 8)
         inner = inner[inner > 0]
         if len(inner):
-            inner_samples.append(float(np.mean(np.abs(gray_f[inner, :] - gray_f[inner - 1, :]))))
+            inner_samples.append(float(np.mean(np.abs(block_gray[inner, :] - block_gray[inner - 1, :]))))
     block_edge = float(np.mean(block_samples)) if block_samples else 0.0
     inner_edge = float(np.mean(inner_samples)) if inner_samples else block_edge
     compression = float(np.clip((block_edge - inner_edge) / max(inner_edge + 4.0, 1.0), 0.0, 1.0))

@@ -38,7 +38,31 @@ python -m spectratrack.app --model ..\models\yolo11n.onnx --source "D:\video.mp4
 
 Controls: `Q/Esc` quit, `E` enhancement, `Z` stabilization, `H` HUD, mouse click target lock, `S` save selected crop, `U` run optional neural SR on the selected crop.
 
-## 5. Optional Real-ESRGAN / Vulkan
+## 5. High-recall tiny-person analysis
+
+For difficult high-angle/night/compressed footage, enable the opt-in person-only
+quality path:
+
+```powershell
+python -m spectratrack.app `
+  --model ..\models\yolo11n.onnx `
+  --source "D:\video.mp4" `
+  --profile quality `
+  --people-recall
+```
+
+The normal full-frame detector still handles all classes. `--people-recall` adds
+overlapping person-only tiles at a lower person threshold. Frame quality is
+estimated first (blur, darkness, compression, resolution and noise); bounded
+non-generative preprocessing is used only for the person analysis branch when
+needed. An enhanced-only candidate is rejected unless a weaker person candidate
+also exists on the original frame.
+
+Defaults are `--person-conf 0.18 --person-probe-conf 0.08 --tile-size 512 --tile-overlap 0.20`.
+This mode can be substantially slower because it deliberately spends extra
+detector passes on small-object recall.
+
+## 6. Optional Real-ESRGAN / Vulkan
 
 Install an official `realesrgan-ncnn-vulkan` build yourself. Do not replace it with a random repack. Then pass the exact executable path:
 
@@ -55,7 +79,7 @@ Press `U` while a target is locked. SpectraTrack saves the raw crop first and th
 
 The Python client uses `onnxruntime-directml`, so it does not require CUDA/NVIDIA. On Windows the detector will display its active ONNX providers in the HUD. Pass `--cpu` to compare performance.
 
-## 6. Cross-video batch graph
+## 7. Cross-video batch graph
 
 Standalone Windows build:
 
