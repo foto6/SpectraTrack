@@ -138,6 +138,9 @@ jobs:
     needs: [windows, android]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
       - uses: actions/download-artifact@v4
         with:
           name: release-windows
