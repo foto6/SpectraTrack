@@ -344,7 +344,8 @@ class MultiObjectTracker:
         camera_motion: tuple[float, float] = (0.0, 0.0),
         camera_transform: tuple[float, float, float, float, float, float] | None = None,
     ) -> list[Track]:
-        self._age_dormant_tracks()
+        if self._dormant_tracks:
+            self._age_dormant_tracks()
         detections = [d for d in detections if d.score >= self.low_conf]
         all_tracks = set(self.tracks)
         high = {i for i, d in enumerate(detections) if d.score >= self.high_conf}
@@ -389,8 +390,9 @@ class MultiObjectTracker:
             ):
                 self._dormant_tracks[tid] = (track, 0)
 
-        reactivated = self._reactivate(detections, high - used_dets)
-        used_dets |= {didx for _, didx in reactivated}
+        if self._dormant_tracks:
+            reactivated = self._reactivate(detections, high - used_dets)
+            used_dets |= {didx for _, didx in reactivated}
 
         # Only strong detections that are neither live-associated nor reactivated may create new identities.
         for didx in high - used_dets:
