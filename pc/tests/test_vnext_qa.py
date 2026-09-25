@@ -452,3 +452,48 @@ def test_ignored_person_does_not_satisfy_negative_coverage(monkeypatch, tmp_path
     assert report["coverage"]["negative"] == 0
     assert any("negative" in error for error in report["errors"])
 
+
+def test_replay_appearance_vector_requires_explicit_schema(tmp_path: Path):
+    replay = tmp_path / "appearance.jsonl"
+    rows = [
+        {
+            "type": "metadata",
+            "schema": vnext_qa.REPLAY_SCHEMA,
+            "source_commit": "a" * 40,
+            "video": "golden/clip.mp4",
+            "video_sha256": "b" * 64,
+            "detector": "yolo-test",
+            "model_sha256": "c" * 64,
+            "provider": "DmlExecutionProvider",
+            "config": {},
+            "width": 1920,
+            "height": 1080,
+        },
+        {
+            "type": "frame",
+            "video": "golden/clip.mp4",
+            "frame": 0,
+            "timestamp_s": 0.0,
+            "width": 1920,
+            "height": 1080,
+            "detections": [
+                {
+                    "bbox": [100.0, 120.0, 180.0, 310.0],
+                    "score": 0.82,
+                    "class_id": 0,
+                    "label": "person",
+                    "appearance": [0.1, 0.2],
+                }
+            ],
+        },
+    ]
+    _write_jsonl(replay, rows)
+
+    with pytest.raises(ValueError, match="appearance_schema"):
+        vnext_qa.validate_detection_replay(replay)
+
+    rows[0]["config"]["appearance_schema"] = "spectratrack-hsv-appearance-v1"
+    _write_jsonl(replay, rows)
+    report = vnext_qa.validate_detection_replay(replay)
+    assert report["detections"] == 1
+
