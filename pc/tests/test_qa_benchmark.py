@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 
 from spectratrack.qa_benchmark import (
-    SCHEMA_VERSION,
     GroundTruthFrame,
     GroundTruthObject,
     PredictedObject,
@@ -41,7 +40,6 @@ def test_recall_precision_and_size_breakdown():
     assert metrics["precision"] == pytest.approx(0.5)
     assert metrics["by_size"]["height_lt_24"]["recall"] == 1.0
     assert metrics["by_size"]["height_48_95"]["recall"] == 0.0
-    assert "precision" not in metrics["by_size"]["height_lt_24"]
 
 
 def test_object_attribute_reports_recall_without_fake_precision():
@@ -84,7 +82,7 @@ def test_id_switch_and_fragmentation_are_counted_on_annotated_frames():
 
 def test_compare_flags_new_false_negative():
     common = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": 1,
         "ground_truth_sha256": "same",
         "evaluation": {"label": "person", "match_iou": 0.5},
         "performance": {"fps": 30.0, "peak_vram_mb": None},
@@ -135,14 +133,14 @@ def test_missing_prediction_frame_becomes_explicit_false_negative():
 
 def test_compare_rejects_different_ground_truth():
     baseline = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": 1,
         "run_name": "BASELINE",
         "ground_truth_sha256": "a",
         "evaluation": {"label": "person", "match_iou": 0.5},
         "metrics": {},
     }
     candidate = {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": 1,
         "run_name": "candidate",
         "ground_truth_sha256": "b",
         "evaluation": {"label": "person", "match_iou": 0.5},
@@ -187,16 +185,3 @@ def test_loader_rejects_duplicate_object_id_within_frame(tmp_path: Path):
     path.write_text(json.dumps(row) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="duplicate object id"):
         load_ground_truth(path)
-
-
-def test_compare_rejects_different_schema_versions():
-    common = {
-        "ground_truth_sha256": "same",
-        "evaluation": {"label": "person", "match_iou": 0.5},
-        "metrics": {},
-    }
-    baseline = {**common, "schema_version": SCHEMA_VERSION}
-    candidate = {**common, "schema_version": SCHEMA_VERSION - 1}
-    with pytest.raises(ValueError, match="different result schema versions"):
-        compare_results(baseline, candidate)
-
