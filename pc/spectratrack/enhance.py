@@ -29,6 +29,103 @@ def enhance_visibility(frame: np.ndarray, strength: float = 0.65) -> np.ndarray:
     return sharpened
 
 
+def assess_frame_quality(frame: np.ndarray) -> dict[str, float]:
+    """Estimate issue severities for adaptive detector preprocessing.
+
+    Values are normalized to 0..1 where a larger value means a stronger issue.
+    These are routing heuristics, not calibrated image-quality scores.
+    """
+    if frame is None or frame.size == 0 or frame.ndim != 3 or frame.shape[2] != 3:
+        raise ValueError("frame must be a non-empty BGR image")
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray_f = gray.astype(np.float32)
+    height, width = gray.shape
+
+    mean_luma = float(np.mean(gray_f)) / 255.0
+    darkness = float(np.clip((0.42 - mean_luma) / 0.42, 0.0, 1.0))
+
+    lap_var = float(cv2.Laplacian(gray, cv2.CV_32F).var())
+    blur = float(np.clip((120.0 - lap_var) / 120.0, 0.0, 1.0))
+
+    smooth = cv2.GaussianBlur(gray, (3, 3), 0.0)
+    residual = cv2.absdiff(gray, smooth)
+    noise_level = float(np.median(residual))
+    noise = float(np.clip((noise_level - 1.5) / 16.0, 0.0, 1.0))
+
+    block_samples: list[float] = []
+    inner_samples: list[float] = []
+    if width > 16:
+        boundaries = np.arange(8, width, 8)
+        if len(boundaries):
+            block_samples.append(float(np.mean(np.abs(gray_f[:, boundaries] - gray_f[:, boundaries - 1]))))
+        inner = np.arange(4, width, 8)
+        inner = inner[inner > 0]
+        if len(inner):
+            inner_samples.append(float(np.mean(np.abs(gray_f[:, inner] - gray_f[:, inner - 1]))))
+    if height > 16:
+        boundaries = np.arange(8, height, 8)
+        if len(boundaries):
+            block_samples.append(float(np.mean(np.abs(gray_f[boundaries, :] - gray_f[boundaries - 1, :]))))
+        inner = np.arange(4, height, 8)
+        inner = inner[inner > 0]
+        if len(inner):
+            inner_samples.append(float(np.mean(np.abs(gray_f[inner, :] - gray_f[inner - 1, :]))))
+    block_edge = float(np.mean(block_samples)) if block_samples else 0.0
+    inner_edge = float(np.mean(inner_samples)) if inner_samples else block_edge
+    compression = float(np.clip((block_edge - inner_edge) / max(inner_edge + 4.0, 1.0), 0.0, 1.0))
+
+    short_side = float(min(height, width))
+    low_resolution = float(np.clip((720.0 - short_side) / 720.0, 0.0, 1.0))
+
+    return {
+        "blur": blur,
+        "darkness": darkness,
+        "compression": compression,
+        "low_resolution": low_resolution,
+        "noise": noise,
+    }
+
+
+def adaptive_analysis_frame(frame: np.ndarray) -> tuple[np.ndarray, dict[str, float], tuple[str, ...]]:
+    """Apply bounded non-generative preprocessing selected from frame quality.
+
+    This is intended for an optional detector analysis branch. It does not
+    upscale the whole frame; tiny-object scaling is handled by tiled inference.
+    """
+    quality = assess_frame_quality(frame)
+    out = frame
+    operations: list[str] = []
+
+    if quality["darkness"] >= 0.22:
+        gamma = 1.0 - min(0.32, quality["darkness"] * 0.28)
+        lut = np.clip(
+            np.power(np.arange(256, dtype=np.float32) / 255.0, gamma) * 255.0,
+            0,
+            255,
+        ).astype(np.uint8)
+        out = cv2.LUT(out, lut)
+        lab = cv2.cvtColor(out, cv2.COLOR_BGR2LAB)
+        lightness, a, b = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=1.8 + quality["darkness"] * 0.8, tileGridSize=(8, 8))
+        out = cv2.cvtColor(cv2.merge([clahe.apply(lightness), a, b]), cv2.COLOR_LAB2BGR)
+        operations.append("low_light")
+
+    if quality["noise"] >= 0.24 or quality["compression"] >= 0.20:
+        diameter = 5 if max(quality["noise"], quality["compression"]) < 0.65 else 7
+        out = cv2.bilateralFilter(out, diameter, 24, 24)
+        operations.append("denoise_deblock")
+
+    has_structure = float(np.std(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))) >= 8.0
+    if has_structure and quality["blur"] >= 0.18 and quality["noise"] < 0.62 and quality["compression"] < 0.70:
+        amount = min(0.38, 0.12 + quality["blur"] * 0.28)
+        blurred = cv2.GaussianBlur(out, (0, 0), 0.9)
+        out = cv2.addWeighted(out, 1.0 + amount, blurred, -amount, 0)
+        operations.append("mild_sharpen")
+
+    return out, quality, tuple(operations)
+
+
 def crop_with_margin(frame: np.ndarray, bbox: tuple[float, float, float, float], margin: float = 0.22) -> np.ndarray | None:
     h, w = frame.shape[:2]
     x1, y1, x2, y2 = bbox

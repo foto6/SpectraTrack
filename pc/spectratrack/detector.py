@@ -52,6 +52,60 @@ def _classwise_nms(boxes: np.ndarray, scores: np.ndarray, classes: np.ndarray, t
     return keep
 
 
+def merge_detections(detections: Iterable[Detection], iou_threshold: float = 0.45) -> list[Detection]:
+    """Merge same-class detections after full-frame/tile passes."""
+    items = list(detections)
+    if not items:
+        return []
+    boxes = np.asarray([d.bbox for d in items], dtype=np.float32)
+    scores = np.asarray([d.score for d in items], dtype=np.float32)
+    classes = np.asarray([d.class_id for d in items], dtype=np.int32)
+    return [items[i] for i in _classwise_nms(boxes, scores, classes, iou_threshold)]
+
+
+def _axis_starts(length: int, tile_size: int, overlap: float) -> list[int]:
+    size = min(length, tile_size)
+    if size >= length:
+        return [0]
+    stride = max(1, int(round(size * (1.0 - overlap))))
+    starts = list(range(0, length - size + 1, stride))
+    last = length - size
+    if starts[-1] != last:
+        starts.append(last)
+    return starts
+
+
+def tiled_regions(frame_w: int, frame_h: int, tile_size: int, overlap: float) -> list[tuple[int, int, int, int]]:
+    if frame_w <= 0 or frame_h <= 0:
+        raise ValueError("frame dimensions must be positive")
+    if tile_size < 64:
+        raise ValueError("tile_size must be at least 64")
+    if not 0.0 <= overlap < 0.8:
+        raise ValueError("overlap must be in [0, 0.8)")
+    tile_w = min(frame_w, tile_size)
+    tile_h = min(frame_h, tile_size)
+    xs = _axis_starts(frame_w, tile_w, overlap)
+    ys = _axis_starts(frame_h, tile_h, overlap)
+    return [(x, y, x + tile_w, y + tile_h) for y in ys for x in xs]
+
+
+def _detections_corroborate(a: Detection, b: Detection, min_iou: float) -> bool:
+    if a.class_id != b.class_id:
+        return False
+    box_a = np.asarray(a.bbox, dtype=np.float32)
+    box_b = np.asarray(b.bbox, dtype=np.float32)
+    if _iou(box_a, box_b) >= min_iou:
+        return True
+    ax, ay = a.center
+    bx, by = b.center
+    aw = max(1.0, a.bbox[2] - a.bbox[0])
+    ah = max(1.0, a.bbox[3] - a.bbox[1])
+    bw = max(1.0, b.bbox[2] - b.bbox[0])
+    bh = max(1.0, b.bbox[3] - b.bbox[1])
+    tolerance = 0.55 * max(aw, ah, bw, bh)
+    return (ax - bx) ** 2 + (ay - by) ** 2 <= tolerance ** 2
+
+
 def _looks_like_end2end(pred: np.ndarray, label_count: int) -> bool:
     if pred.ndim != 2:
         return False
@@ -186,6 +240,67 @@ class YoloOnnxDetector:
         return canvas, scale, float(left), float(top)
 
     def detect(self, frame_bgr: np.ndarray) -> list[Detection]:
+        return self._detect_at_confidence(frame_bgr, self.conf_threshold)
+
+    def detect_tiled(
+        self,
+        frame_bgr: np.ndarray,
+        conf_threshold: float,
+        tile_size: int = 512,
+        overlap: float = 0.20,
+        labels: Iterable[str] = ("person",),
+    ) -> list[Detection]:
+        """Run overlapping tiles and remap detections to frame coordinates."""
+        allowed = {label.lower() for label in labels}
+        h, w = frame_bgr.shape[:2]
+        detections: list[Detection] = []
+        for x1, y1, x2, y2 in tiled_regions(w, h, tile_size, overlap):
+            tile = frame_bgr[y1:y2, x1:x2]
+            for detection in self._detect_at_confidence(tile, conf_threshold):
+                if detection.label.lower() not in allowed:
+                    continue
+                bx1, by1, bx2, by2 = detection.bbox
+                detections.append(Detection(
+                    (bx1 + x1, by1 + y1, bx2 + x1, by2 + y1),
+                    detection.score,
+                    detection.class_id,
+                    detection.label,
+                    detection.appearance,
+                ))
+        return merge_detections(detections, self.iou_threshold)
+
+    def detect_people_recall(
+        self,
+        frame_bgr: np.ndarray,
+        enhanced_frame: np.ndarray | None = None,
+        person_conf: float = 0.18,
+        probe_conf: float = 0.08,
+        tile_size: int = 512,
+        overlap: float = 0.20,
+        corroboration_iou: float = 0.10,
+    ) -> list[Detection]:
+        """Conservative tiny-person pass with raw-frame corroboration.
+
+        Raw tiles are probed below the acceptance threshold. Enhanced detections
+        can promote a weak raw candidate, but enhancement alone cannot create an
+        accepted person detection.
+        """
+        if not 0.0 < probe_conf <= person_conf <= 1.0:
+            raise ValueError("require 0 < probe_conf <= person_conf <= 1")
+        raw_probes = self.detect_tiled(frame_bgr, probe_conf, tile_size, overlap, ("person",))
+        accepted = [d for d in raw_probes if d.score >= person_conf]
+
+        if enhanced_frame is not None:
+            if enhanced_frame.shape != frame_bgr.shape:
+                raise ValueError("enhanced_frame must preserve frame shape")
+            enhanced = self.detect_tiled(enhanced_frame, person_conf, tile_size, overlap, ("person",))
+            for candidate in enhanced:
+                if any(_detections_corroborate(candidate, raw, corroboration_iou) for raw in raw_probes):
+                    accepted.append(candidate)
+
+        return merge_detections(accepted, self.iou_threshold)
+
+    def _detect_at_confidence(self, frame_bgr: np.ndarray, conf_threshold: float) -> list[Detection]:
         image, scale, pad_x, pad_y = self._letterbox(frame_bgr)
         rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         blob = rgb.astype(np.float32) / 255.0
@@ -208,14 +323,14 @@ class YoloOnnxDetector:
             return decode_end2end_predictions(
                 pred, w, h, self.input_w, self.input_h,
                 scale, pad_x, pad_y, self.labels,
-                self.conf_threshold, self.iou_threshold,
+                conf_threshold, self.iou_threshold,
             )
 
         boxes_xywh = pred[:, :4]
         class_scores = pred[:, 4:]
         class_ids = np.argmax(class_scores, axis=1)
         scores = class_scores[np.arange(class_scores.shape[0]), class_ids]
-        mask = scores >= self.conf_threshold
+        mask = scores >= conf_threshold
         if not np.any(mask):
             return []
 
