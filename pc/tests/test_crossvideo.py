@@ -182,3 +182,16 @@ def test_overlapping_same_video_tracks_remain_incompatible():
     graph = build_cross_video_graph([left, right])
     assert len(graph["entities"]) == 2
     assert graph["edges"] == []
+
+
+def test_adjacent_same_video_fragments_have_full_temporal_continuity():
+    left = TrackletSummary(
+        "a.mp4", 1, 2, "car", 1, 10, 5, 0.9, 0.8, 5, 30.0,
+        (1.0, 0.0),
+    )
+    right = TrackletSummary(
+        "a.mp4", 2, 2, "car", 11, 20, 5, 0.9, 0.8, 15, 30.0,
+        (1.0, 0.0),
+    )
+    _, signals = same_object_score(left, right)
+    assert signals["temporal"] == 1.0

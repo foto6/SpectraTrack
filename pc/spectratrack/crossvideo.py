@@ -127,7 +127,7 @@ def _same_video_context(
         return 0.0, None, True
 
     earlier, later = (left, right) if left.first_frame < right.first_frame else (right, left)
-    gap_frames = max(0, later.first_frame - earlier.last_frame)
+    gap_frames = max(0, later.first_frame - earlier.last_frame - 1)
     fps = earlier.fps if earlier.fps > 0 else later.fps
     temporal = math.exp(-(gap_frames / fps) / 10.0) if fps > 0 else None
 
