@@ -37,3 +37,16 @@ def test_cpu_summary_is_explicit_when_no_sample_exists():
     assert summary["max_pct"] == 0.0
     assert summary["logical_cpus"] >= 1
     assert summary["scale"] == "percent_of_total_logical_cpu_capacity"
+
+
+def test_cpu_sampler_normalizes_to_total_capacity(monkeypatch):
+    sampler = ProcessCpuSampler()
+    sampler.logical_cpus = 4
+    sampler._last_wall = 10.0
+    sampler._last_cpu = 5.0
+
+    monkeypatch.setattr("spectratrack.metrics.time.perf_counter", lambda: 12.0)
+    monkeypatch.setattr("spectratrack.metrics.time.process_time", lambda: 9.0)
+
+    assert sampler.sample(force=True) == 50.0
+    assert sampler.summary()["avg_pct"] == 50.0
