@@ -1,0 +1,7 @@
+{
+  "width": 1920,
+  "height": 1080,
+  "hfov_deg": 78.0,
+  "vfov_deg": 49.0,
+  "name": "example-camera"
+}
