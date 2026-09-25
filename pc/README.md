@@ -86,3 +86,28 @@ with manual decisions applied.
 
 For `person`, cross-video links mean similar visible appearance in the current
 batch only. SpectraTrack does not perform face recognition or claim biometric identity.
+
+
+## 7. High-recall person mode
+
+This mode is opt-in. Standard detection remains the default.
+
+```powershell
+python -m spectratrack.app `
+  --model ..\models\yolo11n.onnx `
+  --source "D:\video.mp4" `
+  --detector-mode people-recall `
+  --person-conf 0.12 `
+  --person-tile-size 640 `
+  --person-tile-overlap 0.20
+```
+
+Or use the provided preset:
+
+```powershell
+python -m spectratrack.app --model ..\models\yolo11n.onnx --source "D:\video.mp4" --config presets\people-recall.json
+```
+
+The mode runs a full-frame pass plus overlapping tiled passes and merges duplicate person boxes. It is intentionally more expensive than standard mode.
+
+Do not treat the default `0.12/640/0.20` values as calibrated. Measure them against representative annotations first.

@@ -64,6 +64,11 @@ def main() -> int:
     parser.add_argument("--input-size", type=int, default=640)
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--iou", type=float, default=0.45)
+    parser.add_argument("--detector-mode", choices=("standard", "people-recall"), default="standard")
+    parser.add_argument("--person-conf", type=float, default=0.12, help="Person threshold used by people-recall mode")
+    parser.add_argument("--person-tile-size", type=int, default=640, help="Source-pixel tile size for people-recall mode")
+    parser.add_argument("--person-tile-overlap", type=float, default=0.20, help="Fractional overlap between recall tiles")
+    parser.add_argument("--person-merge-iou", type=float, default=0.55, help="IoU used to merge full-frame/tile detections")
     parser.add_argument("--classes", default="", help="Comma-separated labels to retain, e.g. person,car,truck")
     parser.add_argument("--profile", choices=("quality", "balanced", "speed"), default="balanced")
     parser.add_argument("--detect-every", type=int, default=0, help="Run detector every N frames; 0 uses profile default")
@@ -81,6 +86,15 @@ def main() -> int:
     parser.add_argument("--max-frames", type=int, default=0, help="Stop after N processed frames; 0 means unlimited")
     parser.set_defaults(**config_defaults)
     args = parser.parse_args()
+
+    if not 0.0 <= args.person_conf <= 1.0:
+        raise SystemExit("--person-conf must be in [0, 1]")
+    if args.person_tile_size <= 0:
+        raise SystemExit("--person-tile-size must be > 0")
+    if not 0.0 <= args.person_tile_overlap < 1.0:
+        raise SystemExit("--person-tile-overlap must satisfy 0 <= overlap < 1")
+    if not 0.0 < args.person_merge_iou <= 1.0:
+        raise SystemExit("--person-merge-iou must be in (0, 1]")
 
     model = Path(args.model)
     if not model.exists():
@@ -183,6 +197,11 @@ def main() -> int:
         "analysis_enhance": enhancement,
         "profile": args.profile,
         "detect_every": detect_every,
+        "detector_mode": args.detector_mode,
+        "person_conf": args.person_conf if args.detector_mode == "people-recall" else None,
+        "person_tile_size": args.person_tile_size if args.detector_mode == "people-recall" else None,
+        "person_tile_overlap": args.person_tile_overlap if args.detector_mode == "people-recall" else None,
+        "person_merge_iou": args.person_merge_iou if args.detector_mode == "people-recall" else None,
         "appearance_cue": not args.no_appearance,
     }) if args.session_log else None
 
@@ -245,7 +264,16 @@ def main() -> int:
             detections = []
             if should_detect:
                 with timings.measure("detect"):
-                    detections = detector.detect(analysis_frame)
+                    if args.detector_mode == "people-recall":
+                        detections = detector.detect_people_recall(
+                            analysis_frame,
+                            person_threshold=args.person_conf,
+                            tile_size=args.person_tile_size,
+                            tile_overlap=args.person_tile_overlap,
+                            merge_iou_threshold=args.person_merge_iou,
+                        )
+                    else:
+                        detections = detector.detect(analysis_frame)
                     if class_filter:
                         detections = [d for d in detections if d.label.lower() in class_filter]
                     if not args.no_appearance:
