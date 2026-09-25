@@ -325,6 +325,7 @@ def main() -> int:
                         camera_motion=camera_motion_info,
                         calibration=calibration,
                         view_mode=view_mode,
+                        capture_stats=capture.stats(),
                     )
             else:
                 output = display_frame

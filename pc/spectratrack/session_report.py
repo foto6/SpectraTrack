@@ -77,6 +77,13 @@ def summarize(path: str | Path) -> dict:
         },
         "track_count": len(tracks),
         "longest_track_frames": max((t["frames_present"] for t in tracks), default=0),
+        "capture": {
+            "reconnect_events": sum(1 for e in events if e.get("name") == "capture_reconnected"),
+            "summary": next(
+                (e.get("data", {}) for e in reversed(events) if e.get("name") == "capture_summary"),
+                {},
+            ),
+        },
         "events": {
             "created": sum(1 for e in events if e.get("name") == "track_created"),
             "confirmed": sum(1 for e in events if e.get("name") == "track_confirmed"),

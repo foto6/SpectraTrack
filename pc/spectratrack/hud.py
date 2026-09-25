@@ -83,6 +83,7 @@ def compose_hud(
     camera_motion: tuple[float, float, float] | None = None,
     calibration: CameraCalibration | None = None,
     view_mode: str = "normal",
+    capture_stats: dict[str, int] | None = None,
 ) -> np.ndarray:
     base = frame.copy()
     h, w = base.shape[:2]
@@ -105,7 +106,30 @@ def compose_hud(
         cv2.putText(canvas, timing, (16, 94), FONT, 0.40, (185, 185, 185), 1, cv2.LINE_AA)
     if camera_motion:
         dx, dy, rot = camera_motion
-        cv2.putText(canvas, f"CAM IMG MOTION {dx:+.1f},{dy:+.1f}px {math.degrees(rot):+.2f}deg", (16, 115), FONT, 0.40, (185, 185, 185), 1, cv2.LINE_AA)
+        cv2.putText(
+            canvas,
+            f"CAM IMG MOTION {dx:+.1f},{dy:+.1f}px {math.degrees(rot):+.2f}deg",
+            (16, 115),
+            FONT,
+            0.40,
+            (185, 185, 185),
+            1,
+            cv2.LINE_AA,
+        )
+    if capture_stats:
+        cv2.putText(
+            canvas,
+            (
+                f"CAP FAIL {capture_stats.get('read_failures', 0)} | "
+                f"RECON {capture_stats.get('reconnects', 0)} | OPEN {capture_stats.get('open_count', 0)}"
+            ),
+            (16, 136),
+            FONT,
+            0.40,
+            (185, 185, 185),
+            1,
+            cv2.LINE_AA,
+        )
 
     px = w
     cv2.rectangle(canvas, (px, 0), (w + panel_w - 1, h - 1), (32, 32, 32), -1)
