@@ -314,11 +314,30 @@ Latest code validation is recorded against:
 
 `2c876387f26656ae807c1a9aa23d459b4aa4321b`
 
-At handoff preparation time, lint, compile+pytest, synthetic tracker benchmark, diagnostics and self-check had completed successfully in GitHub Actions run `36166015554`. Packaging/smoke was still running and must not be claimed successful unless the final run completes.
+GitHub Actions PC CI:
+
+- workflow run: `36166015554`
+- job: `108173819930`
+- conclusion: **success**
+- `ruff check spectratrack tests`: success, `All checks passed!`
+- `python -m compileall -q spectratrack tests` + `pytest -q`: **162 passed in 2.67s**
+- synthetic tracker benchmark: `500 frames / 24 targets / 11970 observations`
+- synthetic benchmark elapsed: `0.363 s`
+- synthetic tracker throughput: `1377.6 tracker_fps`
+- diagnostics: success; `ort_available=DmlExecutionProvider,CPUExecutionProvider`, `directml=yes`
+- self-check: success
+- PyInstaller standalone Windows build: success
+- standalone `SpectraTrack-PC.exe --help`: success
+- standalone `SpectraTrack-PC.exe batch --help`: success
+- source/app packaging and artifact uploads: success
+
+The hosted Windows runner exposed DirectML, but its throughput is not RX 5700 XT evidence. The synthetic tracker benchmark does not measure the people-recall detector path.
+
+The subsequent handoff documentation commits do not modify validated PC code.
 
 ## Readiness
 
-Research tooling / compute-model handoff: **ready after final CI status is recorded**.
+Research tooling / compute-model handoff: **ready**.
 
 Production scheduler integration: **not ready**.
 
