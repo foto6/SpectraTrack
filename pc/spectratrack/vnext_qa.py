@@ -443,6 +443,8 @@ def annotate_frame_batch(
     video = batch["video"]
     base_tags = sorted({_normalize_token(tag) for tag in tags if tag.strip()})
     active_id = "p1"
+    active_attributes: tuple[str, ...] = ()
+    active_ignore = False
     frame_items = list(batch.get("frames", []))
     index = 0
 
@@ -472,13 +474,16 @@ def annotate_frame_batch(
                 if right - left < 2 or bottom - top < 2:
                     return
                 objects = [obj for obj in objects if obj.get("id") != active_id]
-                objects.append(
-                    {
-                        "id": active_id,
-                        "label": "person",
-                        "bbox": [left, top, right, bottom],
-                    }
-                )
+                annotated = {
+                    "id": active_id,
+                    "label": "person",
+                    "bbox": [left, top, right, bottom],
+                }
+                if active_attributes:
+                    annotated["attributes"] = list(active_attributes)
+                if active_ignore:
+                    annotated["ignore"] = True
+                objects.append(annotated)
 
         window = "SpectraTrack human annotation"
         cv2.namedWindow(window, cv2.WINDOW_NORMAL)
@@ -503,9 +508,12 @@ def annotate_frame_batch(
             for obj in objects:
                 x1, y1, x2, y2 = (int(value) for value in obj["bbox"])
                 cv2.rectangle(canvas, (x1, y1), (x2, y2), (255, 255, 255), 2)
+                label_text = str(obj.get("id", "person"))
+                if obj.get("ignore"):
+                    label_text += " IGNORE"
                 cv2.putText(
                     canvas,
-                    str(obj.get("id", "person")),
+                    label_text,
                     (x1, max(18, y1 - 4)),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.6,
@@ -514,8 +522,8 @@ def annotate_frame_batch(
                     cv2.LINE_AA,
                 )
             help_text = (
-                f"frame={frame_number} active={active_id} | drag=box i=set-id u=undo c=clear "
-                "n/ENTER=next b=back q=save+quit"
+                f"frame={frame_number} active={active_id} ignore={active_ignore} | "
+                "drag=box i=id a=attrs g=ignore u=undo c=clear n/ENTER=next b=back q=save+quit"
             )
             cv2.putText(canvas, help_text, (10, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
             cv2.imshow(window, canvas)
@@ -536,6 +544,21 @@ def annotate_frame_batch(
                 candidate = input("Stable person id for this clip (example p1): ").strip()
                 if candidate:
                     active_id = candidate
+            elif pressed == ord("a"):
+                raw_attributes = input(
+                    "Comma-separated attributes for the active person (blank clears): "
+                ).strip()
+                active_attributes = tuple(
+                    sorted(
+                        {
+                            _normalize_token(item)
+                            for item in raw_attributes.split(",")
+                            if item.strip()
+                        }
+                    )
+                )
+            elif pressed == ord("g"):
+                active_ignore = not active_ignore
             elif pressed == ord("q"):
                 save_current()
                 cv2.destroyAllWindows()
