@@ -93,13 +93,23 @@ def _entity_prefix(label: str) -> str:
     return cleaned
 
 
+def _decision_key(left: str, right: str) -> tuple[str, str]:
+    return tuple(sorted((left, right)))
+
+
 def build_cross_video_graph(
     tracklets: Iterable[TrackletSummary],
     candidate_threshold: float = 0.86,
     strong_threshold: float = 0.94,
+    review_decisions: dict[tuple[str, str], str] | None = None,
 ) -> dict:
     if not 0.0 <= candidate_threshold <= strong_threshold <= 1.0:
         raise ValueError("Require 0 <= candidate_threshold <= strong_threshold <= 1")
+
+    review_decisions = review_decisions or {}
+    allowed_decisions = {"same", "different", "unsure"}
+    if any(value not in allowed_decisions for value in review_decisions.values()):
+        raise ValueError("Review decisions must be same, different, or unsure")
 
     items = [t for t in tracklets if t.descriptor is not None]
     items.sort(key=lambda t: (t.label.lower(), t.video.lower(), t.local_track_id))
@@ -109,20 +119,27 @@ def build_cross_video_graph(
     for i, left in enumerate(items):
         for j in range(i + 1, len(items)):
             right = items[j]
-            if left.video == right.video or left.class_id != right.class_id:
+            if left.class_id != right.class_id:
+                continue
+            decision = review_decisions.get(_decision_key(left.key, right.key))
+            if left.video == right.video and decision != "same":
                 continue
             sim = tracklet_similarity(left, right)
-            if sim is None:
-                continue
-            similarities[(i, j)] = sim
-            if sim >= candidate_threshold:
+            if sim is not None:
+                similarities[(i, j)] = sim
+            if decision is not None or (sim is not None and sim >= candidate_threshold):
                 edges.append({
                     "left": left.key,
                     "right": right.key,
                     "label": left.label,
-                    "similarity": round(sim, 6),
-                    "strength": "strong" if sim >= strong_threshold else "review",
+                    "similarity": round(sim, 6) if sim is not None else None,
+                    "strength": (
+                        "manual"
+                        if decision in {"same", "different"}
+                        else ("strong" if sim is not None and sim >= strong_threshold else "review")
+                    ),
                     "relation": _relation(left.label),
+                    "review_decision": decision,
                 })
 
     # Conservative complete-link clustering. A new tracklet may join an entity
@@ -135,11 +152,20 @@ def build_cross_video_graph(
         for cidx, members in enumerate(clusters):
             if items[members[0]].class_id != item.class_id:
                 continue
-            if any(items[m].video == item.video for m in members):
-                continue
             scores = []
             compatible = True
             for member in members:
+                existing = items[member]
+                decision = review_decisions.get(_decision_key(existing.key, item.key))
+                if existing.video == item.video and decision != "same":
+                    compatible = False
+                    break
+                if decision == "different":
+                    compatible = False
+                    break
+                if decision == "same":
+                    scores.append(1.0)
+                    continue
                 pair = (member, idx) if member < idx else (idx, member)
                 sim = similarities.get(pair)
                 if sim is None or sim < strong_threshold:
@@ -170,7 +196,14 @@ def build_cross_video_graph(
             "members": [items[m].to_public_dict() for m in members],
         })
 
-    edges.sort(key=lambda e: (-e["similarity"], e["left"], e["right"]))
+    edges.sort(
+        key=lambda e: (
+            0 if e.get("review_decision") in {"same", "different"} else 1,
+            -(e["similarity"] if e["similarity"] is not None else -1.0),
+            e["left"],
+            e["right"],
+        )
+    )
     return {
         "schema_version": 1,
         "descriptor": "spatial-hsv-gray-edge-gallery-v2",
@@ -188,4 +221,5 @@ def build_cross_video_graph(
         "tracklets": [t.to_public_dict() for t in items],
         "entities": entities,
         "edges": edges,
+        "review_decisions_applied": len(review_decisions),
     }

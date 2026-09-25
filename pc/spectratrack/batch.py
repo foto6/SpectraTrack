@@ -250,6 +250,7 @@ def main() -> int:
     parser.add_argument("--max-frames-per-video", type=int, default=0)
     parser.add_argument("--no-previews", action="store_true", help="Do not save one best crop per tracklet")
     parser.add_argument("--no-html", action="store_true", help="Do not generate the local HTML review report")
+    parser.add_argument("--review", default="", help="Optional exported review JSON from a previous HTML report")
     args = parser.parse_args()
 
     if args.detect_every < 1:
@@ -297,10 +298,21 @@ def main() -> int:
             failures.append({"video": path.name, "error": str(exc)})
             print(f"  FAILED: {exc}")
 
+    review_decisions = {}
+    if args.review:
+        review_payload = json.loads(Path(args.review).read_text(encoding="utf-8"))
+        for item in review_payload.get("decisions", []):
+            left = str(item.get("left", ""))
+            right = str(item.get("right", ""))
+            decision = str(item.get("decision", "")).lower()
+            if left and right and decision in {"same", "different", "unsure"}:
+                review_decisions[tuple(sorted((left, right)))] = decision
+
     graph = build_cross_video_graph(
         all_tracklets,
         candidate_threshold=args.candidate_threshold,
         strong_threshold=args.strong_threshold,
+        review_decisions=review_decisions,
     )
     graph["run"] = {
         "model": str(Path(args.model)),
@@ -312,6 +324,7 @@ def main() -> int:
         "detect_every": args.detect_every,
         "classes": sorted(class_filter),
         "failures": failures,
+        "review_file": args.review or None,
     }
 
     output.parent.mkdir(parents=True, exist_ok=True)

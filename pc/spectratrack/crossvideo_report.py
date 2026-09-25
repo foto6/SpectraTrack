@@ -52,6 +52,7 @@ def write_html_report(graph: dict, output_path: str | Path) -> Path:
         left_img = f'<img src="{left_src}" loading="lazy">' if left_src else '<div class="noimg">no preview</div>'
         right_img = f'<img src="{right_src}" loading="lazy">' if right_src else '<div class="noimg">no preview</div>'
         edge_key = f'{edge["left"]}|{edge["right"]}'
+        stored = edge.get("review_decision")
         same_label = "LOOKS SAME" if edge.get("relation") == "same_appearance_candidate" else "SAME OBJECT"
         edge_cards.append(
             f'<section class="edge {escape(edge["strength"])}" data-key="{escape(edge_key)}">'
@@ -65,7 +66,7 @@ def write_html_report(graph: dict, output_path: str | Path) -> Path:
             + f'<button onclick="decide(this,\'same\')">{same_label}</button>'
             + '<button onclick="decide(this,\'different\')">DIFFERENT</button>'
             + '<button onclick="decide(this,\'unsure\')">UNSURE</button>'
-            + '<span class="decision"></span>'
+            + f'<span class="decision">{escape(str(stored).upper()) if stored else ""}</span>'
             + '</div></section>'
         )
 
@@ -102,6 +103,7 @@ pre{{white-space:pre-wrap;background:#181818;padding:12px;border-radius:8px}}
 <h1>SpectraTrack Cross-Video Review</h1>
 <p><b>People:</b> {escape(safety.get("person", ""))}</p>
 <p><b>Other classes:</b> {escape(safety.get("other_classes", ""))}</p>
+<button onclick="exportReview()">EXPORT REVIEW JSON</button>
 <h2>Entities</h2>
 {"".join(entities_html) or "<p>No entities.</p>"}
 <h2>Candidate links</h2>
