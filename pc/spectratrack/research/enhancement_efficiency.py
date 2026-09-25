@@ -14,7 +14,7 @@ from typing import Any, Iterable
 import cv2
 import numpy as np
 
-from spectratrack.enhance import adaptive_analysis_frame, assess_frame_quality
+from spectratrack.enhance import assess_frame_quality
 from spectratrack.enhancement_recall import corroborate_enhanced_detections
 from spectratrack.integrity import sha256_file
 from spectratrack.qa_benchmark import GroundTruthFrame, load_ground_truth
@@ -223,6 +223,35 @@ def _clahe(frame: np.ndarray, quality: dict[str, float]) -> np.ndarray:
     return cv2.cvtColor(cv2.merge([clahe.apply(lightness), a, b]), cv2.COLOR_LAB2BGR)
 
 
+def _current_adaptive_from_quality(
+    frame: np.ndarray,
+    quality: dict[str, float],
+) -> np.ndarray:
+    """Reproduce the current adaptive operation sequence using one cached quality map."""
+    out = frame
+    if quality["darkness"] >= QUALITY_THRESHOLDS["darkness"]:
+        out = _clahe(_gamma(out, quality), quality)
+
+    if (
+        quality["noise"] >= QUALITY_THRESHOLDS["noise"]
+        or quality["compression"] >= QUALITY_THRESHOLDS["compression"]
+    ):
+        severity = max(quality["noise"], quality["compression"])
+        diameter = 5 if severity < 0.65 else 7
+        out = cv2.bilateralFilter(out, diameter, 24, 24)
+
+    if (
+        _has_structure(frame)
+        and quality["blur"] >= QUALITY_THRESHOLDS["blur"]
+        and quality["noise"] < 0.62
+        and quality["compression"] < 0.70
+    ):
+        amount = min(0.38, 0.12 + quality["blur"] * 0.28)
+        blurred = cv2.GaussianBlur(out, (0, 0), 0.9)
+        out = cv2.addWeighted(out, 1.0 + amount, blurred, -amount, 0)
+    return out
+
+
 def apply_operation(
     operation: str,
     frame: np.ndarray,
@@ -246,7 +275,7 @@ def apply_operation(
         blurred = cv2.GaussianBlur(frame, (0, 0), 0.9)
         out = cv2.addWeighted(frame, 1.0 + amount, blurred, -amount, 0)
     elif operation == "current_adaptive":
-        out, _quality, _operations = adaptive_analysis_frame(frame)
+        out = _current_adaptive_from_quality(frame, quality)
     else:
         raise ValueError(f"unknown operation: {operation}")
     return out, _elapsed_ms(started)
