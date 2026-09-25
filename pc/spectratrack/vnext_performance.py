@@ -156,10 +156,15 @@ class ScheduleDecision:
     policy: str
     frame_index: int
     full_frame_calls: int
-    raw_roi_calls: int
+    suspect_roi_calls: int
+    track_roi_calls: int
     enhanced_roi_calls: int
     reused_temporal_state: bool
     global_rescan_reason: str | None
+
+    @property
+    def raw_roi_calls(self) -> int:
+        return self.suspect_roi_calls + self.track_roi_calls
 
     @property
     def total_calls(self) -> int:
@@ -167,6 +172,7 @@ class ScheduleDecision:
 
     def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
+        payload["raw_roi_calls"] = self.raw_roi_calls
         payload["total_calls"] = self.total_calls
         return payload
 
@@ -194,9 +200,20 @@ def _allocate_rois(
     suspect_rois: int,
     track_rois: int,
 ) -> tuple[int, int]:
-    suspect = min(suspect_rois, remaining_calls)
-    remaining_calls -= suspect
-    track = min(track_rois, remaining_calls)
+    """Share a small ROI budget without starving either uncertainty or known tracks."""
+    suspect = 0
+    track = 0
+    if remaining_calls >= 2 and suspect_rois > 0 and track_rois > 0:
+        suspect = 1
+        track = 1
+        remaining_calls -= 2
+        suspect_rois -= 1
+        track_rois -= 1
+
+    extra_suspect = min(suspect_rois, remaining_calls)
+    suspect += extra_suspect
+    remaining_calls -= extra_suspect
+    track += min(track_rois, remaining_calls)
     return suspect, track
 
 
@@ -217,7 +234,7 @@ def schedule_frame(
 
     triggered = signals.scene_change or signals.camera_motion_trigger
     if not _detector_due(frame_index, config) and not (policy != "CURRENT" and triggered):
-        return ScheduleDecision(policy, frame_index, 0, 0, 0, True, None)
+        return ScheduleDecision(policy, frame_index, 0, 0, 0, 0, True, None)
 
     if policy == "CURRENT":
         enhanced = min(tile_count, signals.enhancement_eligible_rois)
@@ -226,6 +243,7 @@ def schedule_frame(
             frame_index,
             1,
             tile_count,
+            0,
             enhanced,
             False,
             "every_detector_frame",
@@ -249,7 +267,7 @@ def schedule_frame(
             config.max_enhanced_calls_per_frame,
             remaining,
         )
-        return ScheduleDecision(policy, frame_index, full, raw_suspects, enhanced, False, trigger_reason)
+        return ScheduleDecision(policy, frame_index, full, raw_suspects, 0, enhanced, False, trigger_reason)
 
     global_scan, reason = _global_due(frame_index, signals, config)
     full = 1 if global_scan else 0
@@ -282,7 +300,8 @@ def schedule_frame(
         policy,
         frame_index,
         full,
-        raw,
+        raw_suspects,
+        raw_tracks,
         enhanced,
         False,
         reason,
@@ -323,7 +342,9 @@ def simulate_scheduler(
     ]
     total_calls = sum(item.total_calls for item in decisions)
     full_calls = sum(item.full_frame_calls for item in decisions)
-    raw_calls = sum(item.raw_roi_calls for item in decisions)
+    suspect_calls = sum(item.suspect_roi_calls for item in decisions)
+    track_calls = sum(item.track_roi_calls for item in decisions)
+    raw_calls = suspect_calls + track_calls
     enhanced_calls = sum(item.enhanced_roi_calls for item in decisions)
     max_frame_calls = max(item.total_calls for item in decisions)
     source_seconds = frames / source_fps
@@ -337,6 +358,8 @@ def simulate_scheduler(
         "tile_count": tile_count,
         "full_frame_calls": full_calls,
         "raw_roi_calls": raw_calls,
+        "suspect_roi_calls": suspect_calls,
+        "track_roi_calls": track_calls,
         "enhanced_roi_calls": enhanced_calls,
         "total_onnx_calls": total_calls,
         "onnx_calls_per_frame": total_calls / frames,
