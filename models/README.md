@@ -1,28 +1,72 @@
 # Model setup
 
-SpectraTrack does **not** ship or auto-download neural-network weights. This is intentional: you can see exactly what files are added to the project and hash them yourself.
+SpectraTrack does **not** ship or auto-download neural-network weights. This is intentional:
+the runtime has no model downloader, and the model hash/provenance can be verified before ONNX
+Runtime creates a session.
 
 ## Recommended baseline
 
-Use a fixed-size `640x640` YOLOv8/YOLO11-style ONNX export with an output shaped like `[1, 84, N]` or `[1, N, 84]` for COCO-80.
+Use a fixed-size YOLO-style ONNX export. The PC decoder currently supports:
 
-From the repository root on Windows:
+- raw `xywh + class scores`, e.g. `[1,84,N]` / `[1,N,84]` for COCO-80;
+- common end-to-end post-NMS `xyxy, score, class` rows.
+
+## Export locally
+
+From the repository root:
 
 ```powershell
 py -3.12 -m venv .export-env
 .\.export-env\Scripts\Activate.ps1
 python -m pip install -U pip
 pip install ultralytics onnx onnxslim
-python .\tools\export_yolo.py --model yolo11n.pt --imgsz 640 --opset 17
+
+python .\tools\export_yolo.py ^
+  --model yolo11n.pt ^
+  --imgsz 640 ^
+  --opset 17 ^
+  --output models\yolo11n.onnx ^
+  --name yolo11n-coco-640
 ```
 
-The script copies the result to both:
+The exporter now creates two files:
 
-- `models/yolo11n.onnx` for the PC client;
-- `android/app/src/main/assets/yolo11n.onnx` for the Android client.
+```text
+models/yolo11n.onnx
+models/yolo11n.manifest.json
+```
 
-It also prints SHA-256. Save that value if you want to verify the file later.
+The manifest contains SHA-256, input size and provenance. PC export is the default; pass
+`--android-copy` only when you intentionally want to copy the weight into Android assets.
 
-## Other models
+## Inspect an ONNX model
 
-The decoder is intentionally simple. A different model is fine if it emits the same `xywh + class scores` layout. If your model has objectness as a separate field, end-to-end NMS, segmentation masks, or another output layout, adapt the decoder first.
+From `pc/` after installing `requirements-win.txt`:
+
+```powershell
+python -m spectratrack.model_inspect ..\models\yolo11n.onnx
+```
+
+To generate a fresh manifest from an already-existing ONNX:
+
+```powershell
+python -m spectratrack.model_inspect ..\models\yolo11n.onnx ^
+  --manifest-out ..\models\yolo11n.manifest.json ^
+  --name yolo11n-coco-640 ^
+  --source "local verified export"
+```
+
+## Run with manifest verification
+
+```powershell
+python -m spectratrack.app ^
+  --model ..\models\yolo11n.onnx ^
+  --model-manifest ..\models\yolo11n.manifest.json
+```
+
+If the file hash differs from the manifest, SpectraTrack exits before inference.
+
+## Unsupported layouts
+
+Segmentation masks, pose/keypoints, explicit objectness layouts and custom multi-output
+architectures are not silently guessed. Add/verify a decoder for those layouts first.
