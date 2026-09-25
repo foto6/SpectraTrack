@@ -147,3 +147,47 @@ def test_predict_only_does_not_increment_missed():
     assert tr.missed == 0
     assert tr.age == 2
     assert tr.center[0] == 155.0
+
+
+def test_class_specific_creation_threshold_only_affects_selected_class():
+    tracker = MultiObjectTracker(
+        high_conf=0.45,
+        low_conf=0.12,
+        min_hits=3,
+        creation_thresholds={0: 0.18},
+    )
+    people = tracker.update([d(10, 10, cls=0, score=0.20)])
+    assert len(people) == 1
+    assert not people[0].confirmed
+
+    other = MultiObjectTracker(
+        high_conf=0.45,
+        low_conf=0.12,
+        min_hits=3,
+        creation_thresholds={0: 0.18},
+    )
+    assert other.update([d(10, 10, cls=2, score=0.20)]) == []
+
+
+def test_weak_class_specific_candidate_requires_repeated_hits_to_confirm():
+    tracker = MultiObjectTracker(
+        high_conf=0.45,
+        low_conf=0.12,
+        min_hits=3,
+        creation_thresholds={0: 0.18},
+    )
+    first = tracker.update([d(10, 10, cls=0, score=0.20)])[0]
+    assert not first.confirmed
+    second = tracker.update([d(12, 10, cls=0, score=0.21)])[0]
+    assert second.track_id == first.track_id
+    assert not second.confirmed
+    third = tracker.update([d(14, 10, cls=0, score=0.22)])[0]
+    assert third.track_id == first.track_id
+    assert third.confirmed
+
+
+def test_creation_threshold_cannot_bypass_tracker_low_conf_floor():
+    import pytest
+
+    with pytest.raises(ValueError):
+        MultiObjectTracker(low_conf=0.12, creation_thresholds={0: 0.08})
