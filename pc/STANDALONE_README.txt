@@ -7,9 +7,9 @@ SPECTRATRACK PC v0.2 - STANDALONE QUICK START
 3. Recommended: copy its SpectraTrack manifest here as:
      model.manifest.json
 4. Double-click:
-     RUN_CAMERA.bat
+     START_SPECTRATRACK.bat
 
-RUN_CAMERA.bat uses:
+START_SPECTRATRACK.bat uses:
 - camera 0
 - balanced profile (detector every 2nd frame)
 - local JSONL logging at sessions\latest.jsonl
