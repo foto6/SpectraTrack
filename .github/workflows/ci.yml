@@ -2,10 +2,14 @@ name: SpectraTrack CI
 
 on:
   push:
-    branches: [spectratrack-v1]
+    branches: [main]
     paths:
-      - 'SpectraTrack/**'
-      - '.github/workflows/spectratrack-ci.yml'
+      - 'pc/**'
+      - 'android/**'
+      - 'models/**'
+      - 'tools/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -13,7 +17,7 @@ jobs:
     runs-on: windows-latest
     defaults:
       run:
-        working-directory: SpectraTrack/pc
+        working-directory: pc
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,7 +39,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SpectraTrack-PC-source
-          path: SpectraTrack/pc/SpectraTrack-PC-source.zip
+          path: pc/SpectraTrack-PC-source.zip
 
   android-build:
     runs-on: ubuntu-latest
@@ -67,12 +71,11 @@ jobs:
         with:
           gradle-version: '9.6.0'
       - name: Build debug APK
-        working-directory: SpectraTrack/android
-        run: |
-          gradle :app:assembleDebug --stacktrace
+        working-directory: android
+        run: gradle :app:assembleDebug --stacktrace
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: SpectraTrack-Android-debug
-          path: SpectraTrack/android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
