@@ -50,6 +50,21 @@ def blend_appearance(old: tuple[float, ...] | None, new: tuple[float, ...] | Non
     return tuple(v / norm for v in mixed)
 
 
+def _ratio_similarity(a: float, b: float) -> float:
+    if a <= 1e-9 or b <= 1e-9:
+        return 0.0
+    return min(a, b) / max(a, b)
+
+
+def _direction_similarity(vx: float, vy: float, dx: float, dy: float) -> float | None:
+    speed = hypot(vx, vy)
+    displacement = hypot(dx, dy)
+    if speed < 1.0 or displacement < 1.0:
+        return None
+    cosine = (vx * dx + vy * dy) / max(speed * displacement, 1e-9)
+    return max(0.0, min(1.0, (cosine + 1.0) * 0.5))
+
+
 def transform_box(box: BBox, affine: tuple[float, float, float, float, float, float]) -> BBox:
     x1, y1, x2, y2 = box
     pts = [
@@ -79,21 +94,39 @@ class MultiObjectTracker:
         high_conf: float = 0.45,
         low_conf: float = 0.12,
         min_hits: int = 3,
+        reactivation_window: int = 30,
+        reactivation_min_appearance: float = 0.90,
+        reactivation_min_score: float = 0.90,
+        reactivation_max_center_ratio: float = 4.0,
     ) -> None:
         if not 0.0 <= low_conf <= high_conf <= 1.0:
             raise ValueError("Require 0 <= low_conf <= high_conf <= 1")
+        if reactivation_window < 0:
+            raise ValueError("reactivation_window must be >= 0")
+        if not 0.0 <= reactivation_min_appearance <= 1.0:
+            raise ValueError("reactivation_min_appearance must be in [0, 1]")
+        if not 0.0 <= reactivation_min_score <= 1.0:
+            raise ValueError("reactivation_min_score must be in [0, 1]")
+        if reactivation_max_center_ratio <= 0.0:
+            raise ValueError("reactivation_max_center_ratio must be > 0")
         self.max_missed = int(max_missed)
         self.min_iou = float(min_iou)
         self.max_center_ratio = float(max_center_ratio)
         self.high_conf = float(high_conf)
         self.low_conf = float(low_conf)
         self.min_hits = int(min_hits)
+        self.reactivation_window = int(reactivation_window)
+        self.reactivation_min_appearance = float(reactivation_min_appearance)
+        self.reactivation_min_score = float(reactivation_min_score)
+        self.reactivation_max_center_ratio = float(reactivation_max_center_ratio)
         self._next_id = 1
         self.tracks: dict[int, Track] = {}
+        self._dormant_tracks: dict[int, tuple[Track, int]] = {}
 
     def reset(self) -> None:
         self._next_id = 1
         self.tracks.clear()
+        self._dormant_tracks.clear()
 
     def _predicted_box(
         self,
@@ -134,6 +167,99 @@ class MultiObjectTracker:
         if appearance is not None:
             score += appearance * 0.55
         return score
+
+    def _reactivation_score(self, track: Track, det: Detection) -> float | None:
+        if det.class_id != track.class_id:
+            return None
+        appearance = appearance_similarity(track.appearance, det.appearance)
+        if appearance is None or appearance < self.reactivation_min_appearance:
+            return None
+
+        track_area = max(track.width * track.height, 1e-6)
+        det_width = max(0.0, det.bbox[2] - det.bbox[0])
+        det_height = max(0.0, det.bbox[3] - det.bbox[1])
+        det_area = max(det_width * det_height, 1e-6)
+        size_similarity = _ratio_similarity(track_area, det_area)
+        shape_similarity = _ratio_similarity(
+            track.width / max(track.height, 1e-6),
+            det_width / max(det_height, 1e-6),
+        )
+        if size_similarity < 0.20 or shape_similarity < 0.45:
+            return None
+
+        tcx, tcy = track.center
+        dcx, dcy = det.center
+        diag = max(hypot(track.width, track.height), 24.0)
+        center_ratio = hypot(dcx - tcx, dcy - tcy) / diag
+        if center_ratio > self.reactivation_max_center_ratio:
+            return None
+        spatial_similarity = max(0.0, 1.0 - center_ratio / self.reactivation_max_center_ratio)
+        direction = _direction_similarity(track.vx, track.vy, dcx - tcx, dcy - tcy)
+        direction_similarity = 0.5 if direction is None else direction
+
+        score = (
+            appearance * 0.68
+            + shape_similarity * 0.12
+            + size_similarity * 0.10
+            + spatial_similarity * 0.05
+            + direction_similarity * 0.05
+        )
+        return score if score >= self.reactivation_min_score else None
+
+    def _age_dormant_tracks(self) -> None:
+        if not self._dormant_tracks:
+            return
+        if self.reactivation_window <= 0:
+            self._dormant_tracks.clear()
+            return
+        aged: dict[int, tuple[Track, int]] = {}
+        for tid, (track, age) in self._dormant_tracks.items():
+            next_age = age + 1
+            if next_age <= self.reactivation_window:
+                aged[tid] = (track, next_age)
+        self._dormant_tracks = aged
+
+    def _reactivate(
+        self,
+        detections: list[Detection],
+        det_ids: set[int],
+    ) -> list[tuple[int, int]]:
+        candidates: list[tuple[float, int, int]] = []
+        for tid, (track, _) in self._dormant_tracks.items():
+            for didx in det_ids:
+                score = self._reactivation_score(track, detections[didx])
+                if score is not None:
+                    candidates.append((score, tid, didx))
+        candidates.sort(reverse=True)
+
+        remaining_tracks = set(self._dormant_tracks)
+        remaining_dets = set(det_ids)
+        matches: list[tuple[int, int]] = []
+        for _, tid, didx in candidates:
+            if tid not in remaining_tracks or didx not in remaining_dets:
+                continue
+            remaining_tracks.remove(tid)
+            remaining_dets.remove(didx)
+            track, _ = self._dormant_tracks.pop(tid)
+            det = detections[didx]
+            if track.missed > 0:
+                track.recoveries += 1
+            track.bbox = det.bbox
+            track.score = det.score
+            track.last_detection_score = det.score
+            track.label = det.label
+            track.appearance = blend_appearance(track.appearance, det.appearance)
+            track.vx *= 0.35
+            track.vy *= 0.35
+            track.age += 1
+            track.hits += 1
+            track.missed = 0
+            track.confirmed = True
+            cx, cy = det.center
+            track.history.append((int(cx), int(cy)))
+            self.tracks[tid] = track
+            matches.append((tid, didx))
+        return matches
 
     def _associate(
         self,
@@ -218,6 +344,7 @@ class MultiObjectTracker:
         camera_motion: tuple[float, float] = (0.0, 0.0),
         camera_transform: tuple[float, float, float, float, float, float] | None = None,
     ) -> list[Track]:
+        self._age_dormant_tracks()
         detections = [d for d in detections if d.score >= self.low_conf]
         all_tracks = set(self.tracks)
         high = {i for i, d in enumerate(detections) if d.score >= self.high_conf}
@@ -246,7 +373,26 @@ class MultiObjectTracker:
             cx, cy = track.center
             track.history.append((int(cx), int(cy)))
 
-        # Only strong detections may create new identities.
+        expired = []
+        for tid, track in self.tracks.items():
+            tentative_expired = not track.confirmed and track.missed > min(2, self.max_missed)
+            confirmed_expired = track.confirmed and track.missed > self.max_missed
+            if tentative_expired or confirmed_expired:
+                expired.append(tid)
+        for tid in expired:
+            track = self.tracks.pop(tid)
+            if (
+                track.confirmed
+                and track.missed > self.max_missed
+                and self.reactivation_window > 0
+                and track.appearance is not None
+            ):
+                self._dormant_tracks[tid] = (track, 0)
+
+        reactivated = self._reactivate(detections, high - used_dets)
+        used_dets |= {didx for _, didx in reactivated}
+
+        # Only strong detections that are neither live-associated nor reactivated may create new identities.
         for didx in high - used_dets:
             det = detections[didx]
             tid = self._next_id
@@ -264,12 +410,5 @@ class MultiObjectTracker:
             cx, cy = det.center
             t.history.append((int(cx), int(cy)))
             self.tracks[tid] = t
-
-        expired = [
-            tid for tid, tr in self.tracks.items()
-            if tr.missed > self.max_missed or (not tr.confirmed and tr.missed > min(2, self.max_missed))
-        ]
-        for tid in expired:
-            del self.tracks[tid]
 
         return sorted(self.tracks.values(), key=lambda t: t.track_id)
