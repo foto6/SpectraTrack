@@ -11,6 +11,8 @@ from pathlib import Path
 import time
 from typing import Any, Iterable
 
+from .tracker import bbox_iou
+
 SCHEMA_VERSION = 1
 
 
@@ -128,17 +130,6 @@ def ground_truth_sha256(path: str | Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def bbox_iou(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
-    x1 = max(a[0], b[0])
-    y1 = max(a[1], b[1])
-    x2 = min(a[2], b[2])
-    y2 = min(a[3], b[3])
-    intersection = max(0.0, x2 - x1) * max(0.0, y2 - y1)
-    area_a = max(0.0, a[2] - a[0]) * max(0.0, a[3] - a[1])
-    area_b = max(0.0, b[2] - b[0]) * max(0.0, b[3] - b[1])
-    return intersection / max(area_a + area_b - intersection, 1e-9)
 
 
 def _truth_key(frame: GroundTruthFrame, index: int, obj: GroundTruthObject) -> str:
