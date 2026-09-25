@@ -455,6 +455,8 @@ def annotate_frame_batch(
             raise RuntimeError(f"Cannot read extracted frame: {image_path}")
         key = (video, frame_number)
         current = row_map.get(key, {"video": video, "frame": frame_number, "tags": base_tags, "objects": []})
+        current_tags = {_normalize_token(tag) for tag in current.get("tags", [])}
+        current_tags.update(base_tags)
         objects = [dict(obj) for obj in current.get("objects", []) if obj.get("label") == "person"]
         drag_start: list[int] | None = None
 
@@ -483,7 +485,7 @@ def annotate_frame_batch(
         cv2.setMouseCallback(window, mouse)
 
         def save_current() -> None:
-            tags_now = set(base_tags)
+            tags_now = set(current_tags)
             if objects:
                 tags_now.discard("negative")
             else:
@@ -721,6 +723,7 @@ def stamp_qa_result(
         "corpus_revision": manifest["revision"],
         "corpus_sha256": manifest["corpus_sha256"],
         "qa_result_sha256": sha256_file(result_path),
+        "result_payload_sha256": _canonical_sha256(result),
         "source_commit": revision,
         "settings_sha256": _canonical_sha256(result["settings"]),
         "evaluation_sha256": _canonical_sha256(result["evaluation"]),
@@ -754,6 +757,8 @@ def _leaderboard_row(run: dict[str, Any]) -> dict[str, Any]:
         "model_sha256": model.get("sha256"),
         "providers": model.get("providers"),
         "settings_sha256": run["settings_sha256"],
+        "settings": result.get("settings"),
+        "evaluation": result.get("evaluation"),
         "recall": metrics.get("recall"),
         "precision": metrics.get("precision"),
         "fn": metrics.get("false_negatives"),
@@ -801,6 +806,12 @@ def build_leaderboard(
         result = run.get("result")
         if not isinstance(result, dict):
             raise ValueError(f"{path}: stamped run has no result object")
+        if run.get("result_payload_sha256") != _canonical_sha256(result):
+            raise ValueError(f"{path}: stamped result payload hash mismatch")
+        if run.get("settings_sha256") != _canonical_sha256(result.get("settings")):
+            raise ValueError(f"{path}: settings hash mismatch")
+        if run.get("evaluation_sha256") != _canonical_sha256(result.get("evaluation")):
+            raise ValueError(f"{path}: evaluation hash mismatch")
         current_evaluation = result.get("evaluation")
         if evaluation is None:
             evaluation = current_evaluation
