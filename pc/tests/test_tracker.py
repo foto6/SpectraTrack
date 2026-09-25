@@ -176,3 +176,44 @@ def test_predict_only_does_not_increment_missed():
     assert tr.missed == 0
     assert tr.age == 2
     assert tr.center[0] == 155.0
+
+
+def test_long_dropout_without_appearance_does_not_reactivate():
+    tracker = MultiObjectTracker(max_missed=1, min_hits=1, reactivation_window=6)
+    first = tracker.update([d(50, 50)])[0].track_id
+
+    tracker.update([])
+    assert tracker.update([]) == []
+
+    resumed = tracker.update([d(55, 50)])[0]
+    assert resumed.track_id != first
+
+
+def test_dormant_track_expires_after_reactivation_window():
+    appearance = tuple([1.0] + [0.0] * 7)
+    tracker = MultiObjectTracker(max_missed=1, min_hits=1, reactivation_window=2)
+    first = tracker.update([d(50, 50, appearance=appearance)])[0].track_id
+
+    tracker.update([])
+    assert tracker.update([]) == []
+    tracker.update([])
+    tracker.update([])
+    tracker.update([])
+
+    resumed = tracker.update([d(55, 50, appearance=appearance)])[0]
+    assert resumed.track_id != first
+
+
+def test_reset_clears_dormant_tracks():
+    appearance = tuple([1.0] + [0.0] * 7)
+    tracker = MultiObjectTracker(max_missed=1, min_hits=1, reactivation_window=6)
+    first = tracker.update([d(50, 50, appearance=appearance)])[0].track_id
+
+    tracker.update([])
+    assert tracker.update([]) == []
+    tracker.reset()
+
+    resumed = tracker.update([d(55, 50, appearance=appearance)])[0]
+    assert resumed.track_id == 1
+    assert resumed.recoveries == 0
+    assert first == 1
