@@ -12,7 +12,7 @@ from .integrity import sha256_file
 from .qa_benchmark import (
     SCHEMA_VERSION,
     ground_truth_sha256,
-    inspect_qa_source,
+    inspect_qa_logical_source,
     load_ground_truth,
 )
 
@@ -173,25 +173,9 @@ def inspect_split(
 
     videos: list[dict[str, Any]] = []
     for video, video_frames in sorted(grouped.items()):
-        source_names = {frame.source or frame.video for frame in video_frames}
-        source_fps_values = {frame.source_fps for frame in video_frames if frame.source_fps is not None}
-        if len(source_names) != 1:
-            errors.append(f"{video}: multiple physical sources declared: {sorted(source_names)}")
-            continue
-        if len(source_fps_values) > 1:
-            errors.append(f"{video}: conflicting source_fps values")
-            continue
-        source_name = next(iter(source_names))
-        source_path = root / source_name
-        if not source_path.exists():
-            errors.append(f"missing source: {source_name}")
-            continue
         try:
-            meta = inspect_qa_source(
-                source_path,
-                fps_override=next(iter(source_fps_values)) if source_fps_values else None,
-            )
-        except (FileNotFoundError, RuntimeError) as exc:
+            meta = inspect_qa_logical_source(video_frames, root)
+        except (FileNotFoundError, RuntimeError, ValueError) as exc:
             errors.append(str(exc))
             continue
 
@@ -200,7 +184,9 @@ def inspect_split(
         max_annotated_frame = max(frame.frame for frame in video_frames)
         frame_count = meta.get("frame_count")
         if frame_count is not None and max_annotated_frame >= int(frame_count):
-            errors.append(f"{video}: annotated frame {max_annotated_frame} is outside frame_count={frame_count}")
+            errors.append(
+                f"{video}: annotated frame {max_annotated_frame} is outside frame_count={frame_count}"
+            )
 
         valid_people = 0
         for frame in video_frames:
@@ -209,16 +195,23 @@ def inspect_split(
                 outside = x1 < 0.0 or y1 < 0.0 or x2 > width or y2 > height
                 if outside and not frame.allow_out_of_bounds:
                     errors.append(f"{video}#{frame.frame}: bbox {obj.bbox} outside {width}x{height}")
-                if frame.allow_out_of_bounds and (x2 <= 0.0 or y2 <= 0.0 or x1 >= width or y1 >= height):
-                    errors.append(f"{video}#{frame.frame}: bbox {obj.bbox} does not intersect {width}x{height}")
+                if frame.allow_out_of_bounds and (
+                    x2 <= 0.0 or y2 <= 0.0 or x1 >= width or y1 >= height
+                ):
+                    errors.append(
+                        f"{video}#{frame.frame}: bbox {obj.bbox} does not intersect {width}x{height}"
+                    )
                 if obj.label == "person" and not obj.ignore:
                     valid_people += 1
 
         videos.append(
             {
                 "video": video,
-                "source": source_name,
+                "source": meta.get("source"),
                 "source_kind": meta["kind"],
+                "source_count": (
+                    len(meta["frame_sources"]) if meta.get("frame_sources") is not None else 1
+                ),
                 "split": split,
                 "sha256": meta["sha256"],
                 "width": width,
