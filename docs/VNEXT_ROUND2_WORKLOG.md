@@ -430,3 +430,44 @@ Required behavior for architect and all A1-A5 roles:
 - no important project state may exist only in chat, terminal history, local logs, or memory.
 
 This rule is additive to the existing AGENTS/coordination rules and applies for the rest of Round 2 and later integrator work.
+
+
+## 2026-09-26 — restart recovery verification
+
+### DONE — recovered durable Round-2 state from Git
+
+Used the Git-tracked coordination files as the source of truth after another chat/session restart.
+
+Verified current specialist branches against the last recorded Round-2 heads:
+
+- A1 `agent/vnext-detection @ b468836c9be1fd3669b46887a56ece4e9aafcd7f` — identical, 0 commits ahead/behind.
+- A2 `agent/vnext-tracking @ d83017d52011b1c728b6bb86b2fd519041da2032` — identical, 0 commits ahead/behind.
+- A3 `agent/vnext-enhancement @ 86b1460b6f9879038de92eb1e1341a96221e6c03` — identical, 0 commits ahead/behind.
+- A4 `agent/vnext-performance @ b3afa9d3843faa2f74b101cf2e40beea27caf6a9` — identical, 0 commits ahead/behind.
+- A5 `agent/vnext-qa @ b62509b6bbcf90e138b71fe48de51eb3c43c0787` — identical, 0 commits ahead/behind.
+
+Conclusion: no specialist branch silently advanced during the interruption.
+
+### DONE — verify target PC connectivity
+
+Remote device `DESKTOP-64LCMQ8` answered a direct ping and is online.
+
+### FAILED / UNVERIFIED — detailed process/artifact probe after restart
+
+Several detailed Remote Desktop Commander queries for process/GPU state and the expected A2/A3 output files timed out before returning a reliable result.
+
+Rejected behavior:
+
+- do not infer that A2/A3 finished because the GPU became idle;
+- do not infer that they failed because a control query timed out;
+- do not restart those experiments until the existing local artifacts/process state can be checked without risking duplicate work.
+
+Current state therefore remains:
+
+- A2 audit artifacts: **NEEDS VERIFICATION**.
+- A3 strict weak-person profile: **NEEDS VERIFICATION**.
+- target-PC GPU/process activity: **NEEDS VERIFICATION** beyond the successful online ping.
+
+### DONE — persistence rule reconfirmed
+
+Project-owner instruction reconfirmed: every subsequent meaningful coordinator action, including failures and not-done work, must be persisted in Git-tracked project files before the next major step.
