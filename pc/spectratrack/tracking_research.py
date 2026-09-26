@@ -568,6 +568,167 @@ class GlobalAssignmentCurrentRunner:
         return [_view(track) for track in tracks]
 
 
+class AmbiguityGuardCurrentTracker(MultiObjectTracker):
+    """Current tracker with global assignment only inside ambiguous score components."""
+
+    def __init__(self, ambiguity_margin: float = 0.08) -> None:
+        super().__init__()
+        if ambiguity_margin < 0.0:
+            raise ValueError("ambiguity_margin must be >= 0")
+        self.ambiguity_margin = float(ambiguity_margin)
+
+    def _associate(
+        self,
+        track_ids: set[int],
+        detections: list[Detection],
+        det_ids: set[int],
+        camera_motion: tuple[float, float],
+        camera_transform: tuple[float, float, float, float, float, float] | None,
+        loose: bool = False,
+    ) -> list[tuple[int, int]]:
+        candidates: list[tuple[float, int, int]] = []
+        score_by_pair: dict[tuple[int, int], float] = {}
+        by_track: dict[int, list[tuple[float, int]]] = {}
+        by_detection: dict[int, list[tuple[float, int]]] = {}
+        for track_id in sorted(track_ids):
+            track = self.tracks[track_id]
+            for detection_id in sorted(det_ids):
+                score = self._candidate_score(
+                    track,
+                    detections[detection_id],
+                    camera_motion,
+                    camera_transform,
+                    loose,
+                )
+                if score is None:
+                    continue
+                candidates.append((score, track_id, detection_id))
+                score_by_pair[(track_id, detection_id)] = score
+                by_track.setdefault(track_id, []).append((score, detection_id))
+                by_detection.setdefault(detection_id, []).append((score, track_id))
+
+        if not candidates:
+            return []
+
+        competitive_edges: set[tuple[int, int]] = set()
+        for track_id, rows in by_track.items():
+            ranked = sorted(rows, reverse=True)
+            if len(ranked) < 2 or ranked[0][0] - ranked[1][0] > self.ambiguity_margin:
+                continue
+            best = ranked[0][0]
+            competitive_edges.update(
+                (track_id, detection_id)
+                for score, detection_id in ranked
+                if best - score <= self.ambiguity_margin
+            )
+        for detection_id, rows in by_detection.items():
+            ranked = sorted(rows, reverse=True)
+            if len(ranked) < 2 or ranked[0][0] - ranked[1][0] > self.ambiguity_margin:
+                continue
+            best = ranked[0][0]
+            competitive_edges.update(
+                (track_id, detection_id)
+                for score, track_id in ranked
+                if best - score <= self.ambiguity_margin
+            )
+
+        if not competitive_edges:
+            candidates.sort(reverse=True)
+            remaining_tracks = set(track_ids)
+            remaining_detections = set(det_ids)
+            matches: list[tuple[int, int]] = []
+            for _, track_id, detection_id in candidates:
+                if track_id not in remaining_tracks or detection_id not in remaining_detections:
+                    continue
+                remaining_tracks.remove(track_id)
+                remaining_detections.remove(detection_id)
+                matches.append((track_id, detection_id))
+            return matches
+
+        track_neighbors: dict[int, set[int]] = {}
+        detection_neighbors: dict[int, set[int]] = {}
+        for track_id, detection_id in competitive_edges:
+            track_neighbors.setdefault(track_id, set()).add(detection_id)
+            detection_neighbors.setdefault(detection_id, set()).add(track_id)
+
+        components: list[tuple[set[int], set[int]]] = []
+        unseen_tracks = set(track_neighbors)
+        while unseen_tracks:
+            seed = min(unseen_tracks)
+            component_tracks: set[int] = set()
+            component_detections: set[int] = set()
+            pending_tracks = [seed]
+            pending_detections: list[int] = []
+            while pending_tracks or pending_detections:
+                while pending_tracks:
+                    track_id = pending_tracks.pop()
+                    if track_id in component_tracks:
+                        continue
+                    component_tracks.add(track_id)
+                    unseen_tracks.discard(track_id)
+                    for detection_id in track_neighbors.get(track_id, ()):
+                        if detection_id not in component_detections:
+                            pending_detections.append(detection_id)
+                while pending_detections:
+                    detection_id = pending_detections.pop()
+                    if detection_id in component_detections:
+                        continue
+                    component_detections.add(detection_id)
+                    for track_id in detection_neighbors.get(detection_id, ()):
+                        if track_id not in component_tracks:
+                            pending_tracks.append(track_id)
+            components.append((component_tracks, component_detections))
+
+        matches: list[tuple[int, int]] = []
+        used_tracks: set[int] = set()
+        used_detections: set[int] = set()
+        for component_tracks, component_detections in components:
+            if len(component_tracks) < 2 or len(component_detections) < 2:
+                continue
+            ordered_tracks = sorted(component_tracks)
+            ordered_detections = sorted(component_detections)
+            scores = [
+                [score_by_pair.get((track_id, detection_id)) for detection_id in ordered_detections]
+                for track_id in ordered_tracks
+            ]
+            for row, column in _maximize_assignment(scores):
+                track_id = ordered_tracks[row]
+                detection_id = ordered_detections[column]
+                matches.append((track_id, detection_id))
+                used_tracks.add(track_id)
+                used_detections.add(detection_id)
+
+        candidates.sort(reverse=True)
+        for _, track_id, detection_id in candidates:
+            if track_id in used_tracks or detection_id in used_detections:
+                continue
+            used_tracks.add(track_id)
+            used_detections.add(detection_id)
+            matches.append((track_id, detection_id))
+        return matches
+
+
+class AmbiguityGuardCurrentRunner:
+    name = "current-ambiguity-guard"
+
+    def __init__(self, ambiguity_margin: float = 0.08) -> None:
+        self.tracker = AmbiguityGuardCurrentTracker(ambiguity_margin=ambiguity_margin)
+
+    def step(self, frame: ReplayFrame) -> list[TrackView]:
+        if frame.detector_ran:
+            tracks = self.tracker.update(
+                frame.fresh_detections(),
+                camera_motion=frame.camera_motion,
+                camera_transform=frame.camera_transform,
+            )
+        else:
+            tracks = self.tracker.predict_only(
+                camera_motion=frame.camera_motion,
+                camera_transform=frame.camera_transform,
+            )
+        return [_view(track) for track in tracks]
+
+
 class CurrentTrackerRunner:
     name = "current"
 
@@ -1024,11 +1185,15 @@ def _aggregate(metrics: Iterable[dict[str, float | int | None]]) -> dict[str, fl
 
 def _candidate_factories() -> dict[
     str,
-    Callable[[], CurrentTrackerRunner | GlobalAssignmentCurrentRunner | ReferenceStyleTracker],
+    Callable[
+        [],
+        CurrentTrackerRunner | GlobalAssignmentCurrentRunner | AmbiguityGuardCurrentRunner | ReferenceStyleTracker,
+    ],
 ]:
     return {
         "current": lambda: CurrentTrackerRunner(),
         "current-global-assignment": lambda: GlobalAssignmentCurrentRunner(),
+        "current-ambiguity-guard": lambda: AmbiguityGuardCurrentRunner(),
         "byte-global-reference-style": lambda: ReferenceStyleTracker("byte"),
         "botsort-reference-style": lambda: ReferenceStyleTracker("botsort"),
         "ocsort-style": lambda: ReferenceStyleTracker("ocsort"),
@@ -1428,6 +1593,10 @@ def run_synthetic_bakeoff(performance_repeats: int = 20) -> dict:
                 "Isolated candidate: production MultiObjectTracker gates, scoring, lifecycle, CMC and dormant recovery are unchanged; "
                 "only greedy one-to-one selection is replaced by global maximum-score assignment."
             ),
+            "current-ambiguity-guard": (
+                "Targeted candidate: current greedy association is preserved outside ambiguous score components; "
+                "only connected competitions whose top alternatives are within 0.08 score use global assignment."
+            ),
             "byte-global-reference-style": (
                 "Clean-room mechanism probe: identical high/low stages and strong-only creation, "
                 "global assignment, constant-velocity geometry; not the official ByteTrack repository."
@@ -1501,6 +1670,7 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=(
             "current",
             "current-global-assignment",
+            "current-ambiguity-guard",
             "byte-global-reference-style",
             "botsort-reference-style",
             "ocsort-style",
