@@ -28,8 +28,12 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 - **DONE** — A4 real RX 5700 XT execution-cost frontier.
 - **DONE** — A5 draft-seeded private review tooling and 46-frame review pack preparation.
 - **DONE** — A5 review-progress accounting validated; branch docs head `8faf6c9...` CI-green (`36242654534`).
-- **NOT DONE** — human-confirmed private CCTV annotations.
-- **NOT DONE** — `cctv-golden-r1` freeze.
+- **IN PROGRESS** — A5 DanceTrack official-terms/import/freeze work for `dancetrack-public-r1`.
+- **IN PROGRESS** — A5 NightOwls official-terms/import/freeze work for `nightowls-public-r1`.
+- **NOT DONE** — A2 DanceTrack association-only current vs ambiguity-guard benchmark.
+- **NOT DONE** — A1/A3 NightOwls public validation.
+- **NOT DONE / DEFERRED** — reduced private CCTV human-confirmed sanity pack.
+- **NOT DONE / DEFERRED** — `cctv-golden-r1` freeze after public finalists.
 - **NOT DONE** — final cross-role candidate table on `cctv-golden-r1`.
 - **LOCKED** — `agent/vnext-integrator`.
 - **LOCKED** — production merge/release.
@@ -176,7 +180,7 @@ Unlock only when:
 ## Current execution blocker
 
 - **BLOCKED (control channel)** — target PC Remote Desktop Commander substantive operations are still timing out after successful ping, including process/file/meta history probes; no blind A1/A2/A3 restart is authorized.
-- **BLOCKED (human gate)** — the 46-frame private CCTV pack now requires human confirmation/correction before `cctv-golden-r1` can be frozen.
+- **DEFERRED (private domain gate)** — do not ask for 46-frame human review now. Public human-annotated benchmarks run first; later reduce to ~10-15 hardest frames + 3-5 temporal episodes before human confirmation.
 - This does **not** mean A2/A3 benchmarks failed.
 - Do not restart A2/A3 until existing local process/artifact state is verified.
 - GitHub coordination, branch verification, and documentation remain available.
