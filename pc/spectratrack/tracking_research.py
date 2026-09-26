@@ -160,11 +160,13 @@ def synthetic_scenarios() -> tuple[ResearchScenario, ...]:
         a = _box(ax, 180)
         b = _box(bx, 180)
         crossing_rows.append(((_det(a), _det(b)), (_truth("a", a), _truth("b", b)), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "crossing",
-        crossing_rows,
-        "Greedy one-to-one assignment becomes ambiguous at equal-overlap crossing; tie/order can select the wrong identity.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "crossing",
+            crossing_rows,
+            "Greedy one-to-one assignment becomes ambiguous at equal-overlap crossing; tie/order can select the wrong identity.",
+        )
+    )
 
     partial_rows = []
     for frame in range(8):
@@ -175,11 +177,13 @@ def synthetic_scenarios() -> tuple[ResearchScenario, ...]:
         else:
             detection = _det(truth_box, appearance=appearance_a)
         partial_rows.append(((detection,), (_truth("p", truth_box),), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "partial_occlusion",
-        partial_rows,
-        "Weak/narrow partial-occlusion box should enter the existing low-confidence rescue stage, not create a new ID.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "partial_occlusion",
+            partial_rows,
+            "Weak/narrow partial-occlusion box should enter the existing low-confidence rescue stage, not create a new ID.",
+        )
+    )
 
     full_rows = []
     for frame in range(12):
@@ -188,44 +192,52 @@ def synthetic_scenarios() -> tuple[ResearchScenario, ...]:
         else:
             box = _box(220 + max(0, frame - 7) * 4, 180)
             full_rows.append(((_det(box, appearance=appearance_a),), (_truth("p", box),), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "full_occlusion",
-        full_rows,
-        "No visible GT exists during occlusion; active-track lifetime must bridge the gap without producing visible false identity changes.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "full_occlusion",
+            full_rows,
+            "No visible GT exists during occlusion; active-track lifetime must bridge the gap without producing visible false identity changes.",
+        )
+    )
 
     short_rows = []
     for frame in range(10):
         box = _box(130 + frame * 7, 180)
         detections = () if frame in {4, 5} else (_det(box, appearance=appearance_a),)
         short_rows.append((detections, (_truth("p", box),), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "short_dropout",
-        short_rows,
-        "Two detector misses exercise predicted geometry and max_missed without entering dormant state.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "short_dropout",
+            short_rows,
+            "Two detector misses exercise predicted geometry and max_missed without entering dormant state.",
+        )
+    )
 
     long_rows = []
     for frame in range(24):
         box = _box(220, 180)
         detections = () if 4 <= frame <= 19 else (_det(box),)
         long_rows.append((detections, (_truth("p", box),), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "long_dropout",
-        long_rows,
-        "A long detector dropout without appearance causes deletion because dormant reactivation is intentionally unavailable without appearance.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "long_dropout",
+            long_rows,
+            "A long detector dropout without appearance causes deletion because dormant reactivation is intentionally unavailable without appearance.",
+        )
+    )
 
     dormant_rows = []
     for frame in range(24):
         box = _box(220, 180)
         detections = () if 4 <= frame <= 19 else (_det(box, appearance=appearance_a),)
         dormant_rows.append((detections, (_truth("p", box),), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "dormant_reactivation",
-        dormant_rows,
-        "Long loss with stable appearance should move confirmed track to dormant pool and recover the original ID.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "dormant_reactivation",
+            dormant_rows,
+            "Long loss with stable appearance should move confirmed track to dormant pool and recover the original ID.",
+        )
+    )
 
     mismatch_rows = []
     for frame in range(24):
@@ -236,22 +248,26 @@ def synthetic_scenarios() -> tuple[ResearchScenario, ...]:
             appearance = appearance_b if frame >= 20 else appearance_a
             detections = (_det(box, appearance=appearance),)
         mismatch_rows.append((detections, (_truth("p", box),), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "appearance_mismatch",
-        mismatch_rows,
-        "Dormant candidate should be rejected by reactivation_min_appearance and a fresh strong ID is created.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "appearance_mismatch",
+            mismatch_rows,
+            "Dormant candidate should be rejected by reactivation_min_appearance and a fresh strong ID is created.",
+        )
+    )
 
     pan_rows = []
     for frame in range(9):
         box = _box(140 + frame * 30, 180)
         motion = (0.0, 0.0) if frame == 0 else (30.0, 0.0)
         pan_rows.append(((_det(box),), (_truth("p", box),), True, motion, None))
-    scenarios.append(_make_scenario(
-        "camera_pan",
-        pan_rows,
-        "Camera translation should be removed before residual target velocity and association gating are evaluated.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "camera_pan",
+            pan_rows,
+            "Camera translation should be removed before residual target velocity and association gating are evaluated.",
+        )
+    )
 
     transform_rows = []
     box = _box(160, 150, 40, 80)
@@ -260,11 +276,13 @@ def synthetic_scenarios() -> tuple[ResearchScenario, ...]:
     for _ in range(1, 8):
         box = transform_box(box, affine)
         transform_rows.append(((_det(box),), (_truth("p", box),), True, (0.0, 0.0), affine))
-    scenarios.append(_make_scenario(
-        "camera_transform",
-        transform_rows,
-        "Affine CMC should transform the predicted box before geometry scoring; scale and translation must not look like target motion.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "camera_transform",
+            transform_rows,
+            "Affine CMC should transform the predicted box before geometry scoring; scale and translation must not look like target motion.",
+        )
+    )
 
     skipped_rows = []
     for frame in range(12):
@@ -272,32 +290,38 @@ def synthetic_scenarios() -> tuple[ResearchScenario, ...]:
         detector_ran = frame % 2 == 0
         detections = (_det(box),) if detector_ran else ()
         skipped_rows.append((detections, (_truth("p", box),), detector_ran, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "detector_skipped_frames",
-        skipped_rows,
-        "Intentional skipped frames must call predict_only and must not consume max_missed budget.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "detector_skipped_frames",
+            skipped_rows,
+            "Intentional skipped frames must call predict_only and must not consume max_missed budget.",
+        )
+    )
 
     weak_rows = []
     for frame in range(12):
         box = _box(120 + frame * 5, 180)
         score = 0.9 if frame < 3 else 0.20
         weak_rows.append(((_det(box, score=score),), (_truth("p", box),), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "weak_detection_sequence",
-        weak_rows,
-        "Existing low-confidence second stage should maintain an established track; this is the ByteTrack-like behavior already present.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "weak_detection_sequence",
+            weak_rows,
+            "Existing low-confidence second stage should maintain an established track; this is the ByteTrack-like behavior already present.",
+        )
+    )
 
     false_weak_rows = []
     for frame in range(8):
         box = _box(500, 180)
         false_weak_rows.append(((_det(box, score=0.20),), (), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "false_weak_detections",
-        false_weak_rows,
-        "Low-confidence detections below high_conf must not create new identities.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "false_weak_detections",
+            false_weak_rows,
+            "Low-confidence detections below high_conf must not create new identities.",
+        )
+    )
 
     nearby_rows = []
     for _ in range(3):
@@ -308,35 +332,41 @@ def synthetic_scenarios() -> tuple[ResearchScenario, ...]:
         a = _box(ax, 180, 80, 90)
         b = _box(bx, 180, 30, 90)
         nearby_rows.append(((_det(a), _det(b)), (_truth("a", a), _truth("b", b)), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "nearby_same_class",
-        nearby_rows,
-        (
-            "Nearby same-class people with asymmetric bbox geometry expose a greedy-assignment conflict: "
-            "one locally best pair can block the better total one-to-one assignment."
-        ),
-    ))
+    scenarios.append(
+        _make_scenario(
+            "nearby_same_class",
+            nearby_rows,
+            (
+                "Nearby same-class people with asymmetric bbox geometry expose a greedy-assignment conflict: "
+                "one locally best pair can block the better total one-to-one assignment."
+            ),
+        )
+    )
 
     scale_rows = []
     for scale in (1.0, 1.08, 1.18, 1.32, 1.50, 1.70, 1.85, 2.0):
         box = _box(240, 180, 36 * scale, 90 * scale)
         scale_rows.append(((_det(box, appearance=appearance_a),), (_truth("p", box),), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "changing_bbox_scale",
-        scale_rows,
-        "Center-distance gate can preserve identity through large scale change even when IoU falls; this tests whether scale alone fragments the track.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "changing_bbox_scale",
+            scale_rows,
+            "Center-distance gate can preserve identity through large scale change even when IoU falls; this tests whether scale alone fragments the track.",
+        )
+    )
 
     direction_rows = []
     xs = [100, 135, 170, 205, 240, 80, 55, 30, 20]
     for x in xs:
         box = _box(x, 180)
         direction_rows.append(((_det(box),), (_truth("p", box),), True, (0.0, 0.0), None))
-    scenarios.append(_make_scenario(
-        "sudden_direction_change",
-        direction_rows,
-        "Large reversal tests the hard geometry gate after constant-velocity prediction; a strong unmatched detection may spawn a new ID.",
-    ))
+    scenarios.append(
+        _make_scenario(
+            "sudden_direction_change",
+            direction_rows,
+            "Large reversal tests the hard geometry gate after constant-velocity prediction; a strong unmatched detection may spawn a new ID.",
+        )
+    )
 
     return tuple(scenarios)
 
@@ -433,11 +463,13 @@ class AuditedCurrentTracker(MultiObjectTracker):
                     frame,
                     loose,
                 )
-                candidates.append({
-                    "track_id": track_id,
-                    "detection_index": detection_id,
-                    **diagnostic,
-                })
+                candidates.append(
+                    {
+                        "track_id": track_id,
+                        "detection_index": detection_id,
+                        **diagnostic,
+                    }
+                )
         matches = super()._associate(
             track_ids,
             detections,
@@ -446,13 +478,15 @@ class AuditedCurrentTracker(MultiObjectTracker):
             camera_transform,
             loose,
         )
-        self.audit_events.append({
-            "frame": self.audit_frame,
-            "event": "association",
-            "stage": "low_or_unmatched" if loose else "high",
-            "candidates": candidates,
-            "matches": [{"track_id": tid, "detection_index": didx} for tid, didx in matches],
-        })
+        self.audit_events.append(
+            {
+                "frame": self.audit_frame,
+                "event": "association",
+                "stage": "low_or_unmatched" if loose else "high",
+                "candidates": candidates,
+                "matches": [{"track_id": tid, "detection_index": didx} for tid, didx in matches],
+            }
+        )
         return matches
 
     def _reactivate(self, detections: list[Detection], det_ids: set[int]) -> list[tuple[int, int]]:
@@ -461,21 +495,25 @@ class AuditedCurrentTracker(MultiObjectTracker):
             for detection_id in sorted(det_ids):
                 score = self._reactivation_score(track, detections[detection_id])
                 appearance = appearance_similarity(track.appearance, detections[detection_id].appearance)
-                candidates.append({
-                    "track_id": track_id,
-                    "dormant_age": dormant_age,
-                    "detection_index": detection_id,
-                    "appearance": None if appearance is None else round(appearance, 6),
-                    "accepted": score is not None,
-                    "score": None if score is None else round(score, 6),
-                })
+                candidates.append(
+                    {
+                        "track_id": track_id,
+                        "dormant_age": dormant_age,
+                        "detection_index": detection_id,
+                        "appearance": None if appearance is None else round(appearance, 6),
+                        "accepted": score is not None,
+                        "score": None if score is None else round(score, 6),
+                    }
+                )
         matches = super()._reactivate(detections, det_ids)
-        self.audit_events.append({
-            "frame": self.audit_frame,
-            "event": "reactivation",
-            "candidates": candidates,
-            "matches": [{"track_id": tid, "detection_index": didx} for tid, didx in matches],
-        })
+        self.audit_events.append(
+            {
+                "frame": self.audit_frame,
+                "event": "reactivation",
+                "candidates": candidates,
+                "matches": [{"track_id": tid, "detection_index": didx} for tid, didx in matches],
+            }
+        )
         return matches
 
 
@@ -506,10 +544,7 @@ class GlobalAssignmentCurrentTracker(MultiObjectTracker):
             ]
             for track_id in ordered_tracks
         ]
-        return [
-            (ordered_tracks[row], ordered_detections[column])
-            for row, column in _maximize_assignment(scores)
-        ]
+        return [(ordered_tracks[row], ordered_detections[column]) for row, column in _maximize_assignment(scores)]
 
 
 class GlobalAssignmentCurrentRunner:
@@ -654,10 +689,7 @@ def _maximize_assignment(scores: list[list[float | None]]) -> list[tuple[int, in
         return []
     maximum = max(valid_values)
     invalid_cost = maximum + 1_000_000.0
-    cost = [
-        [invalid_cost if value is None else maximum - value for value in row]
-        for row in scores
-    ]
+    cost = [[invalid_cost if value is None else maximum - value for value in row] for row in scores]
     assigned = _hungarian_min(cost)
     return [(row, column) for row, column in assigned if scores[row][column] is not None]
 
@@ -745,10 +777,7 @@ class ReferenceStyleTracker:
             ]
             for track_id in track_ids
         ]
-        return [
-            (track_ids[row], detection_ids[column])
-            for row, column in _maximize_assignment(scores)
-        ]
+        return [(track_ids[row], detection_ids[column]) for row, column in _maximize_assignment(scores)]
 
     def _apply(self, track: _ReferenceTrack, detection: Detection, frame: ReplayFrame) -> None:
         old_center = _center(self._camera_box(track, frame))
@@ -969,8 +998,7 @@ def _aggregate(metrics: Iterable[dict[str, float | int | None]]) -> dict[str, fl
     matched = sum(int(row["matched_gt"]) for row in rows)
     run_segments = sum(int(row["uninterrupted_segments"]) for row in rows)
     run_length_total = sum(
-        float(row["mean_uninterrupted_track_length"]) * int(row["uninterrupted_segments"])
-        for row in rows
+        float(row["mean_uninterrupted_track_length"]) * int(row["uninterrupted_segments"]) for row in rows
     )
     recovery_events = sum(int(row["recovery_events"]) for row in rows)
     recovery_latency_total = sum(
@@ -985,9 +1013,7 @@ def _aggregate(metrics: Iterable[dict[str, float | int | None]]) -> dict[str, fl
         "false_track_creations": sum(int(row["false_track_creations"]) for row in rows),
         "mean_uninterrupted_track_length": run_length_total / run_segments if run_segments else 0.0,
         "uninterrupted_segments": run_segments,
-        "mean_recovery_latency_frames": (
-            recovery_latency_total / recovery_events if recovery_events else None
-        ),
+        "mean_recovery_latency_frames": (recovery_latency_total / recovery_events if recovery_events else None),
         "recovery_events": recovery_events,
         "recovered_same_id": sum(int(row["recovered_same_id"]) for row in rows),
         "wrong_recovery": sum(int(row["wrong_recovery"]) for row in rows),
@@ -1023,6 +1049,163 @@ def current_failure_audit(scenario: ResearchScenario) -> dict:
     }
 
 
+def _failure_context(truth: tuple[TruthObject, ...], truth_index: int, frame: ReplayFrame) -> dict:
+    target = truth[truth_index]
+    tcx, tcy = _center(target.bbox)
+    tw, th = _dimensions(target.bbox)
+    target_diag = max(1.0, math.hypot(tw, th))
+    nearest_ratio = None
+    max_overlap = 0.0
+    for other_index, other in enumerate(truth):
+        if other_index == truth_index:
+            continue
+        ocx, ocy = _center(other.bbox)
+        ratio = math.hypot(ocx - tcx, ocy - tcy) / target_diag
+        nearest_ratio = ratio if nearest_ratio is None else min(nearest_ratio, ratio)
+        max_overlap = max(max_overlap, bbox_iou(target.bbox, other.bbox))
+    camera_motion_magnitude = math.hypot(*frame.camera_motion)
+    return {
+        "nearest_truth_center_ratio": nearest_ratio,
+        "max_truth_overlap_iou": max_overlap,
+        "close_competition": bool((nearest_ratio is not None and nearest_ratio <= 1.5) or max_overlap > 0.05),
+        "camera_motion_magnitude": camera_motion_magnitude,
+        "camera_transform_present": frame.camera_transform is not None,
+    }
+
+
+def mine_current_failure_windows(
+    scenario: ResearchScenario,
+    *,
+    window_radius: int = 2,
+    ambiguity_margin: float = 0.08,
+) -> dict:
+    if window_radius < 0:
+        raise ValueError("window_radius must be >= 0")
+    if ambiguity_margin < 0.0:
+        raise ValueError("ambiguity_margin must be >= 0")
+
+    runner = CurrentTrackerRunner(audit=True)
+    outputs: dict[int, list[TrackView]] = {}
+    for frame in scenario.replay.frames:
+        outputs[frame.frame] = runner.step(frame)
+
+    failures: list[dict] = []
+    last_track: dict[str, int] = {}
+    gap_start: dict[str, int] = {}
+    false_track_first_frame: dict[int, int] = {}
+
+    for frame in scenario.replay.frames:
+        truth = scenario.truth_by_frame.get(frame.frame, ())
+        tracks = outputs.get(frame.frame, [])
+        matches = _match_truth(truth, tracks)
+        used_track_ids = {tracks[column].track_id for column in matches.values()}
+        for track in tracks:
+            if track.missed == 0 and track.track_id not in used_track_ids:
+                false_track_first_frame.setdefault(track.track_id, frame.frame)
+
+        for truth_index, truth_item in enumerate(truth):
+            track_column = matches.get(truth_index)
+            if track_column is None:
+                if truth_item.object_id in last_track:
+                    gap_start.setdefault(truth_item.object_id, frame.frame)
+                continue
+
+            track_id = tracks[track_column].track_id
+            previous_track_id = last_track.get(truth_item.object_id)
+            gap_frame = gap_start.pop(truth_item.object_id, None)
+            if previous_track_id is not None and previous_track_id != track_id:
+                context = _failure_context(truth, truth_index, frame)
+                failures.append(
+                    {
+                        "category": "id_switch",
+                        "frame": frame.frame,
+                        "window": [
+                            max(scenario.replay.frames[0].frame, frame.frame - window_radius),
+                            min(scenario.replay.frames[-1].frame, frame.frame + window_radius),
+                        ],
+                        "object_id": truth_item.object_id,
+                        "previous_track_id": previous_track_id,
+                        "track_id": track_id,
+                        "gap_frames_before_switch": 0 if gap_frame is None else max(0, frame.frame - gap_frame),
+                        **context,
+                    }
+                )
+            if gap_frame is not None:
+                failures.append(
+                    {
+                        "category": "fragmentation_recovery",
+                        "frame": frame.frame,
+                        "window": [
+                            max(scenario.replay.frames[0].frame, gap_frame - window_radius),
+                            min(scenario.replay.frames[-1].frame, frame.frame + window_radius),
+                        ],
+                        "object_id": truth_item.object_id,
+                        "previous_track_id": previous_track_id,
+                        "track_id": track_id,
+                        "gap_frames": max(0, frame.frame - gap_frame),
+                        "same_id_recovery": previous_track_id == track_id,
+                        **_failure_context(truth, truth_index, frame),
+                    }
+                )
+            last_track[truth_item.object_id] = track_id
+
+    ambiguous_associations: list[dict] = []
+    reactivations: list[dict] = []
+    for event in runner.audit_events:
+        if event.get("event") == "reactivation" and event.get("matches"):
+            reactivations.append(
+                {
+                    "frame": event["frame"],
+                    "matches": event["matches"],
+                    "candidate_count": len(event.get("candidates", [])),
+                }
+            )
+            continue
+        if event.get("event") != "association":
+            continue
+        by_detection: dict[int, list[dict]] = {}
+        for candidate in event.get("candidates", []):
+            if not candidate.get("accepted") or candidate.get("score") is None:
+                continue
+            by_detection.setdefault(int(candidate["detection_index"]), []).append(candidate)
+        for detection_index, candidates in by_detection.items():
+            ranked = sorted(candidates, key=lambda item: float(item["score"]), reverse=True)
+            if len(ranked) < 2:
+                continue
+            margin = float(ranked[0]["score"]) - float(ranked[1]["score"])
+            if margin <= ambiguity_margin:
+                ambiguous_associations.append(
+                    {
+                        "frame": event["frame"],
+                        "stage": event.get("stage"),
+                        "detection_index": detection_index,
+                        "score_margin": margin,
+                        "top_candidates": ranked[:2],
+                    }
+                )
+
+    metrics = evaluate_tracking(scenario, outputs)
+    return {
+        "scenario": scenario.name,
+        "focus": scenario.focus,
+        "metrics": metrics,
+        "summary": {
+            "id_switch_events": sum(item["category"] == "id_switch" for item in failures),
+            "fragmentation_recovery_events": sum(item["category"] == "fragmentation_recovery" for item in failures),
+            "close_competition_id_switches": sum(
+                item["category"] == "id_switch" and item["close_competition"] for item in failures
+            ),
+            "ambiguous_association_events": len(ambiguous_associations),
+            "reactivation_matches": len(reactivations),
+            "false_track_ids": len(false_track_first_frame),
+        },
+        "failure_windows": failures,
+        "ambiguous_associations": ambiguous_associations,
+        "reactivations": reactivations,
+        "false_track_first_frame": false_track_first_frame,
+    }
+
+
 class RawBBoxSmoother:
     name = "raw"
 
@@ -1048,10 +1231,7 @@ class BoundedEMABBoxSmoother:
         lag_limit = max(8.0, math.hypot(rw, rh) * self.lag_fraction)
         lag = math.hypot(rcx - scx, rcy - scy)
         alpha = max(self.alpha, 0.85) if lag > lag_limit else self.alpha
-        self.state = tuple(
-            previous * (1.0 - alpha) + current * alpha
-            for previous, current in zip(self.state, bbox)
-        )
+        self.state = tuple(previous * (1.0 - alpha) + current * alpha for previous, current in zip(self.state, bbox))
         return self.state
 
 
@@ -1152,9 +1332,7 @@ def _stability_metric(
         "area_jitter_fraction": statistics.pstdev(area_errors) if len(area_errors) > 1 else 0.0,
         "temporal_iou": statistics.fmean(temporal_ious) if temporal_ious else 1.0,
         "response_lag_px": statistics.fmean(lag) if lag else 0.0,
-        "mean_iou_to_truth": statistics.fmean(
-            bbox_iou(pred, target) for pred, target in zip(predicted, truth)
-        ),
+        "mean_iou_to_truth": statistics.fmean(bbox_iou(pred, target) for pred, target in zip(predicted, truth)),
     }
 
 
@@ -1224,11 +1402,13 @@ def run_synthetic_bakeoff(performance_repeats: int = 20) -> dict:
     audits = []
     for scenario in scenarios:
         audit = current_failure_audit(scenario)
-        audits.append({
-            "scenario": scenario.name,
-            "focus": scenario.focus,
-            "metrics": audit["metrics"],
-        })
+        audits.append(
+            {
+                "scenario": scenario.name,
+                "focus": scenario.focus,
+                "metrics": audit["metrics"],
+            }
+        )
 
     return {
         "schema": "spectratrack-tracking-research-v1",

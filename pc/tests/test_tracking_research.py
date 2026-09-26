@@ -8,6 +8,7 @@ from spectratrack.tracking_research import (
     bbox_stability_probe,
     current_failure_audit,
     evaluate_tracking,
+    mine_current_failure_windows,
     run_loaded_replay,
     run_synthetic_bakeoff,
     synthetic_scenarios,
@@ -76,17 +77,24 @@ def test_detector_skipped_frames_do_not_consume_miss_budget():
 
 def test_current_audit_records_high_low_and_reactivation_decisions():
     weak = current_failure_audit(_scenario("weak_detection_sequence"))
-    stages = {
-        event.get("stage")
-        for event in weak["events"]
-        if event.get("event") == "association"
-    }
+    stages = {event.get("stage") for event in weak["events"] if event.get("event") == "association"}
     assert {"high", "low_or_unmatched"} <= stages
 
     dormant = current_failure_audit(_scenario("dormant_reactivation"))
     reactivation = [event for event in dormant["events"] if event.get("event") == "reactivation"]
     assert reactivation
     assert any(event["matches"] for event in reactivation)
+
+
+def test_failure_miner_surfaces_switch_and_reactivation_context():
+    nearby = mine_current_failure_windows(_scenario("nearby_same_class"))
+    assert nearby["summary"]["id_switch_events"] >= 2
+    assert nearby["failure_windows"]
+    assert any(item["category"] == "id_switch" for item in nearby["failure_windows"])
+
+    dormant = mine_current_failure_windows(_scenario("dormant_reactivation"))
+    assert dormant["summary"]["reactivation_matches"] >= 1
+    assert dormant["reactivations"]
 
 
 def test_all_candidates_consume_the_same_replay_fingerprint():
@@ -118,8 +126,6 @@ def test_reference_style_candidates_use_strong_only_creation():
         assert metrics["matched_gt"] == 0
 
 
-
-
 def test_global_assignment_probe_exposes_current_greedy_conflict():
     scenario = _scenario("nearby_same_class")
     current = _run(scenario, CurrentTrackerRunner())
@@ -142,8 +148,6 @@ def test_bbox_smoothing_reports_jitter_and_lag_separately():
     for row in metrics.values():
         assert 0.0 <= row["temporal_iou"] <= 1.0
         assert 0.0 <= row["mean_iou_to_truth"] <= 1.0
-
-
 
 
 def test_aggregate_means_are_weighted_by_actual_segments_and_recoveries():

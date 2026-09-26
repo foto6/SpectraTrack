@@ -657,3 +657,20 @@ Next unlock condition:
 4. A2 reports ID/fragmentation/recovery/stability/wall+CPU metrics with full config;
 5. A5 validates/stamps the evidence;
 6. architect decides whether any candidate proceeds to integration.
+
+
+## Round 2 supplement — real failure-window miner
+
+A research-only current-tracker failure miner now reports exact ID-switch and fragmentation/recovery windows, nearby-GT context, ambiguous association score margins, dormant reactivation matches, and first-seen false-track IDs. It does not alter production tracker behavior.
+
+On MOT17-04 first 600 frames with the existing hard-NMS replay, the miner found:
+
+- 335 ID-switch events;
+- 281 fragmentation/recovery events;
+- 468 association events where two accepted track candidates were within the configured 0.08 score margin for one detection;
+- 334/335 ID switches occurred while another GT person was within the miner's close-competition context heuristic;
+- 214 false track IDs.
+
+On the first round-2 evidence-aware weighted replay, the miner found 643 ID switches and 321 fragmentation/recovery events, so that fusion policy is not a tracker-safe replacement despite its detector precision/jitter improvement.
+
+The close-competition count is a diagnostic heuristic, not causal proof. The next candidate must target ambiguity/crossing continuity and be evaluated on identical replay bytes under the round-2 recall/IDSW/fragmentation gates.
