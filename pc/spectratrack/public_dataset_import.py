@@ -1151,6 +1151,8 @@ def import_nightowls(
     trajectory_frames: dict[tuple[str, str], set[int]] = {}
     tracking_fields_valid = True
     recording_fields_valid = True
+    tracking_identity_unique = True
+    duplicate_tracking_id_image_pairs = 0
     for annotation in annotations_list:
         if not isinstance(annotation, dict):
             raise ValueError("NightOwls annotation must be an object")
@@ -1188,16 +1190,17 @@ def import_nightowls(
                 key = (recording, str(tracking_id))
                 frames = trajectory_frames.setdefault(key, set())
                 if int(image_id) in frames:
-                    raise ValueError(
-                        f"NightOwls duplicate tracking_id {tracking_id} in image {image_id}"
-                    )
-                frames.add(int(image_id))
+                    tracking_identity_unique = False
+                    duplicate_tracking_id_image_pairs += 1
+                else:
+                    frames.add(int(image_id))
 
     repeated_trajectory = any(len(frame_ids) >= 2 for frame_ids in trajectory_frames.values())
     full_tracking_supported = (
         bool(scored_pedestrian_annotations)
         and tracking_fields_valid
         and recording_fields_valid
+        and tracking_identity_unique
         and repeated_trajectory
     )
 
@@ -1416,6 +1419,8 @@ def import_nightowls(
             "official_documentation_states_tracking_information": True,
             "all_scored_pedestrians_have_valid_tracking_id": tracking_fields_valid,
             "all_scored_pedestrians_have_recording_id": recording_fields_valid,
+            "unique_tracking_id_per_image": tracking_identity_unique,
+            "duplicate_tracking_id_image_pairs": duplicate_tracking_id_image_pairs,
             "repeated_trajectory_observed": repeated_trajectory,
             "disabled_for_stratified_slice": slice_frames is not None,
         },

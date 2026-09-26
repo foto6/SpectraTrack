@@ -1357,3 +1357,28 @@ Fail-safe resolution:
 - deterministic slice-selection function is unchanged.
 
 Focused NightOwls tests after the fix: **5 passed**.
+
+### NightOwls real-intake checkpoint — duplicate tracking IDs in official JSON
+
+Second real import attempt on source commit `dc2190d102766ccb021762ed393d800d6c751b27` also failed closed before emitting JSONL:
+
+`ERROR: NightOwls duplicate tracking_id 7000135 in image 7003437`
+
+Full official validation audit found:
+
+- duplicate scored-pedestrian `(image_id, tracking_id)` keys: **6**;
+- affected annotations: **12**;
+- affected images: **5**;
+- affected official recording IDs: **34.0 / 36.0**;
+- affected images present in locked 5000-frame selection: **0**.
+
+These annotations remain valid official detection GT, but they invalidate a one-object-per-tracking-id temporal contract. Fail-safe resolution:
+
+- preserve all official pedestrian annotations for detection scoring;
+- do not invent replacement tracking identities;
+- record duplicate tracking contract evidence in the import manifest;
+- full tracking support becomes false when any duplicate tracking ID occurs in one image;
+- locked sparse slice remains `tracking_supported=false`;
+- deterministic slice selection function and selected-image hash are unchanged.
+
+Focused NightOwls tests after this second compatibility fix: **6 passed**.
