@@ -1731,3 +1731,16 @@ At the same checkpoint A1 CrowdHuman remains active:
 - worker PID 19944 alive;
 - final CrowdHuman result/marker not yet present;
 - duplicate restart remains forbidden.
+
+
+## 2026-09-27 01:40 +07 — coordinator live verification
+
+Immutable refs rechecked unchanged: integration 3ebc4d50213593cac62b97399447fccf6bbc1755 (CI success), main 2012eaae2f4ffe820a66d12e40346d911616cd03.
+
+Specialist refs rechecked: A1 043931fb0bda2a10716ca19d2381adbd56c8d59b, A2 d1470454129024d3767b6cb91a7d6ba66102d52d, A3 21e7b06dc470a346dd01e86b45e3e581e4f0d59d, A4 45bd0bc85f7e677cd602b435108b2095ab0ee78b, A5 6760ac740b9875f2d0754e3cf5870a41b2f52a0e. All current specialist CI runs are success.
+
+Target-PC state was inspected before any restart. A1 CrowdHuman worker PID 19944 remains present; final result and completion marker are absent, so no duplicate/restart was attempted.
+
+A5 NightOwls official intake has started on the E: isolated data root. Official validation JSON is present at exact size 10,696,948 bytes and the official SDK checkout is present. The resumable validation ZIP download is active; observed ZIP size was 2,355,912,704 bytes and its progress log was actively updating (about 1.83 GiB of 52.81 GiB at the sample, about 5.85 MiB/s). Download state/part files are present. No second downloader was started.
+
+Decision: continue the existing A1 and A5 jobs untouched. No human action is required at this checkpoint.
