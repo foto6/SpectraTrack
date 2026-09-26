@@ -2147,3 +2147,15 @@ Safety boundaries:
 - treat A3 enhancement cost as provisional until NightOwls finalizes OFF/bilateral/current_adaptive_cached;
 - identify which 1–3 cadence configs can be quality-validated without duplicating completed cost work;
 - persist findings before any new A4 inference.
+
+
+### FAILED ATTEMPT — compact A4 JSON audit hit UTF-8 BOM
+
+A read-only Python summary script attempted to parse the existing A4 JSON artifacts with plain `utf-8` and stopped on `JSONDecodeError: Unexpected UTF-8 BOM`.
+
+Safety/result:
+
+- no A4 file was modified;
+- no benchmark was started;
+- no metric/provenance conclusion is drawn from this failed parse;
+- retry with `utf-8-sig` BOM-aware decoding.
