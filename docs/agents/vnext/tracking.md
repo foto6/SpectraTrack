@@ -821,3 +821,122 @@ GT track ID is retained **only in the evaluator**, never copied into tracker inp
 Frames without a GT observation for a person naturally create an observation gap. Do not synthesize detections through occlusion.
 
 This phase performs 0 ONNX inference calls and isolates geometry/lifecycle/association behavior. Any later detector-replay DanceTrack phase is a separate experiment with its own provenance.
+
+
+## Round 2 execution checkpoint — 2026-09-26 replay promotion gate
+
+Status: **BLOCKED ON REAL A1 REPLAY BYTES / TOOLING READY**
+
+Starting A2 HEAD verified before this execution step:
+
+`372c96e71e504a54ea2ac027ab988dfba2bd1918`
+
+Canonical coordination state read from:
+
+`coord/vnext-round2 @ 937ca1244583369355b969fa3c01577f00a51d9f`
+
+### DONE — reproducible current vs ambiguity-guard scorer
+
+Research commits:
+
+- `10f9a72e835ea5f489fdcab21010b99e12822304` — add canonical-GT + canonical-replay Round-2 scorer and promotion gates;
+- `fb7809d67851640a35c7ee848418497c8985c65c` — cover identical-replay comparison and gate decisions;
+- `f8906a65b8bbe51c68dc0187aa0d335901656f71` — suppress canonical ignored person regions from false-track accounting and reject incomplete GT coverage;
+- `6895a39812e035bcf4dcde64788c28349cd987c5` — regression tests for ignored regions and missing replay-frame GT.
+
+The scorer:
+
+- consumes one immutable `spectratrack-detection-replay-v1` artifact for both candidates;
+- loads the existing canonical A5 QA JSONL rather than creating a new GT format;
+- keeps stable GT identity evaluator-only;
+- does not mutate replay detections;
+- records replay source SHA-256, canonical replay SHA-256, GT SHA-256 and subject commit;
+- executes 0 detector policy runs and 0 ONNX inference calls;
+- reports tracking recall, ID switches, fragmentation, false track creations, recovery events/latency, same-ID recovery, wrong-ID recovery and mean uninterrupted track length.
+
+Promotion gates are encoded exactly as assigned:
+
+- recall loss <= 0.25 percentage points;
+- ID-switch improvement >= 10%;
+- fragmentation increase <= 5%;
+- no false-track increase (conservative interpretation because no numeric "material" tolerance was specified).
+
+Failure returns exactly:
+
+`RETAIN CURRENT TRACKER`
+
+Pass returns only:
+
+`ADVANCE TO DANCETRACK ASSOCIATION-ONLY`
+
+It is not a production promotion.
+
+Validation on `fb7809d67851640a35c7ee848418497c8985c65c`:
+
+- GitHub Actions run `36254888877`: **SUCCESS**;
+- Ruff: PASS;
+- compile + pytest: **169 passed in 1.57 s**;
+- existing tracker smoke: **1364.0 tracker FPS**, crossing/reappearance smoke switches 0;
+- diagnostics/self-check: PASS;
+- standalone Windows build and both CLI smokes: PASS.
+
+The ignored-region/missing-GT follow-up at `6895a398...` is still awaiting its own final CI result at the time of this checkpoint.
+
+### BLOCKED — mandatory identical real A1 replay comparison
+
+Current A1 branch observed:
+
+`agent/vnext-detection @ bccf087df01b74bc463dcc3525e5665110ff8225`
+
+A1's tracked Round-2 state explicitly says the target-PC held-out run/artifact state could not be positively recovered before the remote device went offline. In particular these local artifacts remain unverified/unavailable to A2:
+
+- `a1-round2-mot17-heldout.json`;
+- `a1-round2-prefusion-mot17`;
+- completion marker/log/timestamp/size/hash;
+- surviving canonical A1 replay bytes.
+
+Remote target PC:
+
+- device: `DESKTOP-64LCMQ8`;
+- current observed status: **offline**;
+- last seen: `2026-09-26T15:54:48.004Z`.
+
+GitHub contains no uploaded held-out A1 replay artifact to substitute for those bytes.
+
+Therefore:
+
+- real A1 replay SHA-256: **UNAVAILABLE — artifact inaccessible**;
+- real current metrics: **NOT RUN**;
+- real ambiguity-guard metrics: **NOT RUN**;
+- promotion gate decision: **NOT YET EVALUATED**.
+
+No `RETAIN` or `ADVANCE` decision is claimed without the required bytes.
+
+### WAITING — DanceTrack association-only
+
+Current A5 branch observed after importer work:
+
+`agent/vnext-qa @ 0db6bc0473a66a56e22c5f7adaaf5ad44d201dd7`
+
+A5 has implemented the isolated DanceTrack importer and canonical provenance plumbing, but its tracked state still reports:
+
+- real DanceTrack import: **NOT RUN**;
+- frozen `dancetrack-public-r1`: **NOT FROZEN**;
+- real artifact path/hash: **NOT AVAILABLE**;
+- frozen corpus hash: **NOT AVAILABLE**.
+
+Therefore A2 has not started the association-only DanceTrack experiment.
+
+When unlocked, phase 1 remains exactly:
+
+- canonical GT bbox -> tracker Detection;
+- person class/label;
+- score 1.0;
+- appearance null;
+- detector_ran=true;
+- GT ID evaluator-only;
+- no synthesized observations through occlusion;
+- **0 ONNX inference calls**;
+- current and `current-ambiguity-guard` consume identical observation bytes.
+
+Detector-replay DanceTrack remains forbidden until the ambiguity guard first survives this association-only gate.
