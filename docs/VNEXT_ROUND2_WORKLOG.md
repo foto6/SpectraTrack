@@ -2387,3 +2387,47 @@ Decision:
 - download phase is DONE;
 - A5 may now perform full hash/testzip, isolated extraction, deterministic slice import, validation, and freeze as the pre-locked `nightowls-public-slice5000-r1`;
 - A3 remains blocked until the exact frozen corpus SHA/manifest is published.
+
+
+## 2026-09-27 — NightOwls frozen gate independently verified
+
+A5 final branch:
+`agent/vnext-qa @ 95d0b389efcd46030634ec6005c0bc18098f4aa5`
+
+Final CI:
+`36279609347` — SUCCESS.
+
+Frozen NightOwls held-out slice:
+- revision: `nightowls-public-slice5000-r1`
+- exact corpus SHA-256: `1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8`
+- selected-ID SHA-256: `429b41320f158ab9723215c3164dc020b96bf076fdab8f4c802167c6d54934d5`
+- frames: 5000
+- positive images: 605
+- true-negative images: 4395
+- canonical objects: 1521
+- scored pedestrians: 969
+- official ignore objects: 552
+- rider classes scored as pedestrian: 0
+- validation: valid=true, 0 errors, 0 warnings
+- tracking_supported=false
+
+Source integrity:
+- official ZIP SHA-256: `6663dc5099714ffb8c18bb37942ce523de9dfdda44327284bdab12354e8fcf9d`
+- official JSON SHA-256: `584c0dc11f0d086fc5bcbaca0385cf2dd9794074f815f2727fbf9a093fd9a9b6`
+- SDK commit: `ad0f18fc95e093e86036f055ab210a3de46021b7`
+
+Canonical GT:
+`E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-val-slice.jsonl`
+SHA-256:
+`6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc`
+
+Frozen manifest:
+`E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-public-slice5000-r1.manifest.json`
+file SHA-256:
+`6d609998ec12eebe908056ed08019208e6b954befb2fa4cca3974f1bf31990da`
+
+Decision:
+- A5 NightOwls intake/freeze is DONE.
+- A3 enhancement held-out gate is now unblocked.
+- A3 must compare exactly OFF / bilateral / current_adaptive_cached on this frozen corpus with no NightOwls threshold retuning.
+- A1 does not need NightOwls to rescue evidence-aware in this Round-2 cycle because the candidate already failed the frozen CrowdHuman no-recall-loss gate.
