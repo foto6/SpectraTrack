@@ -738,70 +738,105 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     total_start = time.perf_counter()
 
     for video, video_annotations in sorted(grouped.items()):
-        video_path = Path(args.video_root) / video
-        if not video_path.is_file():
-            raise FileNotFoundError(f"Benchmark video is missing: {video_path}")
-        cap = cv2.VideoCapture(str(video_path))
-        if not cap.isOpened():
-            raise RuntimeError(f"Cannot open benchmark video: {video_path}")
+        source_names = {item.source or item.video for item in video_annotations}
+        source_fps_values = {item.source_fps for item in video_annotations if item.source_fps is not None}
+        if len(source_names) != 1:
+            raise ValueError(f"Ground truth {video!r} references multiple physical sources: {sorted(source_names)}")
+        if len(source_fps_values) > 1:
+            raise ValueError(f"Ground truth {video!r} has conflicting source_fps values")
+        source_name = next(iter(source_names))
+        source_path = Path(args.video_root) / source_name
+        fps_override = next(iter(source_fps_values)) if source_fps_values else None
+        meta = inspect_qa_source(source_path, fps_override=fps_override)
+
         annotated_frames = {item.frame for item in video_annotations}
         last_needed = max(annotated_frames)
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = float(cap.get(cv2.CAP_PROP_FPS))
-        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        frame_count = meta.get("frame_count")
+        if frame_count is not None and last_needed >= int(frame_count):
+            raise RuntimeError(
+                f"Source {source_path} ends before annotated frame {last_needed}; frame_count={frame_count}"
+            )
+
         motion = GlobalMotionEstimator()
         tracker = MultiObjectTracker()
-        frame_index = 0
         video_processed_frames = 0
-        try:
-            while frame_index <= last_needed:
-                ok, frame = cap.read()
-                if not ok or frame is None:
-                    raise RuntimeError(
-                        f"Video {video_path} ended before annotated frame {last_needed}; stopped at {frame_index}"
-                    )
-                cam = motion.update(frame)
-                infer_start = time.perf_counter()
-                detections = _detect_with_runtime_policy(detector, frame, args)
-                inference_seconds += time.perf_counter() - infer_start
-                detector_policy_runs += 1
-                onnx_inference_calls += int(getattr(detector, "last_inference_calls", 0))
-                if not args.no_appearance:
-                    attach_appearance(frame, detections)
-                camera_motion = (cam.dx, cam.dy) if cam.valid else (0.0, 0.0)
-                camera_transform = cam.affine if cam.valid else None
-                tracks = tracker.update(
-                    detections,
-                    camera_motion=camera_motion,
-                    camera_transform=camera_transform,
-                )
-                processed_frames += 1
-                video_processed_frames += 1
-                if frame_index in annotated_frames:
-                    key = (video, frame_index)
-                    predictions_by_frame[key] = [
-                        PredictedObject(tuple(det.bbox), det.label, float(det.score)) for det in detections
-                    ]
-                    tracks_by_frame[key] = [
-                        PredictedObject(tuple(track.bbox), track.label, float(track.score), int(track.track_id))
-                        for track in tracks
-                    ]
-                frame_index += 1
-        finally:
-            cap.release()
-        if math.isfinite(fps) and fps > 0.0:
-            source_seconds += video_processed_frames / fps
+
+        def process_frame(frame_index: int, frame) -> None:
+            nonlocal processed_frames, inference_seconds, detector_policy_runs
+            nonlocal onnx_inference_calls, video_processed_frames
+            cam = motion.update(frame)
+            infer_start = time.perf_counter()
+            detections = _detect_with_runtime_policy(detector, frame, args)
+            inference_seconds += time.perf_counter() - infer_start
+            detector_policy_runs += 1
+            onnx_inference_calls += int(getattr(detector, "last_inference_calls", 0))
+            if not args.no_appearance:
+                attach_appearance(frame, detections)
+            camera_motion = (cam.dx, cam.dy) if cam.valid else (0.0, 0.0)
+            camera_transform = cam.affine if cam.valid else None
+            tracks = tracker.update(
+                detections,
+                camera_motion=camera_motion,
+                camera_transform=camera_transform,
+            )
+            processed_frames += 1
+            video_processed_frames += 1
+            if frame_index in annotated_frames:
+                key = (video, frame_index)
+                predictions_by_frame[key] = [
+                    PredictedObject(tuple(det.bbox), det.label, float(det.score)) for det in detections
+                ]
+                tracks_by_frame[key] = [
+                    PredictedObject(tuple(track.bbox), track.label, float(track.score), int(track.track_id))
+                    for track in tracks
+                ]
+
+        if meta["kind"] == "image":
+            if last_needed != 0:
+                raise RuntimeError(f"Still-image source {source_path} can only use canonical frame 0")
+            frame = cv2.imread(str(source_path), cv2.IMREAD_COLOR)
+            if frame is None:
+                raise RuntimeError(f"Cannot read benchmark image: {source_path}")
+            process_frame(0, frame)
+        elif meta["kind"] == "image_sequence":
+            sequence_files = image_sequence_files(source_path)
+            for frame_index in range(last_needed + 1):
+                frame = cv2.imread(str(sequence_files[frame_index]), cv2.IMREAD_COLOR)
+                if frame is None:
+                    raise RuntimeError(f"Cannot read image-sequence frame: {sequence_files[frame_index]}")
+                process_frame(frame_index, frame)
+        else:
+            cap = cv2.VideoCapture(str(source_path))
+            if not cap.isOpened():
+                raise RuntimeError(f"Cannot open benchmark video: {source_path}")
+            frame_index = 0
+            try:
+                while frame_index <= last_needed:
+                    ok, frame = cap.read()
+                    if not ok or frame is None:
+                        raise RuntimeError(
+                            f"Video {source_path} ended before annotated frame {last_needed}; stopped at {frame_index}"
+                        )
+                    process_frame(frame_index, frame)
+                    frame_index += 1
+            finally:
+                cap.release()
+
+        fps = meta.get("fps")
+        if fps is not None and float(fps) > 0.0:
+            source_seconds += video_processed_frames / float(fps)
         else:
             source_seconds_known = False
         input_videos.append(
             {
                 "video": video,
-                "sha256": sha256_file(video_path),
-                "width": width,
-                "height": height,
-                "fps": fps if math.isfinite(fps) and fps > 0.0 else None,
-                "frame_count": frame_count if frame_count > 0 else None,
+                "source": source_name,
+                "source_kind": meta["kind"],
+                "sha256": meta["sha256"],
+                "width": int(meta["width"]),
+                "height": int(meta["height"]),
+                "fps": fps,
+                "frame_count": frame_count,
                 "processed_frames": video_processed_frames,
             }
         )
