@@ -2231,3 +2231,20 @@ The eventual A4 final run remains restricted to only 1–3 configurations. Exist
 - continue A5 NightOwls intake untouched;
 - after A3 resolves OFF/bilateral/current_adaptive_cached, select 1–3 scheduler configs from the existing cost envelope and run only the missing quality/discovery-latency validation;
 - do not select the fastest cadence from cost alone.
+
+
+## 2026-09-27 — next major step: prepare A5 NightOwls post-download intake
+
+### IN PROGRESS — inspect existing A5 tooling and freeze contract while downloader continues
+
+The single official NightOwls ZIP downloader remains the active data-transfer owner. Do not stop, duplicate, replace or redirect it.
+
+Preparation scope only:
+
+- read the A5 NightOwls importer/slice/freeze handoff and exact CLI contract;
+- determine required archive integrity, extraction, annotation, canonical import, validation and provenance checks;
+- bind the isolated E: paths already chosen;
+- prepare the exact sequence to execute after download completion;
+- do not extract from a partial ZIP;
+- do not freeze any AI-generated annotation as GOLDEN;
+- do not start A1/A3 NightOwls inference before the A5 corpus/slice revision and hash are frozen.
