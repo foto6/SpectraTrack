@@ -377,3 +377,22 @@ Round-2 interpretation:
 - `detect_every=5, max_calls=3` remains below the 2x processing target at 15 calls/source-s and preserves a 1.0 s global bound, giving a larger ROI budget for the future quality comparison.
 
 No production scheduler choice is made from this execution-only table. A5/A1 quality evidence is still required.
+
+
+## Round 2 public-first scheduler checkpoint — 2026-09-26
+
+Status: **BLOCKED BY QUALITY FINALISTS / NO NEW LARGE SEARCH**
+
+Existing RX 5700 XT + DirectML execution-cost evidence remains valid as cost evidence only.
+
+A4 must not launch a new abstract scheduler search now.
+
+Wait for:
+
+- A1 surviving MOT17/CrowdHuman/NightOwls fusion policy;
+- A2 current-vs-ambiguity decision including DanceTrack association evidence;
+- A3 enhancement ON/OFF decision including NightOwls.
+
+Then run only 1-3 surviving scheduler configurations and produce the final quality-vs-cost Pareto evidence on the target PC.
+
+Do not select the fastest configuration without quality evidence.
