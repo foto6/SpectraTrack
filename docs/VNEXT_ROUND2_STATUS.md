@@ -144,3 +144,13 @@ Unlock only when:
 4. A4 has quality-validated target-PC scheduler evidence.
 5. A5 has human-confirmed `cctv-golden-r1`.
 6. Surviving candidates are compared on that same frozen private revision.
+
+
+## Restart recovery note
+
+- **DONE** — GitHub branch heads re-verified; none of A1-A5 advanced beyond the heads recorded above during the interruption.
+- **DONE** — target PC answered a direct connectivity ping.
+- **NEEDS VERIFICATION** — detailed target-PC process/GPU state; control queries timed out.
+- **NEEDS VERIFICATION** — A2 audit output files after the interrupted run.
+- **NEEDS VERIFICATION** — A3 `a3-round2-weak1.json` completion after the interrupted run.
+- **RULE** — do not restart A2/A3 blindly until existing local process/artifact state is verified.
