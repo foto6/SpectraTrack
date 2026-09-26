@@ -1,6 +1,7 @@
 import json
 
 from spectratrack.tracking_research import (
+    AmbiguityGuardCurrentRunner,
     CurrentTrackerRunner,
     GlobalAssignmentCurrentRunner,
     ReferenceStyleTracker,
@@ -130,12 +131,21 @@ def test_global_assignment_probe_exposes_current_greedy_conflict():
     scenario = _scenario("nearby_same_class")
     current = _run(scenario, CurrentTrackerRunner())
     isolated_global = _run(scenario, GlobalAssignmentCurrentRunner())
+    ambiguity_guard = _run(scenario, AmbiguityGuardCurrentRunner())
     byte_style = _run(scenario, ReferenceStyleTracker("byte"))
 
     assert current["id_switches"] >= 2
     assert isolated_global["id_switches"] == 0
+    assert ambiguity_guard["id_switches"] == 0
     assert byte_style["id_switches"] == 0
     assert isolated_global["mean_uninterrupted_track_length"] > current["mean_uninterrupted_track_length"]
+    assert ambiguity_guard["mean_uninterrupted_track_length"] > current["mean_uninterrupted_track_length"]
+
+
+def test_ambiguity_guard_preserves_nonambiguous_current_behavior():
+    for name in ("camera_pan", "weak_detection_sequence", "dormant_reactivation"):
+        scenario = _scenario(name)
+        assert _run(scenario, AmbiguityGuardCurrentRunner()) == _run(scenario, CurrentTrackerRunner())
 
 
 def test_bbox_smoothing_reports_jitter_and_lag_separately():
