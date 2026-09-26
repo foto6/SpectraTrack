@@ -549,3 +549,239 @@ The exact unlock condition is:
 4. every row passes A5 provenance/comparability stamping.
 
 Only after that can A5 assemble the evidence table for architect review. A5 does not declare the winner.
+
+# Public dataset import supplement — MOT17 / CrowdHuman
+
+Validated supplement code/docs HEAD before this state-only commit:
+
+`a0bd8d6acb947853fff1a5487be20326bf5615b9`
+
+GitHub Actions run:
+
+`36221141511` — **SUCCESS**
+
+Observed validation:
+
+- Ruff: PASS — `All checks passed!`
+- compileall + pytest: **163 passed in 1.62s**
+- synthetic tracker benchmark: PASS — 500 frames / 24 targets / 11970 observations, 1446.3 tracker_fps
+- diagnostics: PASS
+- self-check: PASS
+- PyInstaller standalone build: PASS
+- standalone app help + batch help: PASS
+- source/Windows artifact packaging and upload: PASS
+
+The tracker throughput above is synthetic CI evidence only, not a MOT17/CrowdHuman performance result.
+
+## Supplement objective
+
+Reduce manual GT work without changing the A5 QA architecture.
+
+Added isolated public-dataset import tooling that converts official annotations into the existing canonical `qa_benchmark.py` JSONL. There is still one evaluator.
+
+Commands:
+
+- `python -m spectratrack.vnext_qa import-mot17 ...`
+- `python -m spectratrack.vnext_qa import-crowdhuman ...`
+
+Public dataset binaries and generated import artifacts remain local/gitignored.
+
+## Terms / policy checked before implementation
+
+MOT17 / MOTChallenge:
+
+- dataset terms: CC BY-NC-SA 3.0;
+- non-commercial use;
+- attribution/share-alike requirements.
+
+CrowdHuman:
+
+- non-commercial research/education only;
+- images may not be redistributed;
+- importer accepts validation annotations only for A5 detector evaluation.
+
+Import requires explicit `--acknowledge-terms`.
+
+## MOT17 conversion
+
+Default source directories use the FRCNN copy of the seven unique train sequences so identical physical sequences are not imported three times.
+
+Selected base sequences by default:
+
+`02,04,05,09,10,11,13`
+
+Preserved provenance:
+
+- exact source sequence, for example `MOT17-10-FRCNN`;
+- original 1-based frame number as `source_frame`;
+- source FPS;
+- every source image SHA-256;
+- `seqinfo.ini` SHA-256;
+- `gt.txt` SHA-256;
+- importer exact commit;
+- conversion settings.
+
+Scoring conversion:
+
+- class 1 pedestrian with mark > 0 -> scored `person`, stable ID `MOT17-XX:<id>`;
+- classes 2/7/8/12 -> canonical ignored person regions;
+- zero-marked pedestrians -> omitted;
+- unrelated classes -> omitted;
+- 1-based MOT xywh -> 0-based xyxy without clipping;
+- full-body boxes may extend outside image but must still intersect it.
+
+Visibility is preserved as numeric source metadata + numeric visibility-bin attributes. A5 does not invent partial/heavy-occlusion semantic labels from visibility.
+
+Semantic sequence tags are added only from official sequence descriptions:
+
+- MOT17-04: night + elevated/high-angle;
+- MOT17-05: camera motion;
+- MOT17-10: night + camera motion;
+- MOT17-11: camera motion;
+- MOT17-09: low angle;
+- no inferred condition tags for 02/13.
+
+MOT17 stable IDs enable A5 tracking/identity/temporal metrics.
+
+## CrowdHuman conversion
+
+A5 accepts only `annotation_val.odgt`.
+
+Default evaluation bbox:
+
+`fbox` / full body.
+
+Visible-body `vbox` is an explicit opt-in and must be frozen under a separate corpus revision.
+
+Conversion:
+
+- `tag=person` + not ignored -> scored person;
+- `tag=mask` OR `extra.ignore=1` -> canonical ignored person region;
+- fbox/vbox xywh -> xyxy without clipping;
+- original fbox/vbox/box_id/occ remain in source provenance;
+- integer `extra.occ` is exposed literally as `crowdhuman_occ_<value>`;
+- visible/full area ratio is exposed only as explicit numeric visibility-bin attributes;
+- no scene/CCTV tags are inferred;
+- no stable canonical person IDs are created.
+
+Because CrowdHuman validation consists of independent images, A5 tracking metrics now score only GT objects with stable IDs; CrowdHuman therefore reports no track recall / switches / fragmentation.
+
+## Source abstraction
+
+Canonical QA JSONL gained only optional provenance fields:
+
+- `source`
+- `source_frame`
+- `source_sequence`
+- `source_fps`
+- `allow_out_of_bounds`
+
+Old JSONL remains valid.
+
+The canonical runner now accepts:
+
+- ordinary video;
+- image-sequence directory;
+- single still image.
+
+This permits MOT17/CrowdHuman to stay in original local dataset layouts instead of being converted to synthetic videos.
+
+## Import manifest / freeze provenance
+
+Public importer provenance schema:
+
+`spectratrack-public-dataset-import-v1`
+
+It is not a second GT format. It only binds conversion provenance.
+
+Each import manifest records:
+
+- dataset name/version/split;
+- terms/license metadata + acknowledgement;
+- selected sequences/split;
+- conversion settings;
+- importer exact source commit;
+- source file path/role/SHA-256/byte length;
+- aggregate source provenance hash;
+- converted canonical JSONL SHA-256;
+- deterministic import-manifest SHA-256.
+
+`validate-corpus --dataset-import ...` re-hashes every referenced source file before accepting the public import.
+
+`freeze-corpus` embeds the verified import provenance in the existing frozen corpus manifest.
+
+Public official GT can be frozen with:
+
+`--confirm-public-dataset-terms`
+
+Private user GT still requires:
+
+`--confirm-human-reviewed`
+
+## Canonical scoring caveat
+
+Imported annotations are evaluated by SpectraTrack's common A5 matcher/ignore semantics.
+
+They must not be described as bit-for-bit official MOTChallenge or CrowdHuman benchmark results unless those official evaluators are run separately.
+
+## Recommended hybrid evidence suite
+
+Keep separate immutable corpus revisions rather than hiding different semantics in one score:
+
+1. `mot17-public-r1`
+   - tracking, IDs, temporal boxes, pedestrian detection;
+2. `crowdhuman-val-fbox-r1`
+   - dense person/crowd/full-body detection and occlusion attributes;
+3. `cctv-golden-r1`
+   - small private human-confirmed user CCTV holdout.
+
+Public data reduces manual annotation substantially but is **not** a replacement for private CCTV domain validation.
+
+A2 should use MOT17 + private CCTV for identity conclusions; CrowdHuman is detection-only.
+
+## Files added/changed in this supplement
+
+Added:
+
+- `pc/spectratrack/public_dataset_import.py`
+- `pc/tests/test_public_dataset_import.py`
+- `pc/benchmarks/vnext/qa/PUBLIC_DATASETS.md`
+- `pc/benchmarks/vnext/qa/public/.gitignore`
+- `pc/benchmarks/vnext/qa/imports/.gitignore`
+
+Extended without creating a second evaluator:
+
+- `pc/spectratrack/qa_benchmark.py`
+- `pc/spectratrack/vnext_qa.py`
+- `pc/tests/test_vnext_qa.py`
+- `pc/benchmarks/vnext/qa/README.md`
+- `DECISIONS.md`
+
+## Real public dataset measurement status
+
+Actual MOT17 download/import/run in this agent environment: **NOT RUN**
+
+Actual CrowdHuman download/import/run in this agent environment: **NOT RUN**
+
+Reason: datasets are large, externally licensed/terms-controlled, and the user explicitly requested that they not be downloaded/committed automatically.
+
+Importer semantics were tested with small synthetic on-disk fixtures matching the public annotation/layout formats. CI passed all 163 tests.
+
+Therefore:
+
+- no real MOT17 corpus revision/hash is claimed yet;
+- no real CrowdHuman corpus revision/hash is claimed yet;
+- no public-dataset quality numbers are claimed yet.
+
+Exact user commands are documented in:
+
+`pc/benchmarks/vnext/qa/PUBLIC_DATASETS.md`
+
+## Supplement readiness
+
+Public import tooling: **READY FOR LOCAL DATASET INTAKE**
+
+Private CCTV workflow: unchanged.
+
+Common product GO: still requires the private human-confirmed CCTV holdout in addition to public benchmark evidence.
+
