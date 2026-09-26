@@ -738,3 +738,84 @@ Status:
 **IN PROGRESS / CI VERIFICATION REQUIRED**
 
 Target PC remains offline; held-out inference has not been restarted.
+
+
+## Round 2 target-PC state positively verified before held-out start
+
+Verification status:
+
+**VERIFIED ABSENT — fresh held-out start is authorized.**
+
+Target PC:
+
+- device: `DESKTOP-64LCMQ8`;
+- A1 worktree: `C:\Users\foto6\SpectraTrack-worktrees\a1`;
+- worktree branch: `agent/vnext-detection`;
+- worktree was clean at verification;
+- worktree HEAD before this start-checkpoint commit: `bae608cc58cc90bd2d709a6c0ac1d0d1063dd6cc`.
+
+Process/session verification:
+
+- Remote Desktop Commander reported no active terminal sessions;
+- process list contained no `python.exe` / detector benchmark process;
+- PID 3108 and 20668 `python3.13.exe` were verified as VS Code Black Formatter language-server processes;
+- PID 26224 `pythonw.exe` was verified as `C:\Users\foto6\SpectraTrack-control\supervisor.py run`;
+- therefore no existing A1 `vnext_detection_corpus` inference process was found.
+
+Two attempted broad PowerShell command-line filters failed due shell quoting/parsing. Those probes are recorded as **FAILED VERIFICATION PROBES**, but they were superseded by direct process enumeration plus exact PID command-line inspection and do not leave benchmark state ambiguous.
+
+Expected old A1 Round-2 artifacts were checked directly and are absent:
+
+- `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json`;
+- `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json.complete.json`;
+- `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json.console.log`;
+- `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-mot17`.
+
+The runs directory contains only earlier Round-1/dev A1 evidence and other-role artifacts; no uploaded/local Round-2 held-out result was found.
+
+Verified target inputs:
+
+- model: `E:\SpectraTrack\yolo11x.onnx`;
+- model size: `228267957` bytes;
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`;
+- MOT17 canonical GT: `C:\Users\foto6\SpectraTrack-data\imports\mot17-public.jsonl`;
+- MOT17 GT SHA-256: `28dcb9d197e0a098a1efb097f1589177350192a8f5f1be3e2ab5cd18d8f205c7`;
+- MOT17 media root: `C:\Users\foto6\SpectraTrack-data\public\MOT17\MOT17`;
+- CrowdHuman canonical GT: `C:\Users\foto6\SpectraTrack-data\imports\crowdhuman-val-fbox.jsonl`;
+- CrowdHuman GT SHA-256: `2576c6a1db502cef1ffd103337b7728e628d6dfca8bedb3df9d606ce2f23dd0f`;
+- CrowdHuman media root: `C:\Users\foto6\SpectraTrack-data\public\CrowdHuman`.
+
+Frozen MOT17 split remains unchanged:
+
+- DEV: `MOT17-04`;
+- HELD OUT: `MOT17-02/05/09/10/11/13`;
+- held-out metrics are evaluation-only and MUST NOT retune fusion/evidence thresholds.
+
+Held-out launch policy is unchanged:
+
+- input size 960;
+- detector confidence 0.35;
+- decoder-local NMS IoU 0.45;
+- person floor 0.12;
+- tile 640;
+- overlap 0.20;
+- match IoU 0.50;
+- fusion IoU 0.55;
+- center ratio 0.20;
+- size ratio 1.80;
+- evidence weak/solo/strong = 0.12/0.20/0.35;
+- evidence min sources = 2;
+- methods = hard-nms / conservative-nmm / weighted / evidence-aware;
+- provider preference = DirectML with baseline CPU fallback.
+
+Planned local artifact paths:
+
+- result: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json`;
+- completion marker: result path + `.complete.json`;
+- console log: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json.console.log`;
+- prefusion: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-mot17`;
+- canonical replays: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-replays-mot17`.
+
+Decision:
+
+**IN PROGRESS — START HELD-OUT.** Fresh start is permitted because prior process/artifact state was positively verified absent.
