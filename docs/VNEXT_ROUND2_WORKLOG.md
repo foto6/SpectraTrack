@@ -540,3 +540,28 @@ Immediate execution order:
 9. keep integrator/production/release locked until all documented gates are met.
 
 Every major step and failure will be appended to this Git worklog/status before moving on.
+
+
+### FAILED / BLOCKED — Remote Desktop Commander control channel
+
+After unattended execution was authorized, the target device still answered basic connectivity earlier, but all substantive Remote Desktop Commander operations attempted in this session timed out:
+
+- multi-file read of the expected A2/A3 result artifacts;
+- device config query;
+- prior process/GPU/file probes from the recovery session.
+
+This is treated as a control-channel blocker, not as an A2/A3 benchmark failure.
+
+Safety response:
+
+- no A2/A3 job was restarted blindly;
+- no production branch was modified;
+- no benchmark completion was fabricated;
+- no local artifact was overwritten.
+
+### NEXT while the PC control channel is unavailable
+
+- continue Git-side verification and coordination;
+- keep A1-A5 exact heads and remaining gates explicit;
+- retry the target-PC control channel on the next watch cycle;
+- once local control recovers, first verify existing artifacts/processes, then resume only missing jobs.
