@@ -341,8 +341,7 @@ def simulate_scheduler(
 
     tile_count = len(_tile_regions(width, height, tile_size, overlap))
     decisions = [
-        schedule_frame(policy, index, signals, tile_count=tile_count, config=config)
-        for index in range(frames)
+        schedule_frame(policy, index, signals, tile_count=tile_count, config=config) for index in range(frames)
     ]
     total_calls = sum(item.total_calls for item in decisions)
     full_calls = sum(item.full_frame_calls for item in decisions)
@@ -373,6 +372,187 @@ def simulate_scheduler(
         "periodic_global_discovery_bound_seconds": global_discovery_bound_frames(policy, config) / source_fps,
         "config": asdict(config),
         "signals": asdict(signals),
+    }
+
+
+def target_probe_call_plan(
+    frame_index: int,
+    *,
+    tile_count: int,
+    config: SchedulerConfig,
+) -> tuple[tuple[str, int | None], ...]:
+    """Build a deterministic execution-cost call plan for target-PC probing.
+
+    This does not claim ROI-quality behavior. Non-global ROI locations rotate
+    deterministically so the probe measures realistic full-frame vs tile costs.
+    """
+    if frame_index < 0:
+        raise ValueError("frame_index cannot be negative")
+    if tile_count <= 0:
+        raise ValueError("tile_count must be > 0")
+    if not _detector_due(frame_index, config):
+        return ()
+
+    detector_index = frame_index // config.detector_every
+    global_scan = detector_index % config.global_period == 0
+    calls: list[tuple[str, int | None]] = []
+    if global_scan:
+        calls.append(("full", None))
+        start = 0
+    else:
+        start = detector_index % tile_count
+
+    remaining = max(0, config.max_calls_per_frame - len(calls))
+    for offset in range(remaining):
+        calls.append(("roi", (start + offset) % tile_count))
+    return tuple(calls)
+
+
+def target_scheduler_probe(
+    video_path: str | Path,
+    model_path: str | Path,
+    *,
+    input_size: int = 960,
+    person_threshold: float = 0.12,
+    tile_size: int = 640,
+    overlap: float = 0.20,
+    config: SchedulerConfig = SchedulerConfig(detector_every=2, global_period=15, max_calls_per_frame=1),
+    source_commit: str,
+    max_frames: int = 300,
+    prefer_gpu: bool = True,
+) -> dict[str, object]:
+    """Measure a bounded scheduler call plan on the actual detector/provider.
+
+    The ROI sequence is a deterministic cost proxy. This measures execution
+    cost only and must not be interpreted as scheduler quality evidence.
+    """
+    import cv2
+
+    from .detector import YoloOnnxDetector
+    from .integrity import sha256_file
+
+    video = Path(video_path)
+    model = Path(model_path)
+    if not video.is_file():
+        raise FileNotFoundError(video)
+    if not model.is_file():
+        raise FileNotFoundError(model)
+    if max_frames <= 0:
+        raise ValueError("max_frames must be > 0")
+    if input_size <= 0 or tile_size <= 0:
+        raise ValueError("input_size and tile_size must be > 0")
+    if not 0.0 <= person_threshold <= 1.0:
+        raise ValueError("person_threshold must be in [0, 1]")
+    if not 0.0 <= overlap < 1.0:
+        raise ValueError("overlap must satisfy 0 <= overlap < 1")
+    if len(source_commit) != 40 or any(char not in "0123456789abcdef" for char in source_commit.lower()):
+        raise ValueError("source_commit must be a full 40-hex commit SHA")
+
+    capture = cv2.VideoCapture(str(video))
+    if not capture.isOpened():
+        raise RuntimeError(f"cannot open video: {video}")
+    fps = float(capture.get(cv2.CAP_PROP_FPS))
+    width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    frames: list[np.ndarray] = []
+    try:
+        while len(frames) < max_frames:
+            ok, frame = capture.read()
+            if not ok or frame is None:
+                break
+            frames.append(frame)
+    finally:
+        capture.release()
+    if not frames:
+        raise RuntimeError("video produced no frames")
+    if not np.isfinite(fps) or fps <= 0.0:
+        raise RuntimeError("video FPS is unavailable")
+
+    regions = _tile_regions(width, height, tile_size, overlap)
+    if not regions:
+        raise RuntimeError("tile geometry produced no regions")
+
+    detector = YoloOnnxDetector(
+        model,
+        input_size=input_size,
+        conf_threshold=0.35,
+        iou_threshold=0.45,
+        prefer_gpu=prefer_gpu,
+        class_thresholds={"person": person_threshold},
+    )
+    detector.detect(frames[0])  # provider/session warm-up; excluded from measurements.
+
+    latencies_ms: list[float] = []
+    stage_ms: dict[str, float] = {}
+    full_calls = 0
+    roi_calls = 0
+    onnx_calls = 0
+    started = time.perf_counter()
+    for frame_index, frame in enumerate(frames):
+        plan = target_probe_call_plan(frame_index, tile_count=len(regions), config=config)
+        for kind, tile_index in plan:
+            if kind == "full":
+                image = frame
+                full_calls += 1
+            else:
+                if tile_index is None:
+                    raise RuntimeError("ROI call is missing tile index")
+                x1, y1, x2, y2 = regions[tile_index]
+                image = frame[y1:y2, x1:x2]
+                roi_calls += 1
+            call_started = time.perf_counter()
+            detector.detect(image)
+            latencies_ms.append((time.perf_counter() - call_started) * 1000.0)
+            onnx_calls += int(detector.last_inference_calls)
+            for name, value in detector.last_stage_ms.items():
+                stage_ms[name] = stage_ms.get(name, 0.0) + float(value)
+    wall_seconds = time.perf_counter() - started
+
+    source_seconds = len(frames) / fps
+    ordered = sorted(latencies_ms)
+    p95_index = max(0, min(len(ordered) - 1, int(np.ceil(len(ordered) * 0.95)) - 1))
+    discovery_frames = config.detector_every * config.global_period
+    return {
+        "schema": "spectratrack-vnext-target-scheduler-probe-v1",
+        "scope": "execution-cost-only",
+        "quality_evidence": False,
+        "source_commit": source_commit,
+        "quality_note": (
+            "ROI locations are deterministic rotating proxy tiles. "
+            "Use a frozen QA corpus/replay to evaluate scheduler quality."
+        ),
+        "video": str(video),
+        "video_sha256": sha256_file(video),
+        "model": str(model),
+        "model_sha256": sha256_file(model),
+        "providers": detector.providers,
+        "input_size": input_size,
+        "person_threshold": person_threshold,
+        "width": width,
+        "height": height,
+        "frames": len(frames),
+        "source_fps": fps,
+        "source_seconds": source_seconds,
+        "tile_size": tile_size,
+        "overlap": overlap,
+        "tile_count": len(regions),
+        "config": asdict(config),
+        "full_frame_calls": full_calls,
+        "raw_roi_calls": roi_calls,
+        "onnx_inference_calls": onnx_calls,
+        "onnx_calls_per_source_second": onnx_calls / source_seconds,
+        "wall_seconds": wall_seconds,
+        "processing_seconds_per_source_second": wall_seconds / source_seconds,
+        "latency_ms": {
+            "median": statistics.median(latencies_ms),
+            "p95": ordered[p95_index],
+            "mean": statistics.fmean(latencies_ms),
+        },
+        "stage_ms": stage_ms,
+        "periodic_global_discovery_bound_frames": discovery_frames,
+        "periodic_global_discovery_bound_seconds": discovery_frames / fps,
+        "gpu_vram_mb": None,
+        "gpu_vram_reason": "not measured by this probe",
     }
 
 
@@ -434,11 +614,13 @@ def batching_probe(
         if batch_size <= 0:
             continue
         if fixed_batch is not None and batch_size != fixed_batch:
-            results.append({
-                "batch_size": batch_size,
-                "supported": False,
-                "reason": f"model has fixed batch dimension {fixed_batch}",
-            })
+            results.append(
+                {
+                    "batch_size": batch_size,
+                    "supported": False,
+                    "reason": f"model has fixed batch dimension {fixed_batch}",
+                }
+            )
             continue
 
         tensor = np.zeros((batch_size, *spatial), dtype=np.float32)
@@ -453,13 +635,15 @@ def batching_probe(
             samples_ms.append((time.perf_counter() - started) * 1000.0)
 
         median_ms = statistics.median(samples_ms)
-        results.append({
-            "batch_size": batch_size,
-            "supported": True,
-            "median_latency_ms": median_ms,
-            "items_per_second": (batch_size * 1000.0 / median_ms) if median_ms > 0 else None,
-            "samples_ms": samples_ms,
-        })
+        results.append(
+            {
+                "batch_size": batch_size,
+                "supported": True,
+                "median_latency_ms": median_ms,
+                "items_per_second": (batch_size * 1000.0 / median_ms) if median_ms > 0 else None,
+                "samples_ms": samples_ms,
+            }
+        )
 
     supported_batches = [row for row in results if row.get("supported")]
     supports_multi_batch = any(int(row["batch_size"]) > 1 for row in supported_batches)
@@ -543,6 +727,21 @@ def main() -> int:
     analyze.add_argument("--source-fps", required=True, type=float)
     analyze.add_argument("--output")
 
+    target = sub.add_parser("target-probe")
+    target.add_argument("--video", required=True)
+    target.add_argument("--model", required=True)
+    target.add_argument("--source-commit", required=True)
+    target.add_argument("--input-size", type=int, default=960)
+    target.add_argument("--person-conf", type=float, default=0.12)
+    target.add_argument("--tile-size", type=int, default=640)
+    target.add_argument("--overlap", type=float, default=0.20)
+    target.add_argument("--detector-every", type=int, default=2)
+    target.add_argument("--global-period", type=int, default=15)
+    target.add_argument("--max-calls", type=int, default=1)
+    target.add_argument("--max-frames", type=int, default=300)
+    target.add_argument("--cpu", action="store_true")
+    target.add_argument("--output")
+
     batch = sub.add_parser("batch-probe")
     batch.add_argument("--model", required=True)
     batch.add_argument("--cpu", action="store_true")
@@ -559,27 +758,32 @@ def main() -> int:
             bounds = current_compute_bounds(width, height, tile_size=args.tile_size, overlap=args.overlap)
             minimum = bounds["minimum"]
             maximum = bounds["maximum"]
-            rows.append({
-                "name": name,
-                "width": width,
-                "height": height,
-                "tile_count": len(minimum.tile_regions),
-                "tile_regions": minimum.tile_regions,
-                "full_frame_calls": 1,
-                "raw_tile_calls": minimum.raw_tile_calls,
-                "enhanced_tile_calls_min": minimum.enhanced_tile_calls,
-                "enhanced_tile_calls_max": maximum.enhanced_tile_calls,
-                "total_calls_min": minimum.total_onnx_calls,
-                "total_calls_max": maximum.total_onnx_calls,
-                "calls_per_source_second_min": minimum.total_onnx_calls * args.source_fps,
-                "calls_per_source_second_max": maximum.total_onnx_calls * args.source_fps,
-            })
-        _dump({
-            "tile_size": args.tile_size,
-            "overlap": args.overlap,
-            "source_fps_reference": args.source_fps,
-            "rows": rows,
-        }, args.output)
+            rows.append(
+                {
+                    "name": name,
+                    "width": width,
+                    "height": height,
+                    "tile_count": len(minimum.tile_regions),
+                    "tile_regions": minimum.tile_regions,
+                    "full_frame_calls": 1,
+                    "raw_tile_calls": minimum.raw_tile_calls,
+                    "enhanced_tile_calls_min": minimum.enhanced_tile_calls,
+                    "enhanced_tile_calls_max": maximum.enhanced_tile_calls,
+                    "total_calls_min": minimum.total_onnx_calls,
+                    "total_calls_max": maximum.total_onnx_calls,
+                    "calls_per_source_second_min": minimum.total_onnx_calls * args.source_fps,
+                    "calls_per_source_second_max": maximum.total_onnx_calls * args.source_fps,
+                }
+            )
+        _dump(
+            {
+                "tile_size": args.tile_size,
+                "overlap": args.overlap,
+                "source_fps_reference": args.source_fps,
+                "rows": rows,
+            },
+            args.output,
+        )
         return 0
 
     if args.command == "scheduler-sim":
@@ -608,6 +812,27 @@ def main() -> int:
     if args.command == "analyze-report":
         report = json.loads(Path(args.report).read_text(encoding="utf-8"))
         _dump(analyze_perf_report(report, args.source_fps), args.output)
+        return 0
+
+    if args.command == "target-probe":
+        result = target_scheduler_probe(
+            args.video,
+            args.model,
+            input_size=args.input_size,
+            person_threshold=args.person_conf,
+            tile_size=args.tile_size,
+            overlap=args.overlap,
+            source_commit=args.source_commit,
+            config=SchedulerConfig(
+                detector_every=args.detector_every,
+                global_period=args.global_period,
+                max_calls_per_frame=args.max_calls,
+                max_enhanced_calls_per_frame=0,
+            ),
+            max_frames=args.max_frames,
+            prefer_gpu=not args.cpu,
+        )
+        _dump(result, args.output)
         return 0
 
     sizes = tuple(int(item.strip()) for item in args.batch_sizes.split(",") if item.strip())

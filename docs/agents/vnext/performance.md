@@ -348,3 +348,32 @@ Required before production candidacy:
 3. target-PC production perf report with model/video/provider provenance;
 4. A3 measured enhancement cost artifact;
 5. real DirectML batching probe if batching remains under consideration.
+
+## Round 2 supplement — target RX 5700 XT scheduler probe
+
+Round-2 target-PC execution-cost probing was run on the user's AMD Radeon RX 5700 XT using DirectML with the exact `yolo11x.onnx` model SHA-256 `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`, input size 960, person threshold 0.12, and the real 1920x1080 `12345.mp4` test clip (125 frames @ 25 FPS).
+
+The target-probe CLI had one wiring bug discovered by this run: `--source-commit` was parsed but not forwarded to `target_scheduler_probe()`. The round-2 change fixes that before measurement.
+
+Measured execution-cost results:
+
+| detector_every | max calls / detector frame | global period | ONNX calls/source-s | processing s/source-s | median call ms | p95 call ms | periodic global bound |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2 | 1 | 12 | 12.6 | 1.495 | 114.3 | 134.7 | 0.96 s |
+| 3 | 1 | 8 | 8.4 | 0.994 | 114.6 | 137.6 | 0.96 s |
+| 4 | 1 | 6 | 6.4 | 0.755 | 113.9 | 135.5 | 0.96 s |
+| 4 | 2 | 6 | 12.8 | 1.496 | 112.8 | 133.1 | 0.96 s |
+| 5 | 2 | 5 | 10.0 | 1.165 | 112.8 | 135.2 | 1.00 s |
+| 5 | 3 | 5 | 15.0 | 1.751 | 112.9 | 134.6 | 1.00 s |
+
+All runs reported `DmlExecutionProvider` with CPU fallback present in provider priority. These probes intentionally use deterministic rotating ROI tiles and are **execution-cost-only**; they do not establish scheduler quality or recall.
+
+Round-2 interpretation:
+
+- the <=15 calls/source-second research target is achievable on the measured 1080p clip;
+- the <=2 processing-seconds/source-second research target is also achievable for every measured bounded configuration;
+- one-call detector frames at `detect_every=3` and `4` measure around real-time or faster on this clip, but their quality is unknown;
+- `detect_every=4, max_calls=1` is the lowest-cost measured point (6.4 calls/source-s, 0.755 processing s/source-s) while keeping a 0.96 s periodic-global bound;
+- `detect_every=5, max_calls=3` remains below the 2x processing target at 15 calls/source-s and preserves a 1.0 s global bound, giving a larger ROI budget for the future quality comparison.
+
+No production scheduler choice is made from this execution-only table. A5/A1 quality evidence is still required.

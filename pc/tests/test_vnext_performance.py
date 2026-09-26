@@ -10,6 +10,7 @@ from spectratrack.vnext_performance import (
     runtime_rates,
     schedule_frame,
     simulate_scheduler,
+    target_probe_call_plan,
 )
 
 
@@ -155,7 +156,6 @@ def test_budgeted_scheduler_enforces_hard_call_limits():
     assert enhanced_seen
 
 
-
 def test_budgeted_scheduler_preserves_track_and_suspect_work():
     decision = schedule_frame(
         "BUDGETED_ADAPTIVE",
@@ -184,6 +184,7 @@ def test_coarse_to_fine_reserves_expensive_follow_up_slot():
     assert decision.enhanced_roi_calls == 1
     assert decision.total_calls == 4
 
+
 def test_scene_change_and_camera_motion_force_global_rediscovery():
     config = SchedulerConfig(global_period=100, max_calls_per_frame=4)
 
@@ -208,7 +209,6 @@ def test_scene_change_and_camera_motion_force_global_rediscovery():
     assert motion.global_rescan_reason == "camera_motion"
 
 
-
 def test_trigger_overrides_detector_cadence_for_immediate_global_rescan():
     config = SchedulerConfig(detector_every=5, global_period=100, max_calls_per_frame=3)
     decision = schedule_frame(
@@ -222,6 +222,7 @@ def test_trigger_overrides_detector_cadence_for_immediate_global_rescan():
     assert decision.full_frame_calls == 1
     assert decision.global_rescan_reason == "scene_change"
     assert decision.reused_temporal_state is False
+
 
 def test_periodic_global_discovery_is_bounded():
     config = SchedulerConfig(detector_every=2, global_period=15)
@@ -246,3 +247,25 @@ def test_scheduler_simulation_reports_compute_frontier_inputs():
     assert result["max_onnx_calls_on_any_frame"] <= 3
     assert result["periodic_global_discovery_bound_frames"] == 10
     assert result["periodic_global_discovery_bound_seconds"] == pytest.approx(1 / 3)
+
+
+def test_target_probe_call_plan_respects_cadence_budget_and_global_bound():
+    config = SchedulerConfig(detector_every=2, global_period=15, max_calls_per_frame=1)
+    assert target_probe_call_plan(0, tile_count=8, config=config) == (("full", None),)
+    assert target_probe_call_plan(1, tile_count=8, config=config) == ()
+    assert target_probe_call_plan(2, tile_count=8, config=config) == (("roi", 1),)
+    assert target_probe_call_plan(30, tile_count=8, config=config) == (("full", None),)
+
+
+def test_target_probe_call_plan_fills_remaining_global_budget_with_rois():
+    config = SchedulerConfig(detector_every=3, global_period=10, max_calls_per_frame=3)
+    assert target_probe_call_plan(0, tile_count=8, config=config) == (
+        ("full", None),
+        ("roi", 0),
+        ("roi", 1),
+    )
+    assert target_probe_call_plan(3, tile_count=8, config=config) == (
+        ("roi", 1),
+        ("roi", 2),
+        ("roi", 3),
+    )
