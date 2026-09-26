@@ -1171,3 +1171,63 @@ No threshold/config retuning occurred.
 Decision:
 
 **VALID HELD-OUT EVIDENCE / RUN CONTINUES.**
+
+
+## Round 2 MOT17 held-out checkpoint — MOT17-09 complete
+
+Status:
+
+**DONE — PREFUSION VERIFIED + PER-SEQUENCE METRICS COMPUTED, ZERO NEW ONNX CALLS FOR FUSION EVAL**
+
+Verified prefusion artifact:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-mot17\golden_public_mot17_MOT17-09.jsonl`
+
+Artifact provenance:
+
+- size: `6766422` bytes;
+- modified UTC: `2026-09-26T16:57:35.117Z`;
+- SHA-256: `ef65ba4a59e8cdfa0fd26272a2a122e752a9899cbf1294d9859f16d60e793791`.
+
+Verified compute summary:
+
+- frame size: `1920x1080`;
+- policy runs: `525`;
+- actual ONNX calls represented: `4725`;
+- detector wall time: `545.9547427999787 s`;
+- preprocess: `39472.8775001131 ms`;
+- inference: `467177.791796159 ms`;
+- postprocess: `26591.237901127897 ms`.
+
+Per-sequence held-out metrics:
+
+| metric | hard-nms | conservative-nmm | weighted | evidence-aware |
+| --- | ---: | ---: | ---: | ---: |
+| TP | 4003 | 4446 | 4429 | 4400 |
+| FP | 7214 | 10945 | 10980 | 9018 |
+| FN | 1322 | 879 | 896 | 925 |
+| precision | 0.356869 | 0.288870 | 0.287429 | 0.327918 |
+| recall | 0.751737 | 0.834930 | 0.831737 | 0.826291 |
+| F1 | 0.483980 | 0.429233 | 0.427221 | 0.469509 |
+| bbox localization IoU | 0.734688 | 0.795355 | 0.779949 | 0.780892 |
+| center jitter px | 11.541275 | 5.819352 | 6.272497 | 5.991973 |
+| width jitter px | 7.222500 | 7.054980 | 6.905799 | 6.791823 |
+| height jitter px | 12.614094 | 5.020469 | 5.910009 | 5.474048 |
+| area jitter ratio | 0.080342 | 0.060357 | 0.059934 | 0.058484 |
+| temporal IoU | 0.880651 | 0.910020 | 0.907705 | 0.909688 |
+| duplicates before fusion | 8807 | 8807 | 8807 | 8807 |
+| fusion mistakes | 150 | 47 | 47 | 47 |
+
+Held-out interpretation only:
+
+- evidence-aware materially improves recall, localization stability, temporal IoU and fusion-mistake count relative to hard NMS on MOT17-09;
+- hard NMS retains higher precision and F1 on this sequence;
+- conservative NMM has the highest recall/localization IoU but pays the largest FP/precision cost;
+- weighted is close to conservative NMM and does not recover the precision loss;
+- therefore evidence-aware is not a universal metric winner and must be judged on the full held-out aggregate without retuning.
+
+No threshold/config retuning occurred.
+
+Decision:
+
+**VALID HELD-OUT EVIDENCE / NEEDS REMAINING SEQUENCES AND AGGREGATE.**
