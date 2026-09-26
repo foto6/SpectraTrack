@@ -2248,3 +2248,79 @@ Preparation scope only:
 - do not extract from a partial ZIP;
 - do not freeze any AI-generated annotation as GOLDEN;
 - do not start A1/A3 NightOwls inference before the A5 corpus/slice revision and hash are frozen.
+
+
+### DONE — A5 NightOwls intake contract inspected; held-out slice pre-registered before candidate results
+
+A5 target worktree:
+
+- path: `C:\Users\foto6\SpectraTrack-worktrees\a5`
+- branch: `agent/vnext-qa`
+- exact clean HEAD: `6760ac740b9875f2d0754e3cf5870a41b2f52a0e`
+
+Existing isolated intake root:
+
+`E:\SpectraTrack-data\public\NightOwls`
+
+Existing intake plan already binds:
+
+- official validation ZIP endpoint
+- expected ZIP bytes: `57,481,286,834`
+- official validation JSON expected bytes: `10,696,948`
+- official SDK repository
+- exact SDK commit: `ad0f18fc95e093e86036f055ab210a3de46021b7`
+- importer source commit: `6760ac740b9875f2d0754e3cf5870a41b2f52a0e`
+- isolated extraction root: `E:\SpectraTrack-data\public\NightOwls\extracted`
+
+The A5 CLI contract was verified directly from the exact A5 worktree:
+
+`python -m spectratrack.vnext_qa import-nightowls --help`
+
+and confirms support for:
+
+- `--slice-frames`
+- `--slice-seed`
+- `--logical-prefix`
+- `--importer-source-commit`
+- official terms acknowledgement
+
+#### PRE-REGISTERED HELD-OUT CHOICE
+
+Before any NightOwls candidate result exists, Round 2 will use the A5-supported deterministic **5,000-frame validation slice** rather than full 279k-frame candidate inference.
+
+Frozen slice selection parameters:
+
+- slice frames: `5000`
+- slice seed: `spectratrack-round2-nightowls-v1`
+- logical prefix: `golden/public/nightowls-val-slice`
+- planned frozen revision: `nightowls-public-slice5000-r1`
+
+Reason:
+
+- slice selection uses only official NightOwls image/annotation metadata, never detector/candidate output;
+- the A5 contract explicitly provides this path for expensive YOLO11x/960 validation;
+- the full validation corpus would create a very large held-out inference cost without adding a tuning right;
+- the slice is being locked **before** OFF/bilateral/current_adaptive_cached results, preventing post-result slice tuning.
+
+This slice must never be reported as full `nightowls-public-r1`.
+
+Tracking conclusions are disabled for the sparse slice; its purpose here is A3 night detection/enhancement quality/cost only.
+
+#### Post-download execution sequence locked
+
+After the ZIP download completes:
+
+1. verify final ZIP exact byte size `57,481,286,834`;
+2. compute local ZIP SHA-256 and verify archive integrity with a full central-directory/testzip pass before extraction;
+3. verify official JSON byte size/hash and parse validity;
+4. verify SDK HEAD exactly `ad0f18fc95e093e86036f055ab210a3de46021b7` and record SDK file provenance;
+5. compute archive uncompressed byte total and re-check E: free space before extraction;
+6. extract only to the isolated `E:\SpectraTrack-data\public\NightOwls\extracted` root;
+7. identify the extracted official validation PNG directory from archive structure;
+8. run `import-nightowls` with the frozen 5000-frame slice parameters and exact importer source commit;
+9. run canonical `validate-corpus` with the generated dataset-import manifest;
+10. freeze as `nightowls-public-slice5000-r1` with public-dataset terms confirmation;
+11. independently reload/verify the frozen manifest/hash and selected-image deterministic hash;
+12. only then unlock A3 OFF/bilateral/current_adaptive_cached held-out inference.
+
+No partial ZIP extraction and no NightOwls candidate inference are authorized before step 10 completes.
