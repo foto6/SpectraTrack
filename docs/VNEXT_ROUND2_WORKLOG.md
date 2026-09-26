@@ -1981,3 +1981,63 @@ Safety boundaries for this step:
 - inspect existing A3 metrics/provenance only;
 - determine the pre-NightOwls shortlist and exactly which final decision evidence remains missing;
 - persist outcome before any new A3 experiment.
+
+
+## 2026-09-27 — CrowdHuman dense-safety final verification
+
+A1 CrowdHuman full validation completed successfully on the target PC.
+
+Artifacts:
+- result: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-crowdhuman.json`
+- result SHA-256: `c09f91ec4c27f28057c8937c84390e10c80cbd16ae56fe3840cbf1363055690a`
+- completion marker SHA-256: `23f3cc80df109fc1e0d93851b14f57a6f432e7e02039dd343b9b20e249de5957`
+- 4,370 / 4,370 image-level prefusion artifacts present
+- corpus: `crowdhuman-val-fbox-r1`
+
+Frozen pre-result decision rule required evidence-aware vs hard-NMS to have:
+- precision not lower
+- recall not lower
+- F1 not lower
+- bbox localization IoU not lower
+- fusion mistakes not higher
+
+Final aggregate:
+
+hard-NMS:
+- TP 56,728
+- FP 111,218
+- FN 42,753
+- precision 0.337775
+- recall 0.570240
+- F1 0.424250
+- bbox localization IoU 0.742125
+- fusion mistakes 1,022
+
+evidence-aware:
+- TP 56,025
+- FP 90,541
+- FN 43,456
+- precision 0.382251
+- recall 0.563173
+- F1 0.455401
+- bbox localization IoU 0.750007
+- fusion mistakes 520
+
+Deltas evidence-aware vs hard-NMS:
+- precision +4.448 percentage points
+- recall -0.707 percentage points
+- F1 +3.115 percentage points
+- TP -703
+- FP -20,677
+- FN +703
+- bbox IoU +0.007883
+- fusion mistakes -502
+
+Decision:
+**FAIL — evidence-aware violates the frozen no-recall-loss CrowdHuman dense-safety gate.**
+
+It remains useful research evidence, but is not eligible for Round-2 production promotion under the precommitted rule. A1 production conclusion becomes **RETAIN HARD-NMS CONTROL** unless the architect explicitly opens a future research cycle with a new DEV-tuned candidate. No held-out retuning is authorized.
+
+NightOwls is no longer required to rescue/re-evaluate this failed fusion candidate in Round 2. It remains required for A3 enhancement ON/OFF validation.
+
+At the same checkpoint, official NightOwls archive download is active on E:. Live observed size increased from 14,594,334,720 to 14,619,402,240 bytes over five seconds (~25.4% of 57,481,286,834 bytes).
