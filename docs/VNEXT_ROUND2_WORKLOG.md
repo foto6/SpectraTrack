@@ -2324,3 +2324,12 @@ After the ZIP download completes:
 12. only then unlock A3 OFF/bilateral/current_adaptive_cached held-out inference.
 
 No partial ZIP extraction and no NightOwls candidate inference are authorized before step 10 completes.
+
+
+### DONE — A5-owned handoff synchronized with NightOwls slice lock
+
+A5 branch advanced by documentation-only commit:
+
+`agent/vnext-qa @ 522e50c45bc3afffa5f03479880c4b9f9d0a676e`
+
+Changed only the A5 role handoff to record the pre-result NightOwls 5000-frame slice contract. Issue #22 carries the same lock. No importer/runtime code changed and no candidate result was observed.
