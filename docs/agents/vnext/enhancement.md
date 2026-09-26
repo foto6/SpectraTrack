@@ -466,3 +466,36 @@ A deterministic test verifies that two eligible ROIs in one source frame produce
 **TOOLING READY; QUALITY DECISION STILL PENDING.**
 
 The target-PC strict weak-person result must still be verified or rerun after the Remote Desktop Commander control channel is reliable. This code change does not by itself prove that any enhancement operation should be enabled in production.
+
+
+## Round 2 public-first enhancement assignment — 2026-09-26
+
+Status: **IN PROGRESS / TARGET-PC STRICT PROFILE NEEDS VERIFICATION**
+
+Broad adaptive enhancement remains rejected as the default candidate.
+
+Current strict candidate stays:
+
+- selective gate: weak-person;
+- max enhanced ROIs/source-frame: 1;
+- raw corroboration mandatory.
+
+Public evidence order:
+
+1. finish/verify MOT17 strict weak-person evidence when target-PC control recovers;
+2. after A5 freezes `nightowls-public-r1`, use NightOwls as the primary night/low-light/blur/occlusion quality-cost benchmark;
+3. optional secondary evidence: LLVIP **visible/RGB only** if additional low-light coverage is useful;
+4. never use IR/thermal as SpectraTrack detector input.
+
+Compare:
+
+- enhancement OFF;
+- bilateral;
+- current_adaptive_cached;
+- sharpen only if competitive under the strict gate.
+
+If no candidate clears post-fusion quality/cost and stability gates, the required Round-2 outcome is:
+
+`ENHANCEMENT OFF`
+
+Do not tune low-light thresholds on a held-out NightOwls validation split after seeing its results.
