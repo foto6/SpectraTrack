@@ -212,3 +212,15 @@ Unlock only when:
 - Supporting local MOT17-04 cost sweep SHA `e1c08a72a7e9cada7a619d112bef3e6674f52e56496cb16e6d17441e268c80cc` confirms bounded <=1 s rediscovery points from 6.0–15.0 calls/source-s, but lacks source-commit binding and is quality-blind.
 - Batch diagnostic SHA `576e78b35529a0c9acafe601f24db005de74657ff6c111e6b149d98062663900`: fixed input batch dimension 1; batch 2/4 unsupported. Artifact lacks standalone model/source-commit binding, so no batching change is authorized.
 - **PARKED** — final A4 quality/discovery-latency validation waits for A3 NightOwls OFF/bilateral/current_adaptive_cached decision, then evaluates only 1–3 configs.
+
+
+## NightOwls held-out plan lock
+
+- **LOCKED BEFORE RESULTS** — use deterministic A5 5,000-frame official validation slice for the A3 held-out gate.
+- planned revision: `nightowls-public-slice5000-r1`
+- seed: `spectratrack-round2-nightowls-v1`
+- logical prefix: `golden/public/nightowls-val-slice`
+- A5 importer HEAD: `6760ac740b9875f2d0754e3cf5870a41b2f52a0e`
+- official SDK commit: `ad0f18fc95e093e86036f055ab210a3de46021b7`
+- **NOT STARTED** — no candidate inference until ZIP integrity, import, validation and frozen slice hash are complete.
+- Sparse slice is detection/enhancement evidence only; tracking is unsupported and it must not be described as full NightOwls validation.
