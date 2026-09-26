@@ -1115,3 +1115,59 @@ Compute provenance is the verified prefusion checkpoint already recorded above:
 Decision:
 
 **NEEDS REMAINING HELD-OUT SEQUENCES — no ACCEPT/REJECT yet.**
+
+
+## Round 2 MOT17 held-out checkpoint — MOT17-05 complete
+
+Status:
+
+**DONE — PREFUSION VERIFIED + PER-SEQUENCE METRICS COMPUTED, ZERO NEW ONNX CALLS FOR FUSION EVAL**
+
+Verified prefusion artifact:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-mot17\golden_public_mot17_MOT17-05.jsonl`
+
+Artifact provenance:
+
+- size: `4593753` bytes;
+- modified UTC: `2026-09-26T16:48:28.990Z`;
+- SHA-256: `183ec28487671db5ec1440572632f55e87c4c45dab58ab806172b1dec9a6ea26`.
+
+Verified compute summary:
+
+- frame size: `640x480`;
+- policy runs: `837`;
+- actual ONNX calls represented: `1674`;
+- detector wall time: `196.88813610002398 s`;
+- preprocess: `13592.796397046186 ms`;
+- inference: `166581.87309885398 ms`;
+- postprocess: `11295.304001774639 ms`.
+
+All four frozen fusion policies are metric-identical on this sequence:
+
+| metric | all four policies |
+| --- | ---: |
+| TP | 4917 |
+| FP | 2955 |
+| FN | 2000 |
+| precision | 0.624619 |
+| recall | 0.710857 |
+| F1 | 0.664954 |
+| bbox localization IoU | 0.752755 |
+| center jitter px | 4.623796 |
+| width jitter px | 4.694502 |
+| height jitter px | 4.467823 |
+| area jitter ratio | 0.078469 |
+| temporal IoU | 0.869318 |
+| duplicates before fusion | 4955 |
+| fusion mistakes | 0 |
+
+Interpretation:
+
+MOT17-05 is `640x480` while the frozen tile size is `640`; the tile region covers the full frame, so full-frame and tile evidence have identical geometry and all cross-pass policies collapse to the same result. This is a useful held-out no-regression sanity case but carries no policy discrimination.
+
+No threshold/config retuning occurred.
+
+Decision:
+
+**VALID HELD-OUT EVIDENCE / RUN CONTINUES.**
