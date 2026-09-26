@@ -624,3 +624,43 @@ def test_import_nightowls_rejects_wrong_pedestrian_category_contract(tmp_path: P
             acknowledge_terms=True,
         )
 
+
+def test_import_dancetrack_train_uses_train_namespace_by_default(tmp_path: Path):
+    root = tmp_path / "DanceTrack"
+    sequence = root / "train" / "dancetrack0002"
+    image_dir = sequence / "img1"
+    _write_image(image_dir / "00000001.jpg")
+    (sequence / "gt").mkdir(parents=True)
+    (sequence / "seqinfo.ini").write_text(
+        "\n".join(
+            [
+                "[Sequence]",
+                "name=dancetrack0002",
+                "imDir=img1",
+                "frameRate=20",
+                "seqLength=1",
+                "imWidth=100",
+                "imHeight=80",
+                "imExt=.jpg",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (sequence / "gt" / "gt.txt").write_text(
+        "1,1,1,1,10,20,1,1,1\n",
+        encoding="utf-8",
+    )
+
+    gt = tmp_path / "train.jsonl"
+    import_dancetrack(
+        dataset_root=root,
+        output_ground_truth=gt,
+        output_manifest=tmp_path / "train.import.json",
+        split="train",
+        importer_source_commit="3" * 40,
+        acknowledge_terms=True,
+    )
+
+    assert _read_jsonl(gt)[0]["video"] == "train/public/dancetrack-train/dancetrack0002"
+
