@@ -16,50 +16,16 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 ## Global gates
 
-- **READY** — NightOwls storage blocker cleared: E: now has 210,024,607,744 bytes free; A5 may start official intake under isolated E: data root.
-
-- **DONE** — DanceTrack frozen: dancetrack-public-r1, corpus SHA df240532ad3f2099947f318b682737ccdb3e6345dc9da1e380ff4cab8d6c6b5c; 25 sequences / 25,508 frames / 225,148 people; validation clean.
-- **IN PROGRESS** — A1 CrowdHuman dense-safety running; ~20% image-level prefusion artifacts persisted at latest live check.
-- **BLOCKED** — NightOwls official archive is reachable but safe local storage is insufficient for archive + extraction on current C:/E: free space.
-
-- **DONE** — A1 full MOT17 held-out complete: evidence-aware F1 0.527449 vs hard-NMS 0.516517, FP -3141, TP +132, fusion mistakes 1016 -> 540; result/marker/replays verified.
-- **DONE (download integrity)** — DanceTrack val.zip complete and valid with 25 GT files; A5 local import/freeze may proceed.
-- **BLOCKED** — NightOwls official local bytes/freeze still absent.
-
-- **IN PROGRESS** — A1 MOT17 held-out: 4/6 sequences complete (02/05/09/10); provisional evidence-aware aggregate F1 0.558231 vs hard-NMS 0.547869. Final decision waits for 11/13.
-
-- **DONE** — A2 Round-2 decision: RETAIN CURRENT TRACKER; ambiguity-guard rejected by real identical-replay ID-switch gate.
-- **IN PROGRESS** — A1 real MOT17 held-out retry is active on target PC; first MOT17-02 prefusion artifact is present.
-- **IN PROGRESS** — official DanceTrack validation download is active on target PC; freeze waits for verified per-sequence GT.
-- **BLOCKED** — NightOwls local official bytes/frozen revision are not yet available; A1/A3 night gates cannot start.
-
-- **DONE** — hourly coordinator condition watch enabled for branch/CI/target-PC recovery and Git-persistent continuation.
-
-- **DONE** — unified public evidence contract committed in `docs/VNEXT_ROUND2_PUBLIC_EVIDENCE.md`.
-
-- **DONE** — all public-first role documentation heads are CI-green after strategy dispatch.
-
-- **DONE** — public `mot17-public-r1` frozen.
-- **DONE** — public `crowdhuman-val-fbox-r1` frozen.
-- **DONE** — Round-1 detector/fusion/tracking/enhancement/scheduler evidence collected.
-- **DONE** — Round-2 evidence review and assignments created.
-- **DONE** — A1 resumable canonical public-corpus runner implemented and CI-validated.
-- **DONE** — A1 canonical replay-export fix validated; branch docs head `32ae820...` CI-green (`36242653285`).
-- **NOT DONE** — A1 held-out multi-sequence Round-2 validation (target-PC run still required).
-- **DONE (old audit artifacts verified) / IN PROGRESS** — A2 hard-NMS/NMM/weighted current-tracker audit artifacts exist and are valid; required current-vs-ambiguity real-replay comparison remains NOT DONE.
-- **DONE (MOT17 strict-profile artifact verified) / IN PROGRESS** — A3 weak-person strict profile exists with measured quality/cost; post-fusion and NightOwls decision remains NOT DONE.
-- **DONE** — A4 real RX 5700 XT execution-cost frontier.
-- **DONE** — A5 draft-seeded private review tooling and 46-frame review pack preparation.
-- **DONE** — A5 review-progress accounting validated; branch docs head `8faf6c9...` CI-green (`36242654534`).
-- **IN PROGRESS** — A5 DanceTrack official-terms/import/freeze work for `dancetrack-public-r1`.
-- **IN PROGRESS** — A5 NightOwls official-terms/import/freeze work for `nightowls-public-r1`.
-- **NOT DONE** — A2 DanceTrack association-only current vs ambiguity-guard benchmark.
-- **NOT DONE** — A1/A3 NightOwls public validation.
-- **NOT DONE / DEFERRED** — reduced private CCTV human-confirmed sanity pack.
-- **NOT DONE / DEFERRED** — `cctv-golden-r1` freeze after public finalists.
-- **NOT DONE** — final cross-role candidate table on `cctv-golden-r1`.
-- **LOCKED** — `agent/vnext-integrator`.
-- **LOCKED** — production merge/release.
+- **DONE** — A1 MOT17 held-out complete. Evidence-aware is the sole retained fusion challenger: F1 0.527449 vs hard-NMS 0.516517, precision 0.431776 vs 0.418094, recall 0.677588 vs 0.675549, FP 57,727 vs 60,868, fusion mistakes 540 vs 1016.
+- **IN PROGRESS** — A1 CrowdHuman dense-safety full validation is actively running on target PC. Latest live check: 2,520 / 4,370 image-level prefusion artifacts persisted (~57.7%); worker CPU is increasing; final result/marker not yet present.
+- **DONE** — A2 Round-2 decision: RETAIN CURRENT TRACKER. current-ambiguity-guard rejected by real identical-replay ID-switch gate.
+- **WAITING** — A3 strict candidate set remains OFF / bilateral / current_adaptive_cached; NightOwls held-out waits for A5 frozen corpus/slice.
+- **PARKED** — A4 scheduler quality search remains intentionally deferred until public quality finalists are ready.
+- **DONE** — DanceTrack frozen as `dancetrack-public-r1`, corpus SHA `df240532ad3f2099947f318b682737ccdb3e6345dc9da1e380ff4cab8d6c6b5c`; 25 sequences / 25,508 frames / 225,148 people; validation clean.
+- **IN PROGRESS** — A5 official NightOwls intake is active on isolated `E:\SpectraTrack-data\public\NightOwls`. Official JSON and SDK are already present; official validation ZIP is actively downloading. Latest live check: 5,866,102,784 / 57,481,286,834 bytes (~10.2%).
+- **DONE** — NightOwls storage blocker cleared; E: had 210,024,607,744 bytes free before intake and still has >200 GB free during the current download.
+- **NOT DONE** — NightOwls import/validation/freeze, A1/A3 NightOwls held-out, A4 final 1-3 config quality/cost check, reduced private CCTV human-confirmed sanity pack, final cross-role candidate table.
+- **LOCKED** — `agent/vnext-integrator`, production merge/release.
 
 ## A1 Detection / Fusion — issue #18
 
