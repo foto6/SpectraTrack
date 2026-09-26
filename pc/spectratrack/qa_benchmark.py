@@ -31,6 +31,10 @@ class GroundTruthFrame:
     frame: int
     tags: tuple[str, ...]
     objects: tuple[GroundTruthObject, ...]
+    source: str | None = None
+    source_frame: int | None = None
+    source_sequence: str | None = None
+    source_fps: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +78,31 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
                 raise ValueError(f"{source}:{line_number}: video must be a non-empty string")
             if not isinstance(frame, int) or isinstance(frame, bool) or frame < 0:
                 raise ValueError(f"{source}:{line_number}: frame must be a non-negative integer")
+            source_path = data.get("source")
+            if source_path is not None and (not isinstance(source_path, str) or not source_path.strip()):
+                raise ValueError(f"{source}:{line_number}: source must be a non-empty string when present")
+            source_frame = data.get("source_frame")
+            if source_frame is not None and (
+                not isinstance(source_frame, int) or isinstance(source_frame, bool) or source_frame < 0
+            ):
+                raise ValueError(f"{source}:{line_number}: source_frame must be a non-negative integer when present")
+            source_sequence = data.get("source_sequence")
+            if source_sequence is not None and (
+                not isinstance(source_sequence, str) or not source_sequence.strip()
+            ):
+                raise ValueError(f"{source}:{line_number}: source_sequence must be a non-empty string when present")
+            source_fps_raw = data.get("source_fps")
+            source_fps = None
+            if source_fps_raw is not None:
+                if (
+                    isinstance(source_fps_raw, bool)
+                    or not isinstance(source_fps_raw, (int, float))
+                    or not math.isfinite(float(source_fps_raw))
+                    or float(source_fps_raw) <= 0.0
+                ):
+                    raise ValueError(f"{source}:{line_number}: source_fps must be finite and > 0 when present")
+                source_fps = float(source_fps_raw)
+
             key = (video, frame)
             if key in seen:
                 raise ValueError(f"{source}:{line_number}: duplicate frame {video!r}#{frame}")
@@ -125,6 +154,10 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
                     frame=frame,
                     tags=tuple(sorted(set(tags_raw))),
                     objects=tuple(objects),
+                    source=source_path,
+                    source_frame=source_frame,
+                    source_sequence=source_sequence,
+                    source_fps=source_fps,
                 )
             )
     if not frames:
