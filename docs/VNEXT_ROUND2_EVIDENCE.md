@@ -238,3 +238,23 @@ Architect decision:
 - NightOwls -> A1 night detection/fusion + A3 enhancement; optional A2 temporal tracking only after stable-ID validation;
 - LLVIP visible -> optional secondary low-light A1/A3 evidence;
 - private CCTV -> reduced final domain sanity check only.
+
+
+### Secondary corpus semantics clarification
+
+LLVIP official annotation tutorial uses rectangular LabelImg annotations with only the `person` class; the official repository provides XML/VOC conversion tooling. Stable trajectory identity is not part of the documented detection annotation contract.
+
+Round-2 implication:
+
+- LLVIP visible/RGB may support A1/A3 detection/enhancement evidence;
+- do not compute A2 identity/tracking metrics from LLVIP unless a separate official identity contract is later verified;
+- keep infrared data out of SpectraTrack detector input.
+
+KAIST official repository currently identifies the benchmark with a CC BY-NC-SA 4.0 dataset license badge and BSD-2-Clause code/tooling license, provides 95k aligned visible/thermal pairs, dense pedestrian-related annotations, and temporal correspondence.
+
+Round-2 implication:
+
+- KAIST is permitted only as an isolated non-commercial/research fallback;
+- if activated, use visible/RGB data only for SpectraTrack inference;
+- preserve official class/occlusion/temporal semantics rather than importing thermal-derived evidence into RGB evaluation;
+- no KAIST raw data enters Git/product artifacts.
