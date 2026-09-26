@@ -15,6 +15,94 @@ def _all_coverage_tags():
     return [name for name in vnext_qa.REQUIRED_GOLDEN_COVERAGE if name != "negative"]
 
 
+
+def test_review_progress_counts_only_human_saved_rows(tmp_path: Path):
+    batch = tmp_path / "frames.json"
+    draft = tmp_path / "draft.jsonl"
+    output = tmp_path / "golden.jsonl"
+    batch.write_text(
+        json.dumps(
+            {
+                "schema": vnext_qa.FRAME_BATCH_SCHEMA,
+                "video": "golden/clip.mp4",
+                "frames": [
+                    {"frame": 0, "image": "frame0.png"},
+                    {"frame": 1, "image": "frame1.png"},
+                    {"frame": 2, "image": "frame2.png"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_jsonl(
+        draft,
+        [
+            {
+                "video": "golden/clip.mp4",
+                "frame": 0,
+                "tags": [],
+                "objects": [{"id": "p1", "label": "person", "bbox": [1, 2, 10, 20]}],
+            },
+            {
+                "video": "golden/clip.mp4",
+                "frame": 1,
+                "tags": [],
+                "objects": [{"id": "p1", "label": "person", "bbox": [3, 4, 11, 22]}],
+            },
+        ],
+    )
+    _write_jsonl(
+        output,
+        [
+            {
+                "video": "golden/clip.mp4",
+                "frame": 0,
+                "tags": [],
+                "objects": [{"id": "p1", "label": "person", "bbox": [1, 2, 10, 20]}],
+            }
+        ],
+    )
+
+    report = vnext_qa.review_progress(
+        [batch],
+        output_ground_truth=output,
+        draft_ground_truth=draft,
+    )
+
+    assert report["review_required"] == 3
+    assert report["reviewed_frames"] == 1
+    assert report["pending_frames"] == 2
+    assert report["pending_with_draft"] == 1
+    assert report["pending_without_draft"] == 1
+    assert report["completion_fraction"] == pytest.approx(1 / 3)
+    assert report["reviewed_person_boxes"] == 1
+    assert report["pending_keys"] == [
+        {"video": "golden/clip.mp4", "frame": 1},
+        {"video": "golden/clip.mp4", "frame": 2},
+    ]
+
+
+def test_review_progress_rejects_duplicate_frame_keys(tmp_path: Path):
+    batch = tmp_path / "frames.json"
+    output = tmp_path / "golden.jsonl"
+    batch.write_text(
+        json.dumps(
+            {
+                "schema": vnext_qa.FRAME_BATCH_SCHEMA,
+                "video": "golden/clip.mp4",
+                "frames": [
+                    {"frame": 0, "image": "frame0.png"},
+                    {"frame": 0, "image": "frame0-copy.png"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="duplicate frame keys"):
+        vnext_qa.review_progress([batch], output_ground_truth=output)
+
+
 def test_annotation_seed_rows_uses_draft_but_preserves_human_output(tmp_path: Path):
     draft = tmp_path / "draft.jsonl"
     output = tmp_path / "golden.jsonl"
