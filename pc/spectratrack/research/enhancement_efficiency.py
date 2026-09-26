@@ -53,6 +53,7 @@ class RoiRecord:
     signals: dict[str, bool]
     source_kind: str | None = None
     source_id: str | None = None
+    raw_support: tuple[Detection, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -367,6 +368,7 @@ def load_roi_manifest(path: str | Path) -> tuple[dict[str, Any], list[RoiRecord]
             signals = item.get("signals", {})
             source_kind = item.get("source_kind")
             source_id = item.get("source_id")
+            raw_support_data = item.get("raw_support", [])
             if not isinstance(video, str) or not video:
                 raise ValueError(f"line {line_number}: video must be a non-empty string")
             if isinstance(frame, bool) or not isinstance(frame, int) or frame < 0:
@@ -399,6 +401,44 @@ def load_roi_manifest(path: str | Path) -> tuple[dict[str, Any], list[RoiRecord]
                 raise ValueError(
                     f"line {line_number}: source_kind/source_id must be non-empty strings"
                 )
+            if not isinstance(raw_support_data, list):
+                raise ValueError(f"line {line_number}: raw_support must be a list")
+            raw_support: list[Detection] = []
+            for support_index, support in enumerate(raw_support_data):
+                where = f"line {line_number}:raw_support[{support_index}]"
+                if not isinstance(support, dict):
+                    raise ValueError(f"{where}: entry must be an object")
+                support_bbox = support.get("bbox")
+                if (
+                    not isinstance(support_bbox, list)
+                    or len(support_bbox) != 4
+                    or any(
+                        isinstance(value, bool) or not isinstance(value, (int, float))
+                        for value in support_bbox
+                    )
+                ):
+                    raise ValueError(f"{where}: bbox must be [x1,y1,x2,y2]")
+                score = support.get("score")
+                class_id = support.get("class_id")
+                label = support.get("label")
+                if isinstance(score, bool) or not isinstance(score, (int, float)):
+                    raise ValueError(f"{where}: score must be numeric")
+                if isinstance(class_id, bool) or not isinstance(class_id, int):
+                    raise ValueError(f"{where}: class_id must be an integer")
+                if not isinstance(label, str) or not label:
+                    raise ValueError(f"{where}: label must be a non-empty string")
+                raw_support.append(
+                    Detection(
+                        tuple(float(value) for value in support_bbox),
+                        float(score),
+                        int(class_id),
+                        label,
+                    )
+                )
+            if raw_support and source_id is None:
+                raise ValueError(
+                    f"line {line_number}: raw_support requires source_kind/source_id provenance"
+                )
             seen_ids.add(roi_id)
             records.append(
                 RoiRecord(
@@ -409,6 +449,7 @@ def load_roi_manifest(path: str | Path) -> tuple[dict[str, Any], list[RoiRecord]
                     dict(signals),
                     source_kind,
                     source_id,
+                    tuple(raw_support),
                 )
             )
 
