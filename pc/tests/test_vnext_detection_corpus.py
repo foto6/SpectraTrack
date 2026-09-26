@@ -6,8 +6,14 @@ from spectratrack.research.vnext_detection_corpus import (
     attach_ground_truth,
     collect_corpus_video_frames,
     evaluate_methods,
+    export_canonical_replays,
 )
-from spectratrack.research.vnext_detection_fusion import FusionCandidate, FusionConfig, ResearchFrame
+from spectratrack.research.vnext_detection_fusion import (
+    FusionCandidate,
+    FusionConfig,
+    ResearchFrame,
+    write_prefusion_dump,
+)
 from spectratrack.types import Detection
 
 
@@ -153,3 +159,50 @@ def test_evaluate_methods_reports_aggregate_and_per_video():
     assert aggregate["evidence-aware"]["recall"] == 0.5
     assert per_video["a"]["evidence-aware"]["recall"] == 0.0
     assert per_video["b"]["evidence-aware"]["recall"] == 1.0
+
+def test_export_canonical_replays_uses_prefusion_without_inference(tmp_path):
+    prefusion_dir = tmp_path / "prefusion"
+    replay_dir = tmp_path / "replays"
+    prefusion_dir.mkdir()
+    frame = ResearchFrame(
+        "clip",
+        0,
+        0.0,
+        100,
+        80,
+        (FusionCandidate((10.0, 10.0, 30.0, 60.0), 0.40, 0, "person", "full", "full"),),
+    )
+    write_prefusion_dump(
+        prefusion_dir / "clip.jsonl",
+        {
+            "source_commit": "a" * 40,
+            "video": "clip",
+            "video_sha256": "b" * 64,
+            "detector": "current-yolo-onnx-prefusion",
+            "model_sha256": "c" * 64,
+            "provider": "DmlExecutionProvider,CPUExecutionProvider",
+            "config": {"person_conf": 0.12},
+            "width": 100,
+            "height": 80,
+        },
+        [frame],
+        {"policy_runs": 1, "inference_calls": 9, "wall_time_s": 1.0},
+    )
+
+    outputs = export_canonical_replays(
+        prefusion_dir=prefusion_dir,
+        replay_dir=replay_dir,
+        videos=["clip"],
+        methods=["hard-nms", "evidence-aware"],
+        config=FusionConfig(),
+    )
+
+    assert set(outputs["clip"]) == {"hard-nms", "evidence-aware"}
+    for method, path_text in outputs["clip"].items():
+        path = replay_dir / f"clip.{method}.replay.jsonl"
+        assert path_text == str(path)
+        rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+        assert rows[0]["schema"] == "spectratrack-detection-replay-v1"
+        assert rows[0]["config"]["cross_pass_fusion"]["method"] == method
+        assert rows[1]["detections"][0]["appearance"] is None
+
