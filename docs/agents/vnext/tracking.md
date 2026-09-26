@@ -1143,3 +1143,49 @@ If the architect explicitly re-opens DanceTrack for CONTROL-only characterizatio
 - DanceTrack guard evaluation: **NOT ELIGIBLE under current gate outcome and also blocked by missing freeze**;
 - production `tracker.py`: unchanged;
 - next action: architect review / explicit new narrow hypothesis only. Do not resume wholesale global/Byte/BoT/OC replacement work.
+
+
+## Round 2 A2 final decision
+
+Status: **DONE — RETAIN CURRENT TRACKER**
+
+Final evidence decision for this A2 cycle:
+
+- CONTROL: current production `MultiObjectTracker`;
+- candidate evaluated: `current-ambiguity-guard`;
+- mandatory identical A1 replay gate: **FAILED**;
+- decisive failure: ID switches **335 -> 397**, i.e. +62 / 18.51% worse instead of the required >=10% improvement;
+- recall loss: 0.01867 pp — within gate;
+- fragmentation increase: 2.847% — within gate;
+- false track increase: 0 — within gate;
+- wrong-ID recoveries: 116 -> 123;
+- mean uninterrupted length: 41.1181 -> 36.9453 frames;
+- switch-event diagnostic: guard removed 58 current events but created 120 guard-only events.
+
+Decision:
+
+`RETAIN CURRENT TRACKER`
+
+Consequences:
+
+- do not integrate `current-ambiguity-guard`;
+- do not resume wholesale global/Byte/BoT/OC replacement research in this cycle;
+- do not retune ambiguity margin/component rules against this held-out result;
+- do not run alternate replay variants looking for a favorable promotion result;
+- DanceTrack association-only is not run for this rejected candidate unless the architect explicitly re-opens it;
+- DanceTrack remains independently blocked because A5 still reports `dancetrack-public-r1` NOT FROZEN / hash unavailable;
+- detector-replay DanceTrack phase is not reached;
+- production `pc/spectratrack/tracker.py` remains unchanged.
+
+Validated code/test HEAD for the scored result:
+
+`9b733fdc40d71a81c190b7a3eefaa8ae9cc62fac`
+
+Latest full Windows CI on that code:
+
+- run `36255611233`;
+- **172 passed in 1.47 s**;
+- Ruff/compile/benchmark/diagnostics/self-check: PASS;
+- standalone Windows build and both CLI smoke tests: PASS.
+
+Final role-state documentation commit is intentionally reported by the external handoff because a commit cannot contain its own SHA.
