@@ -1162,3 +1162,123 @@ GitHub Actions run `36255432085`: **SUCCESS**
 - source + Windows packaging/upload: PASS
 
 This documentation-only commit does not change importer, evaluator, source abstraction, frozen corpus, or test code.
+
+## Round 2 A5 — DanceTrack real validation intake and freeze
+
+Target-PC execution date: 2026-09-27 (+07)
+
+Starting A5 branch state for this intake:
+
+- branch: `agent/vnext-qa`
+- checked local/remote HEAD before dataset work: `bf63820f81cd13fdfae8680a200e25f030d314fc`
+- no importer/evaluator code change was required for this intake; the existing Round-2 DanceTrack tooling was used as-is.
+
+Official validation source received from coordinator:
+
+- archive: `C:\Users\foto6\SpectraTrack-data\public\DanceTrack\val.zip`
+- exact bytes: `4,209,785,614`
+- SHA-256: `90ba30973761ce0b81a9654c11086d87537392475ac8bc666d842e645641277c`
+- ZIP entries: `25,634`
+- `zipfile.testzip()`: `None`
+- top-level archive root: `val/`
+- unsafe absolute / `..` entries before extraction: `0`
+
+Isolated extraction root:
+
+`C:\Users\foto6\SpectraTrack-data\public\DanceTrack\extracted`
+
+Post-extraction preflight:
+
+- validation sequences: **25**
+- sequence `gt/gt.txt` files: **25**
+- first sorted sequence: `dancetrack0004`
+- last sorted sequence: `dancetrack0097`
+
+Canonical import artifacts:
+
+- JSONL: `C:\Users\foto6\SpectraTrack-data\imports\dancetrack-public-r1\dancetrack-val.jsonl`
+  - bytes: `46,192,745`
+  - SHA-256: `448312f2e0c537470544dc4f7c920bf1dcf37040cfc366cca1671d2913fe64b2`
+- import manifest: `C:\Users\foto6\SpectraTrack-data\imports\dancetrack-public-r1\dancetrack-val.import.json`
+  - bytes: `5,169,910`
+  - file SHA-256: `3c2d3e04dffb5c2990432b3ccc73785dd8d287c879fc10c7b7011378d0902317`
+  - deterministic `import_manifest_sha256`: `b3eda5695b97af7fb05a6e61ce260067aef0fabd61d63b864cc13ce622b776c5`
+  - aggregate `source_files_sha256`: `b58af57dcf993c9a3c438ff6531a42e9270f4b29e3a083d02ba2d792f6bd98e2`
+  - importer source commit: `bf63820f81cd13fdfae8680a200e25f030d314fc`
+
+Real import totals:
+
+- selected sequences: **25**
+- canonical frame records: **25,508**
+- raw GT rows: **225,148**
+- scored canonical people: **225,148**
+- non-intersecting boxes omitted: **0**
+- hashed source files recorded by importer: **25,558**
+
+Independent raw-to-canonical audit artifact:
+
+- path: `C:\Users\foto6\SpectraTrack-data\imports\dancetrack-public-r1\dancetrack-raw-canonical-audit.json`
+- SHA-256: `7b7f20497dca962da76324f2af11cd937b80d4b3e9c13170514ab7f13b46bdaa`
+- sequence count: **25**
+- canonical rows: **25,508**
+- canonical objects: **225,148**
+- raw GT rows: **225,148**
+- bbox mismatches after 1-based MOT xywh -> 0-based canonical xyxy conversion: **0**
+- missing raw rows in canonical output: **0**
+- non-`1,1,1` DanceTrack trailing-field rows: **0**
+- invalid DanceTrack ID namespace rows: **0**
+- source-frame mapping mismatches: **0**
+- non-empty semantic tags: **0**
+- non-empty imported attributes: **0**
+- ignored objects inherited from MOT17 semantics: **0**
+- literal `mot17` hits in canonical JSONL: **0**
+- unique stable GT IDs: **273**
+- stable IDs observed on more than one frame: **273**
+
+Existing `validate-corpus` result:
+
+- output: `C:\Users\foto6\SpectraTrack-data\imports\dancetrack-public-r1\dancetrack-val.validation.json`
+- file SHA-256: `15db1dbfcebbc010ac339c0fc9f3b31e48048e1663218d68368d826eb73fb0f4`
+- `valid=true`
+- errors: **0**
+- warnings: **0**
+- validated videos/sequences: **25**
+- validated frame records: **25,508**
+- source image/seqinfo/GT provenance was re-hashed during validation.
+
+Frozen held-out association corpus:
+
+- revision: **`dancetrack-public-r1`**
+- exact corpus SHA-256: **`df240532ad3f2099947f318b682737ccdb3e6345dc9da1e380ff4cab8d6c6b5c`**
+- frozen manifest: `C:\Users\foto6\SpectraTrack-data\imports\dancetrack-public-r1\dancetrack-public-r1.manifest.json`
+- frozen manifest file SHA-256: `68167fa7fd3f66dbad1381bf8fc0226abc615e3a92b40258de58e9f224aabcc8`
+- frozen manifest loaded successfully through A5 `load_frozen_manifest()`.
+
+This exact revision/hash is the Round-2 held-out association gate to distribute unchanged to A2. Do not retune A2 candidates from this validation corpus.
+
+Existing frozen corpora were not modified during this intake:
+
+- `mot17-public-r1` — unchanged
+- `crowdhuman-val-fbox-r1` — unchanged
+
+### NightOwls official intake availability check after DanceTrack
+
+Local target-PC path checked:
+
+`C:\Users\foto6\SpectraTrack-data\public\NightOwls`
+
+Result: directory / official local bytes are currently absent.
+
+Official upstream availability from the target PC was checked without downloading:
+
+- validation ZIP official endpoint -> HTTP **200 OK** after official redirect
+  - content length: `57,481,286,834` bytes
+  - content type: `application/zip`
+- validation JSON official endpoint -> HTTP **200 OK** after official redirect
+  - content length: `10,696,948` bytes
+  - content type: `application/json`
+- official SDK GitLab repository -> reachable; `git ls-remote HEAD` = `ad0f18fc95e093e86036f055ab210a3de46021b7`
+
+NightOwls status: **READY FOR OFFICIAL DOWNLOAD / INTAKE NOT STARTED**.
+
+It is not blocked by upstream availability, but import/freeze cannot start until the official ~57.5 GB validation image archive, official JSON and official SDK are intentionally placed under the isolated target-PC data root. No mirror, resized substitute or third-party conversion was used.
