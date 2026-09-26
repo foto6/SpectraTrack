@@ -674,3 +674,96 @@ On MOT17-04 first 600 frames with the existing hard-NMS replay, the miner found:
 On the first round-2 evidence-aware weighted replay, the miner found 643 ID switches and 321 fragmentation/recovery events, so that fusion policy is not a tracker-safe replacement despite its detector precision/jitter improvement.
 
 The close-competition count is a diagnostic heuristic, not causal proof. The next candidate must target ambiguity/crossing continuity and be evaluated on identical replay bytes under the round-2 recall/IDSW/fragmentation gates.
+
+
+## Round 2 supplement — ambiguity-scoped assignment candidate
+
+Research-only candidate:
+
+`current-ambiguity-guard`
+
+Validated code HEAD before this documentation update:
+
+`c552b0f45e033628e188f91df11839025c2ed359`
+
+Purpose:
+
+- preserve the current tracker everywhere association scores are not ambiguous;
+- detect score-close competition using the same 0.08 diagnostic margin as the failure miner;
+- construct a local connected competition context through each participating node's two best accepted alternatives;
+- apply maximum-total-score one-to-one assignment only inside that ambiguous component;
+- keep current greedy ordering for all remaining edges.
+
+Unchanged:
+
+- production `tracker.py`;
+- high/low two-stage semantics;
+- strong-only new-track creation;
+- candidate gates/scoring;
+- CMC;
+- appearance handling;
+- dormant reactivation/lifecycle;
+- detector/replay bytes.
+
+### Failed first implementation
+
+The first implementation only connected alternatives that were themselves within the 0.08 margin.
+
+CI run `36240587164` exposed that this was too narrow:
+
+- target test: `nearby_same_class`;
+- expected ambiguity guard to resolve the known greedy conflict;
+- observed: 4 ID switches, unchanged from current.
+
+Reason:
+
+- the ambiguous detection connected both tracks, but the second detection needed for the 2x2 one-to-one alternative was outside the margin;
+- the candidate therefore formed a 2-track/1-detection component and did not invoke the local global solve.
+
+That result is rejected and retained here as a failed research attempt.
+
+### Fixed component context
+
+Commit:
+
+`c552b0f45e033628e188f91df11839025c2ed359`
+
+The component is still seeded only by close-score ambiguity, but expands through each participating node's top two accepted alternatives. This supplies the missing one-to-one context without switching every frame to global assignment.
+
+Deterministic tests now verify:
+
+- the nearby-same-class greedy conflict is resolved with 0 ID switches;
+- non-ambiguous camera-pan, weak-detection, and dormant-reactivation scenarios remain metric-identical to the current tracker.
+
+### CI
+
+GitHub Actions run:
+
+`36240708158`
+
+Result: **SUCCESS**
+
+Observed:
+
+- ruff: passed;
+- compile + pytest: **166 passed in 2.09 s**;
+- tracker smoke: 500 frames / 24 targets / 11970 observations;
+- tracker smoke elapsed: 0.304 s;
+- tracker smoke throughput: 1643.4 tracker FPS;
+- crossing ID switches: 0;
+- reappearance ID switches: 0;
+- diagnostics/self-check: passed;
+- standalone Windows build/smoke/package/upload: passed.
+
+### Decision status
+
+**CONTINUE RESEARCH / NOT A PRODUCTION CANDIDATE YET.**
+
+The candidate now passes the targeted mechanism test and preserves selected non-ambiguous probes, but it still needs evaluation on the exact real replay artifacts under the Round-2 gates:
+
+- tracking recall loss <= 0.25 percentage points vs current;
+- target >=10% ID-switch reduction;
+- fragmentation increase <=5%;
+- no material false-track increase.
+
+Do not integrate into production until those replay results exist and A5 stamps the surviving evidence.
