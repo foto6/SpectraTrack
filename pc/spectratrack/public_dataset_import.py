@@ -1472,6 +1472,19 @@ def _parser() -> argparse.ArgumentParser:
     dance.add_argument("--importer-source-commit")
     dance.add_argument("--acknowledge-terms", action="store_true")
 
+    night = sub.add_parser("import-nightowls")
+    night.add_argument("--dataset-root", required=True)
+    night.add_argument("--annotations", default="nightowls_validation.json")
+    night.add_argument("--images-dir", required=True)
+    night.add_argument("--sdk-dir", required=True)
+    night.add_argument("--output", required=True)
+    night.add_argument("--manifest", required=True)
+    night.add_argument("--logical-prefix", default="golden/public/nightowls-val")
+    night.add_argument("--slice-frames", type=int)
+    night.add_argument("--slice-seed", default="spectratrack-round2-nightowls-v1")
+    night.add_argument("--importer-source-commit")
+    night.add_argument("--acknowledge-terms", action="store_true")
+
     crowd = sub.add_parser("import-crowdhuman")
     crowd.add_argument("--dataset-root", required=True)
     crowd.add_argument("--annotations", default="annotation_val.odgt")
@@ -1507,6 +1520,20 @@ def main() -> int:
                 split=args.split,
                 sequences=args.sequences,
                 logical_prefix=args.logical_prefix,
+                importer_source_commit=args.importer_source_commit,
+                acknowledge_terms=args.acknowledge_terms,
+            )
+        elif args.command == "import-nightowls":
+            result = import_nightowls(
+                dataset_root=args.dataset_root,
+                annotations=args.annotations,
+                images_dir=args.images_dir,
+                sdk_dir=args.sdk_dir,
+                output_ground_truth=args.output,
+                output_manifest=args.manifest,
+                logical_prefix=args.logical_prefix,
+                slice_frames=args.slice_frames,
+                slice_seed=args.slice_seed,
                 importer_source_commit=args.importer_source_commit,
                 acknowledge_terms=args.acknowledge_terms,
             )
