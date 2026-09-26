@@ -560,3 +560,208 @@ Only Git-side research/tooling review is allowed:
 4. wait for A5 `nightowls-public-r1` freeze before primary night evaluation.
 
 Production enhancement remains non-candidate unless strict evidence clears the Round-2 quality/cost gates.
+
+
+## Round 2 checkpoint — interrupted target-PC A3 artifact recovered
+
+### DONE — existing artifact verified before any restart
+
+The previously interrupted target-PC result exists and is complete:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a3-round2-weak1.json`
+
+Verified file metadata:
+
+- SHA-256: `cad760e97e32380ac3da87d66f56bfc5d2a11097839b45e1806b3d9469e291a6`;
+- size: `8933` bytes;
+- last-write UTC: `2026-09-26T09:56:06Z`;
+- artifact source commit: `86b1460b6f9879038de92eb1e1341a96221e6c03`.
+
+Matching ROI manifest:
+
+`C:\Users\foto6\SpectraTrack-data\derived\MOT17-04-first300-roi-weak1.jsonl`
+
+SHA-256:
+
+`55ac3fa574fd7e3653b68538974a728c4f68e789cdbf7b73fbea059e4d44430f`
+
+Process inspection found no surviving A3 benchmark Python process. The only Python processes were VS Code Black formatter processes plus the control supervisor.
+
+Therefore the interrupted A3 benchmark is **DONE**, not restarted, and no existing artifact was overwritten.
+
+A compact Git-persistent copy of its provenance/summary is committed as:
+
+`pc/benchmarks/vnext/enhancement/round2_mot17_weak1_verified.json`
+
+### Exact experiment provenance
+
+- corpus revision: `mot17-public-r1`;
+- GT SHA-256: `b32f401268055f585b2e2b2ed90fb62749c924f3e3ff2986b15d390c323c35f4`;
+- source video SHA-256: `13a4760ab8c9b54b9ce998a46179e8483609019f41fd521f4e199eb156d32642`;
+- model: YOLO11x ONNX;
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`;
+- model input: 960x960;
+- providers: DirectML + CPU fallback;
+- sampled source: 10.0 seconds;
+- shared three-candidate experiment wall time: 437.343 s;
+- actual low-level ONNX calls across the shared experiment: 2726;
+- raw probe calls attributed to each isolated candidate: 2400.
+
+Strict gate provenance:
+
+- weak evidence threshold source: A1 tile evidence `0.12 <= score < 0.35`;
+- one weak-person selected ROI per source frame in the frozen manifest;
+- raw corroboration required;
+- no GT was used to choose the ROI.
+
+Important provenance nuance: this artifact predates the later explicit
+`max_enhanced_rois_per_frame` profiler field. The one-ROI budget was enforced by
+the preselected ROI manifest, not by the later profiler setting. It is valid as the
+recorded Round-2 pre-fusion experiment, but a final NightOwls run must use the
+explicit profiler cap `1`.
+
+### Verified operation evidence — PRE-FUSION ONLY
+
+| Candidate | Affected ROIs | Extra ONNX calls | Recovered GT | Lost GT | New FP observations | Recovered / extra call | FP / recovered | Center jitter delta | Size jitter delta |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| bilateral | 30 | 30 | 15 | 0 | +372 | 0.5000 | 24.8000 | +0.0000357 | -0.0001287 |
+| current_adaptive_cached | 158 | 158 | 101 | 0 | +2170 | 0.6392 | 21.4851 | +0.0009605 | +0.0010520 |
+| sharpen | 138 | 138 | 87 | 0 | +1890 | 0.6304 | 21.7241 | +0.0011781 | +0.0014535 |
+
+Additional measured costs:
+
+| Candidate | Image preprocessing ms | Enhanced detector ms | Enhanced ONNX inference ms |
+| --- | ---: | ---: | ---: |
+| bilateral | 70.837 | 3880.186 | 3163.282 |
+| current_adaptive_cached | 870.734 | 21498.367 | 17034.452 |
+| sharpen | 226.529 | 18754.684 | 14856.208 |
+
+Interpretation is deliberately limited:
+
+- bilateral has the lowest FP cost in absolute count and near-neutral measured pre-fusion jitter, but recovers only 15 GT observations;
+- cached adaptive recovers more evidence per extra call than bilateral but adds 2170 pre-fusion FP observations and worsens both recorded jitter deltas;
+- sharpen is not clearly competitive with cached adaptive on recovered/extra-call or FP/recovered and has the largest center/size jitter regression of the three;
+- none of these pre-fusion results can pass the Round-2 promotion gate because post-fusion recall, precision, FP, and canonical A5 stability are still missing.
+
+This evidence does **not** justify retaining enhancement.
+
+## Round 2 checkpoint — canonical post-fusion summary tooling
+
+### DONE — post-fusion metric gap closed without duplicating A1 fusion
+
+Added research-only:
+
+`pc/spectratrack/research/strict_enhancement_summary.py`
+
+and tests:
+
+`pc/tests/test_vnext_enhancement_postfusion.py`
+
+A3 still does not implement final fusion.
+
+The summary tool consumes:
+
+1. canonical already-post-fusion enhancement-OFF result;
+2. canonical already-post-fusion strict enhancement candidate result;
+3. the matching strict A3 operation-cost profile.
+
+It rejects incomparable evidence when:
+
+- GT SHA differs;
+- label / match-IoU differs;
+- model SHA differs when present;
+- A3 selective gate is not `weak-person`;
+- A3 explicit max enhanced ROI cap is not `1`;
+- raw corroboration is not enabled;
+- profile GT/model provenance disagrees with the post-fusion run.
+
+Metrics produced:
+
+- recovered GT;
+- lost GT;
+- post-fusion recall + delta;
+- post-fusion precision + delta;
+- post-fusion FP delta;
+- canonical detection bbox-stability/jitter deltas;
+- raw ONNX calls;
+- extra enhancement ONNX calls;
+- recovered GT / extra enhancement call;
+- FP cost / recovered GT;
+- wall-time delta;
+- post-fusion ONNX-call delta;
+- processing seconds/source second when present;
+- A5 canonical subgroup deltas from `by_tag`, `by_attribute`, and `by_size`.
+
+A3 does not invent NightOwls tags/attributes. Only A5 source-backed subgroup
+metadata is surfaced.
+
+Research code HEAD containing the post-fusion comparator and subgroup tests:
+
+`4c18ab061700caeb52c34472035096a2dd618ec2`
+
+GitHub Actions run:
+
+`36254809619` / PC CI #266 — **SUCCESS**
+
+Actual validation:
+
+- Ruff: `All checks passed!`;
+- compile + pytest: **159 passed in 1.90 s**;
+- synthetic tracker smoke: 500 frames / 24 targets / 11970 observations;
+- smoke elapsed: 0.363 s / 1376.4 tracker FPS;
+- diagnostics: passed;
+- self-check: passed;
+- Windows standalone build: passed;
+- standalone `--help` and `batch --help`: passed;
+- package/artifact upload: passed.
+
+These CI numbers validate tooling/regression behavior only, not enhancement quality.
+
+## NightOwls primary gate — current state
+
+A5 advanced during this checkpoint and now has an official NightOwls validation
+importer in its own branch. Latest observed A5 code includes:
+
+- official `nightowls_validation.json` only;
+- official PNG/JSON/SDK semantics;
+- deterministic pre-result slice support;
+- official pedestrian scoring and ignore handling;
+- source-backed occlusion/difficulty/pose metadata;
+- source-backed size strata;
+- no invented blur/contrast/occlusion semantics.
+
+However, target-PC data inspection currently shows no NightOwls import/freeze files
+under the existing SpectraTrack-data public/import/run locations.
+
+Therefore:
+
+`nightowls-public-r1` freeze used by A3 = **NOT YET AVAILABLE**
+
+and:
+
+- no NightOwls candidate run has been started by A3;
+- no held-out result has been observed by A3;
+- no gate/threshold has been retuned;
+- LLVIP IR/thermal has not been used.
+
+### NEXT / blocking dependencies
+
+Final A3 decision remains blocked on:
+
+1. A5 freezing the official NightOwls validation/slice as `nightowls-public-r1`;
+2. a fixed post-fusion A1 policy/result contract for OFF and each strict candidate;
+3. exact same NightOwls bytes/GT/model/provider for OFF and candidate;
+4. strict explicit A3 config `weak-person + cap=1 + raw corroboration`;
+5. post-fusion quality/cost/stability summary.
+
+Candidate order remains fixed:
+
+1. OFF baseline;
+2. bilateral;
+3. current_adaptive_cached;
+4. sharpen only if it remains competitive.
+
+If no strict candidate gives a convincing post-fusion quality-per-compute and
+stability gain on the frozen held-out evidence, A3 must hand off:
+
+`ENHANCEMENT OFF`
