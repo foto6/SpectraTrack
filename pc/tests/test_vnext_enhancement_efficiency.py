@@ -273,6 +273,7 @@ def test_run_profile_counts_raw_and_enhanced_calls_and_recovery(tmp_path, monkey
         label="person",
         match_iou=0.5,
         selective_gate="quality",
+        max_enhanced_rois_per_frame=0,
         corroboration_iou=0.10,
         experiment_id="synthetic",
     )
@@ -285,3 +286,90 @@ def test_run_profile_counts_raw_and_enhanced_calls_and_recovery(tmp_path, monkey
     assert gamma["cost"]["total_inference_calls_if_run_independently"] == 2
     assert gamma["quality"]["recovered_gt_persons"] == 1
     assert gamma["quality"]["lost_gt_persons"] == 0
+
+def test_run_profile_caps_enhanced_rois_per_frame(tmp_path, monkeypatch):
+    manifest = tmp_path / "regions-budget.jsonl"
+    rows = [
+        {"type": "metadata", "schema": efficiency.ROI_SCHEMA, "source": "synthetic-budget-test"},
+        {
+            "type": "roi",
+            "video": "clip.mp4",
+            "frame": 0,
+            "roi_id": "r0",
+            "bbox": [0, 0, 32, 64],
+            "signals": {"weak_person": True},
+        },
+        {
+            "type": "roi",
+            "video": "clip.mp4",
+            "frame": 0,
+            "roi_id": "r1",
+            "bbox": [32, 0, 64, 64],
+            "signals": {"weak_person": True},
+        },
+    ]
+    manifest.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+    model = tmp_path / "model.onnx"
+    model.write_bytes(b"fake-model")
+    frame = np.full((64, 64, 3), 10, dtype=np.uint8)
+
+    class FakeDetector:
+        def __init__(self, *_args, **_kwargs):
+            self.providers = ["FakeExecutionProvider"]
+            self.input_w = 640
+            self.input_h = 640
+            self.class_thresholds = {}
+            self.last_stage_ms = {}
+            self.last_inference_calls = 0
+
+        def _reset_policy_metrics(self):
+            self.last_stage_ms = {}
+            self.last_inference_calls = 0
+
+        def _detect_once(self, _image, _thresholds):
+            self.last_inference_calls += 1
+            self.last_stage_ms["inference"] = self.last_stage_ms.get("inference", 0.0) + 1.0
+            return []
+
+    monkeypatch.setattr("spectratrack.detector.YoloOnnxDetector", FakeDetector)
+    monkeypatch.setattr(
+        efficiency,
+        "_read_frames",
+        lambda _root, _records: ({("clip.mp4", 0): frame}, {"clip.mp4": 25.0}, {"clip.mp4": "video-hash"}),
+    )
+    monkeypatch.setattr(efficiency, "_truth_index", lambda _path: ({}, None))
+
+    args = SimpleNamespace(
+        roi_manifest=str(manifest),
+        video_root=str(tmp_path),
+        ground_truth=None,
+        corpus_revision=None,
+        source_commit="deadbeef",
+        immutable_baseline="baseline",
+        model=str(model),
+        input_size=640,
+        conf=0.35,
+        nms_iou=0.45,
+        cpu=True,
+        operations=["gamma"],
+        probe_conf=0.08,
+        person_conf=0.12,
+        label="person",
+        match_iou=0.5,
+        selective_gate="weak-person",
+        max_enhanced_rois_per_frame=1,
+        corroboration_iou=0.10,
+        experiment_id="budget",
+    )
+
+    result = efficiency.run_profile(args)
+    gamma = result["operations"]["gamma"]
+
+    assert gamma["activation"]["operation_gate_rois"] == 2
+    assert gamma["activation"]["selective_gate_rois"] == 2
+    assert gamma["activation"]["affected_rois"] == 1
+    assert gamma["activation"]["budget_skipped_rois"] == 1
+    assert gamma["cost"]["raw_probe_calls"] == 2
+    assert gamma["cost"]["enhanced_inference_calls"] == 1
+    assert result["settings"]["max_enhanced_rois_per_frame"] == 1
+
