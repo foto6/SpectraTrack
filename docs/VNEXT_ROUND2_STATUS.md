@@ -16,14 +16,14 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 ## Global gates
 
-- **DONE** — A1 MOT17 held-out complete. Evidence-aware passed MOT17 as the sole fusion challenger.
-- **DONE / FAIL CHALLENGER** — A1 CrowdHuman full 4,370-image dense-safety gate complete. Evidence-aware improved precision/F1/FP/localization but recall fell 0.570240 -> 0.563173, violating the frozen no-recall-loss rule. Round-2 A1 production conclusion: **RETAIN HARD-NMS CONTROL**; no held-out retuning.
-- **DONE** — A2 Round-2 decision: **RETAIN CURRENT TRACKER**. current-ambiguity-guard rejected by identical-replay ID-switch gate.
-- **WAITING** — A3 strict candidate set remains OFF / bilateral / current_adaptive_cached; NightOwls held-out is still required for the enhancement decision.
-- **PARKED** — A4 scheduler quality search remains deferred until A3/public quality finalists are resolved.
-- **DONE** — DanceTrack frozen as `dancetrack-public-r1`, corpus SHA `df240532ad3f2099947f318b682737ccdb3e6345dc9da1e380ff4cab8d6c6b5c`; A2 rejected candidate does not advance to DanceTrack without explicit architect reopening.
-- **IN PROGRESS** — A5 official NightOwls intake is active on isolated E:. Official JSON and SDK are present; validation ZIP is actively downloading. Latest observed size ~14.62 / 57.48 GB (~25.4%).
-- **NOT DONE** — NightOwls import/validation/freeze, A3 NightOwls held-out/final ON-OFF decision, A4 final quality/cost check, reduced private CCTV human-confirmed sanity, final cross-role candidate table.
+- **DONE** — A1 MOT17 held-out complete.
+- **DONE / FAIL CHALLENGER** — A1 CrowdHuman dense-safety complete. Evidence-aware fails frozen no-recall-loss rule; Round-2 production conclusion: RETAIN HARD-NMS CONTROL.
+- **DONE** — A2 Round-2 decision: RETAIN CURRENT TRACKER.
+- **READY / NEXT** — A3 NightOwls held-out is unblocked. Exact corpus: `nightowls-public-slice5000-r1`, SHA `1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8`. Compare OFF / bilateral / current_adaptive_cached only; no NightOwls retuning.
+- **PARKED** — A4 remains deferred until A3 final enhancement decision.
+- **DONE** — DanceTrack frozen and validated.
+- **DONE** — NightOwls official intake/freeze complete; A5 final HEAD `95d0b389efcd46030634ec6005c0bc18098f4aa5`, CI `36279609347` SUCCESS.
+- **NOT DONE** — A3 final night enhancement decision, A4 final quality/cost check, reduced private sanity, final cross-role candidate table.
 - **LOCKED** — `agent/vnext-integrator`, production merge/release.
 
 ## A1 Detection / Fusion — issue #18
