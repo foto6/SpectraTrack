@@ -11,6 +11,7 @@ from pathlib import Path
 import time
 from typing import Any, Iterable
 
+from .integrity import sha256_file
 from .tracker import bbox_iou
 
 SCHEMA_VERSION = 1
@@ -31,6 +32,11 @@ class GroundTruthFrame:
     frame: int
     tags: tuple[str, ...]
     objects: tuple[GroundTruthObject, ...]
+    source: str | None = None
+    source_frame: int | None = None
+    source_sequence: str | None = None
+    source_fps: float | None = None
+    allow_out_of_bounds: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +80,35 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
                 raise ValueError(f"{source}:{line_number}: video must be a non-empty string")
             if not isinstance(frame, int) or isinstance(frame, bool) or frame < 0:
                 raise ValueError(f"{source}:{line_number}: frame must be a non-negative integer")
+            source_path = data.get("source")
+            if source_path is not None and (not isinstance(source_path, str) or not source_path.strip()):
+                raise ValueError(f"{source}:{line_number}: source must be a non-empty string when present")
+            source_frame = data.get("source_frame")
+            if source_frame is not None and (
+                not isinstance(source_frame, int) or isinstance(source_frame, bool) or source_frame < 0
+            ):
+                raise ValueError(f"{source}:{line_number}: source_frame must be a non-negative integer when present")
+            source_sequence = data.get("source_sequence")
+            if source_sequence is not None and (
+                not isinstance(source_sequence, str) or not source_sequence.strip()
+            ):
+                raise ValueError(f"{source}:{line_number}: source_sequence must be a non-empty string when present")
+            source_fps_raw = data.get("source_fps")
+            source_fps = None
+            if source_fps_raw is not None:
+                if (
+                    isinstance(source_fps_raw, bool)
+                    or not isinstance(source_fps_raw, (int, float))
+                    or not math.isfinite(float(source_fps_raw))
+                    or float(source_fps_raw) <= 0.0
+                ):
+                    raise ValueError(f"{source}:{line_number}: source_fps must be finite and > 0 when present")
+                source_fps = float(source_fps_raw)
+
+            allow_out_of_bounds = data.get("allow_out_of_bounds", False)
+            if not isinstance(allow_out_of_bounds, bool):
+                raise ValueError(f"{source}:{line_number}: allow_out_of_bounds must be a boolean")
+
             key = (video, frame)
             if key in seen:
                 raise ValueError(f"{source}:{line_number}: duplicate frame {video!r}#{frame}")
@@ -125,6 +160,11 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
                     frame=frame,
                     tags=tuple(sorted(set(tags_raw))),
                     objects=tuple(objects),
+                    source=source_path,
+                    source_frame=source_frame,
+                    source_sequence=source_sequence,
+                    source_fps=source_fps,
+                    allow_out_of_bounds=allow_out_of_bounds,
                 )
             )
     if not frames:
@@ -138,6 +178,174 @@ def ground_truth_sha256(path: str | Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+_IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".webp"}
+
+
+def image_sequence_files(path: str | Path) -> list[Path]:
+    root = Path(path)
+    if not root.is_dir():
+        return []
+    files = [
+        item
+        for item in root.iterdir()
+        if item.is_file() and item.suffix.lower() in _IMAGE_EXTENSIONS
+    ]
+    return sorted(files, key=lambda item: item.name)
+
+
+def qa_source_sha256(path: str | Path) -> str:
+    source = Path(path)
+    if source.is_file():
+        return sha256_file(source)
+    files = image_sequence_files(source)
+    if not files:
+        raise FileNotFoundError(f"QA source is neither a file nor an image-sequence directory: {source}")
+    digest = hashlib.sha256()
+    for item in files:
+        relative = item.relative_to(source).as_posix().encode("utf-8")
+        digest.update(len(relative).to_bytes(4, "big"))
+        digest.update(relative)
+        with item.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    return digest.hexdigest()
+
+
+def inspect_qa_source(path: str | Path, *, fps_override: float | None = None) -> dict[str, Any]:
+    import cv2
+
+    source = Path(path)
+    if source.is_dir():
+        files = image_sequence_files(source)
+        if not files:
+            raise RuntimeError(f"Image-sequence directory is empty: {source}")
+        first = cv2.imread(str(files[0]), cv2.IMREAD_COLOR)
+        if first is None:
+            raise RuntimeError(f"Cannot read first image-sequence frame: {files[0]}")
+        height, width = first.shape[:2]
+        return {
+            "kind": "image_sequence",
+            "width": int(width),
+            "height": int(height),
+            "fps": fps_override,
+            "frame_count": len(files),
+            "sha256": qa_source_sha256(source),
+        }
+
+    if not source.is_file():
+        raise FileNotFoundError(source)
+    if source.suffix.lower() in _IMAGE_EXTENSIONS:
+        image = cv2.imread(str(source), cv2.IMREAD_COLOR)
+        if image is None:
+            raise RuntimeError(f"Cannot read benchmark image: {source}")
+        height, width = image.shape[:2]
+        return {
+            "kind": "image",
+            "width": int(width),
+            "height": int(height),
+            "fps": None,
+            "frame_count": 1,
+            "sha256": sha256_file(source),
+        }
+
+    cap = cv2.VideoCapture(str(source))
+    if not cap.isOpened():
+        raise RuntimeError(f"Cannot open benchmark video: {source}")
+    try:
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = float(cap.get(cv2.CAP_PROP_FPS))
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    finally:
+        cap.release()
+    if width <= 0 or height <= 0:
+        raise RuntimeError(f"Invalid benchmark source dimensions for {source}: {width}x{height}")
+    measured_fps = fps if math.isfinite(fps) and fps > 0.0 else None
+    return {
+        "kind": "video",
+        "width": width,
+        "height": height,
+        "fps": fps_override if fps_override is not None else measured_fps,
+        "frame_count": frame_count if frame_count > 0 else None,
+        "sha256": sha256_file(source),
+    }
+
+
+def inspect_qa_logical_source(
+    frames: Iterable[GroundTruthFrame],
+    root: str | Path,
+) -> dict[str, Any]:
+    ordered = sorted(frames, key=lambda item: item.frame)
+    if not ordered:
+        raise ValueError("Logical QA source requires at least one frame")
+    root_path = Path(root)
+    source_names = {item.source or item.video for item in ordered}
+    fps_values = {item.source_fps for item in ordered if item.source_fps is not None}
+    if len(fps_values) > 1:
+        raise ValueError(f"Ground truth {ordered[0].video!r} has conflicting source_fps values")
+    fps_override = next(iter(fps_values)) if fps_values else None
+
+    if len(source_names) == 1:
+        source_name = next(iter(source_names))
+        meta = inspect_qa_source(root_path / source_name, fps_override=fps_override)
+        return {**meta, "source": source_name, "frame_sources": None}
+
+    if any(item.source is None for item in ordered):
+        raise ValueError(
+            f"Ground truth {ordered[0].video!r} mixes implicit and explicit physical sources"
+        )
+    expected_frames = list(range(len(ordered)))
+    actual_frames = [item.frame for item in ordered]
+    if actual_frames != expected_frames:
+        raise ValueError(
+            f"Multi-image logical source {ordered[0].video!r} must use contiguous canonical "
+            f"frames 0..{len(ordered) - 1}; got {actual_frames[:8]}"
+        )
+
+    digest = hashlib.sha256()
+    width: int | None = None
+    height: int | None = None
+    frame_sources: list[dict[str, Any]] = []
+    for item in ordered:
+        source_name = item.source
+        assert source_name is not None
+        source_path = root_path / source_name
+        meta = inspect_qa_source(source_path)
+        if meta["kind"] != "image":
+            raise ValueError(
+                f"Multi-source logical sequence {ordered[0].video!r} requires image sources; "
+                f"{source_name!r} is {meta['kind']}"
+            )
+        if width is None:
+            width = int(meta["width"])
+            height = int(meta["height"])
+        elif int(meta["width"]) != width or int(meta["height"]) != height:
+            raise ValueError(
+                f"Multi-source logical sequence {ordered[0].video!r} has inconsistent "
+                f"dimensions at {source_name!r}"
+            )
+        record = {
+            "frame": item.frame,
+            "source": source_name,
+            "sha256": meta["sha256"],
+        }
+        encoded = json.dumps(record, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        digest.update(len(encoded).to_bytes(4, "big"))
+        digest.update(encoded)
+        frame_sources.append(record)
+
+    return {
+        "kind": "frame_images",
+        "source": None,
+        "width": width,
+        "height": height,
+        "fps": fps_override,
+        "frame_count": len(ordered),
+        "sha256": digest.hexdigest(),
+        "frame_sources": frame_sources,
+    }
 
 
 def _truth_key(frame: GroundTruthFrame, index: int, obj: GroundTruthObject) -> str:
@@ -204,6 +412,81 @@ def _rates(counts: dict[str, int]) -> dict[str, float | int]:
     return {**counts, "precision": precision, "recall": recall}
 
 
+def _mean(values: list[float] | list[int]) -> float | None:
+    if not values:
+        return None
+    return float(sum(values)) / len(values)
+
+
+def _gt_relative_box(
+    truth_bbox: tuple[float, float, float, float],
+    predicted_bbox: tuple[float, float, float, float],
+) -> tuple[float, float, float, float]:
+    tx1, ty1, tx2, ty2 = truth_bbox
+    px1, py1, px2, py2 = predicted_bbox
+    truth_w = max(tx2 - tx1, 1e-12)
+    truth_h = max(ty2 - ty1, 1e-12)
+    truth_cx = (tx1 + tx2) * 0.5
+    truth_cy = (ty1 + ty2) * 0.5
+    return (
+        (px1 - truth_cx) / truth_w,
+        (py1 - truth_cy) / truth_h,
+        (px2 - truth_cx) / truth_w,
+        (py2 - truth_cy) / truth_h,
+    )
+
+
+def _bbox_stability_metrics(
+    samples: dict[
+        tuple[str, str],
+        list[
+            tuple[
+                int,
+                tuple[float, float, float, float],
+                tuple[float, float, float, float],
+            ]
+        ],
+    ],
+) -> dict[str, Any]:
+    center_jitter: list[float] = []
+    width_jitter: list[float] = []
+    height_jitter: list[float] = []
+    area_jitter: list[float] = []
+    temporal_iou: list[float] = []
+
+    for identity_samples in samples.values():
+        normalized: list[tuple[int, tuple[float, float, float, float]]] = []
+        for frame_index, truth_bbox, predicted_bbox in sorted(identity_samples):
+            normalized.append((frame_index, _gt_relative_box(truth_bbox, predicted_bbox)))
+        for (_, previous), (_, current) in zip(normalized, normalized[1:]):
+            prev_w = max(previous[2] - previous[0], 1e-12)
+            prev_h = max(previous[3] - previous[1], 1e-12)
+            curr_w = max(current[2] - current[0], 1e-12)
+            curr_h = max(current[3] - current[1], 1e-12)
+            prev_cx = (previous[0] + previous[2]) * 0.5
+            prev_cy = (previous[1] + previous[3]) * 0.5
+            curr_cx = (current[0] + current[2]) * 0.5
+            curr_cy = (current[1] + current[3]) * 0.5
+            center_jitter.append(math.hypot(curr_cx - prev_cx, curr_cy - prev_cy))
+            width_jitter.append(abs(math.log(curr_w / prev_w)))
+            height_jitter.append(abs(math.log(curr_h / prev_h)))
+            area_jitter.append(abs(math.log((curr_w * curr_h) / (prev_w * prev_h))))
+            temporal_iou.append(bbox_iou(previous, current))
+
+    return {
+        "pair_count": len(center_jitter),
+        "normalized_center_jitter_mean": _mean(center_jitter),
+        "width_log_jitter_mean": _mean(width_jitter),
+        "height_log_jitter_mean": _mean(height_jitter),
+        "area_log_jitter_mean": _mean(area_jitter),
+        "temporal_iou_mean": _mean(temporal_iou),
+        "note": (
+            "Consecutive matched boxes are expressed relative to each frame's GT center/size before "
+            "differencing, reducing genuine person/camera motion from the stability signal."
+        ),
+    }
+
+
 def evaluate_frames(
     frames: Iterable[GroundTruthFrame],
     predictions_by_frame: dict[tuple[str, int], list[PredictedObject]],
@@ -228,6 +511,28 @@ def evaluate_frames(
     id_switches = 0
     fragmentations = 0
     identity_state: dict[tuple[str, str], dict[str, Any]] = {}
+    detection_stability_samples: dict[
+        tuple[str, str],
+        list[
+            tuple[
+                int,
+                tuple[float, float, float, float],
+                tuple[float, float, float, float],
+            ]
+        ],
+    ] = defaultdict(list)
+    tracking_stability_samples: dict[
+        tuple[str, str],
+        list[
+            tuple[
+                int,
+                tuple[float, float, float, float],
+                tuple[float, float, float, float],
+            ]
+        ],
+    ] = defaultdict(list)
+    uninterrupted_track_lengths: list[int] = []
+    recovery_latencies: list[int] = []
 
     for frame in ordered:
         key = (frame.video, frame.frame)
@@ -260,6 +565,10 @@ def evaluate_frames(
             matched = truth_index in matches
             if matched:
                 matched_keys.append(object_key)
+                if obj.object_id is not None:
+                    detection_stability_samples[(frame.video, obj.object_id)].append(
+                        (frame.frame, obj.bbox, predictions[matches[truth_index]].bbox)
+                    )
             else:
                 missed_keys.append(object_key)
             size_counts = by_size[_size_bin(obj)]
@@ -279,27 +588,52 @@ def evaluate_frames(
         if tracks_by_frame is None:
             continue
         tracks = [item for item in tracks_by_frame.get(key, []) if item.label == label and item.track_id is not None]
-        track_matches, _ = _match_objects(truth, tracks, iou_threshold)
+        trackable_truth = [(index, obj) for index, obj in valid_truth if obj.object_id is not None]
+        track_matches, _ = _match_objects(trackable_truth, tracks, iou_threshold)
         track_tp += len(track_matches)
-        track_fn += len(valid_truth) - len(track_matches)
-        for truth_index, obj in valid_truth:
-            if obj.object_id is None:
-                continue
+        track_fn += len(trackable_truth) - len(track_matches)
+        for truth_index, obj in trackable_truth:
             state_key = (frame.video, obj.object_id)
-            state = identity_state.setdefault(state_key, {"last_track_id": None, "gap": False, "seen_match": False})
+            state = identity_state.setdefault(
+                state_key,
+                {
+                    "last_track_id": None,
+                    "gap": False,
+                    "seen_match": False,
+                    "current_run": 0,
+                    "last_match_frame": None,
+                },
+            )
             pred_index = track_matches.get(truth_index)
             if pred_index is None:
+                if state["current_run"] > 0:
+                    uninterrupted_track_lengths.append(int(state["current_run"]))
+                    state["current_run"] = 0
                 if state["seen_match"]:
                     state["gap"] = True
                 continue
             current_track_id = tracks[pred_index].track_id
+            tracking_stability_samples[state_key].append(
+                (frame.frame, obj.bbox, tracks[pred_index].bbox)
+            )
             if state["seen_match"] and state["last_track_id"] != current_track_id:
                 id_switches += 1
+                if state["current_run"] > 0:
+                    uninterrupted_track_lengths.append(int(state["current_run"]))
+                    state["current_run"] = 0
             if state["seen_match"] and state["gap"]:
                 fragmentations += 1
+                if state["last_match_frame"] is not None:
+                    recovery_latencies.append(frame.frame - int(state["last_match_frame"]))
             state["last_track_id"] = current_track_id
             state["seen_match"] = True
             state["gap"] = False
+            state["current_run"] += 1
+            state["last_match_frame"] = frame.frame
+
+    for state in identity_state.values():
+        if state["current_run"] > 0:
+            uninterrupted_track_lengths.append(int(state["current_run"]))
 
     metrics = _rates(overall)
     metrics["false_negatives"] = overall["fn"]
@@ -325,7 +659,20 @@ def evaluate_frames(
         "recall": track_tp / track_total if track_total else None,
         "id_switches": id_switches,
         "fragmentations": fragmentations,
-        "note": "ID metrics use stable GT ids across annotated frames; unannotated intervals are not scored.",
+        "mean_uninterrupted_track_length_annotated_frames": _mean(uninterrupted_track_lengths),
+        "uninterrupted_track_segments": len(uninterrupted_track_lengths),
+        "mean_recovery_latency_frames": _mean(recovery_latencies),
+        "max_recovery_latency_frames": max(recovery_latencies) if recovery_latencies else None,
+        "recovery_events": len(recovery_latencies),
+        "note": (
+            "ID/continuity metrics require stable GT ids. Track length counts consecutive annotated "
+            "matches; recovery latency uses source-frame index distance and unannotated intervals are "
+            "otherwise not scored."
+        ),
+    }
+    metrics["bbox_stability"] = {
+        "detection": _bbox_stability_metrics(detection_stability_samples),
+        "tracking": _bbox_stability_metrics(tracking_stability_samples),
     }
     return metrics
 
@@ -465,57 +812,130 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     inference_seconds = 0.0
     detector_policy_runs = 0
     onnx_inference_calls = 0
+    source_seconds = 0.0
+    source_seconds_known = True
+    input_videos: list[dict[str, Any]] = []
     total_start = time.perf_counter()
 
     for video, video_annotations in sorted(grouped.items()):
-        video_path = Path(args.video_root) / video
-        if not video_path.is_file():
-            raise FileNotFoundError(f"Benchmark video is missing: {video_path}")
-        cap = cv2.VideoCapture(str(video_path))
-        if not cap.isOpened():
-            raise RuntimeError(f"Cannot open benchmark video: {video_path}")
+        meta = inspect_qa_logical_source(video_annotations, args.video_root)
+        source_name = meta.get("source")
+        source_path = Path(args.video_root) / source_name if source_name is not None else None
+
         annotated_frames = {item.frame for item in video_annotations}
         last_needed = max(annotated_frames)
+        frame_count = meta.get("frame_count")
+        if frame_count is not None and last_needed >= int(frame_count):
+            raise RuntimeError(
+                f"Logical source {video!r} ends before annotated frame {last_needed}; "
+                f"frame_count={frame_count}"
+            )
+
         motion = GlobalMotionEstimator()
         tracker = MultiObjectTracker()
-        frame_index = 0
-        try:
-            while frame_index <= last_needed:
-                ok, frame = cap.read()
-                if not ok or frame is None:
+        video_processed_frames = 0
+
+        def process_frame(frame_index: int, frame) -> None:
+            nonlocal processed_frames, inference_seconds, detector_policy_runs
+            nonlocal onnx_inference_calls, video_processed_frames
+            cam = motion.update(frame)
+            infer_start = time.perf_counter()
+            detections = _detect_with_runtime_policy(detector, frame, args)
+            inference_seconds += time.perf_counter() - infer_start
+            detector_policy_runs += 1
+            onnx_inference_calls += int(getattr(detector, "last_inference_calls", 0))
+            if not args.no_appearance:
+                attach_appearance(frame, detections)
+            camera_motion = (cam.dx, cam.dy) if cam.valid else (0.0, 0.0)
+            camera_transform = cam.affine if cam.valid else None
+            tracks = tracker.update(
+                detections,
+                camera_motion=camera_motion,
+                camera_transform=camera_transform,
+            )
+            processed_frames += 1
+            video_processed_frames += 1
+            if frame_index in annotated_frames:
+                key = (video, frame_index)
+                predictions_by_frame[key] = [
+                    PredictedObject(tuple(det.bbox), det.label, float(det.score)) for det in detections
+                ]
+                tracks_by_frame[key] = [
+                    PredictedObject(tuple(track.bbox), track.label, float(track.score), int(track.track_id))
+                    for track in tracks
+                ]
+
+        if meta["kind"] == "frame_images":
+            by_frame = {item.frame: item for item in video_annotations}
+            for frame_index in range(last_needed + 1):
+                item = by_frame.get(frame_index)
+                if item is None or item.source is None:
                     raise RuntimeError(
-                        f"Video {video_path} ended before annotated frame {last_needed}; stopped at {frame_index}"
+                        f"Logical source {video!r} is missing physical image for frame {frame_index}"
                     )
-                cam = motion.update(frame)
-                infer_start = time.perf_counter()
-                detections = _detect_with_runtime_policy(detector, frame, args)
-                inference_seconds += time.perf_counter() - infer_start
-                detector_policy_runs += 1
-                onnx_inference_calls += int(getattr(detector, "last_inference_calls", 0))
-                if not args.no_appearance:
-                    attach_appearance(frame, detections)
-                camera_motion = (cam.dx, cam.dy) if cam.valid else (0.0, 0.0)
-                camera_transform = cam.affine if cam.valid else None
-                tracks = tracker.update(
-                    detections,
-                    camera_motion=camera_motion,
-                    camera_transform=camera_transform,
-                )
-                processed_frames += 1
-                if frame_index in annotated_frames:
-                    key = (video, frame_index)
-                    predictions_by_frame[key] = [
-                        PredictedObject(tuple(det.bbox), det.label, float(det.score)) for det in detections
-                    ]
-                    tracks_by_frame[key] = [
-                        PredictedObject(tuple(track.bbox), track.label, float(track.score), int(track.track_id))
-                        for track in tracks
-                    ]
-                frame_index += 1
-        finally:
-            cap.release()
+                frame_path = Path(args.video_root) / item.source
+                frame = cv2.imread(str(frame_path), cv2.IMREAD_COLOR)
+                if frame is None:
+                    raise RuntimeError(f"Cannot read benchmark image: {frame_path}")
+                process_frame(frame_index, frame)
+        elif meta["kind"] == "image":
+            assert source_path is not None
+            if last_needed != 0:
+                raise RuntimeError(f"Still-image source {source_path} can only use canonical frame 0")
+            frame = cv2.imread(str(source_path), cv2.IMREAD_COLOR)
+            if frame is None:
+                raise RuntimeError(f"Cannot read benchmark image: {source_path}")
+            process_frame(0, frame)
+        elif meta["kind"] == "image_sequence":
+            assert source_path is not None
+            sequence_files = image_sequence_files(source_path)
+            for frame_index in range(last_needed + 1):
+                frame = cv2.imread(str(sequence_files[frame_index]), cv2.IMREAD_COLOR)
+                if frame is None:
+                    raise RuntimeError(f"Cannot read image-sequence frame: {sequence_files[frame_index]}")
+                process_frame(frame_index, frame)
+        else:
+            assert source_path is not None
+            cap = cv2.VideoCapture(str(source_path))
+            if not cap.isOpened():
+                raise RuntimeError(f"Cannot open benchmark video: {source_path}")
+            frame_index = 0
+            try:
+                while frame_index <= last_needed:
+                    ok, frame = cap.read()
+                    if not ok or frame is None:
+                        raise RuntimeError(
+                            f"Video {source_path} ended before annotated frame {last_needed}; stopped at {frame_index}"
+                        )
+                    process_frame(frame_index, frame)
+                    frame_index += 1
+            finally:
+                cap.release()
+
+        fps = meta.get("fps")
+        if fps is not None and float(fps) > 0.0:
+            source_seconds += video_processed_frames / float(fps)
+        else:
+            source_seconds_known = False
+        input_videos.append(
+            {
+                "video": video,
+                "source": source_name,
+                "source_kind": meta["kind"],
+                "source_count": (
+                    len(meta["frame_sources"]) if meta.get("frame_sources") is not None else 1
+                ),
+                "sha256": meta["sha256"],
+                "width": int(meta["width"]),
+                "height": int(meta["height"]),
+                "fps": fps,
+                "frame_count": frame_count,
+                "processed_frames": video_processed_frames,
+            }
+        )
 
     wall_seconds = time.perf_counter() - total_start
+    measured_source_seconds = source_seconds if source_seconds_known and source_seconds > 0.0 else None
     metrics = evaluate_frames(
         ground_truth,
         predictions_by_frame,
@@ -529,6 +949,7 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "revision": args.revision,
         "ground_truth_sha256": ground_truth_sha256(args.ground_truth),
+        "input_videos": input_videos,
         "model": {
             "path": str(args.model),
             "sha256": sha256_file(args.model),
@@ -560,6 +981,13 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "detector_fps": processed_frames / inference_seconds if inference_seconds > 0 else None,
             "detector_policy_runs": detector_policy_runs,
             "onnx_inference_calls": onnx_inference_calls,
+            "onnx_calls_per_frame": (
+                onnx_inference_calls / processed_frames if processed_frames > 0 else None
+            ),
+            "source_seconds": measured_source_seconds,
+            "processing_seconds_per_source_second": (
+                wall_seconds / measured_source_seconds if measured_source_seconds else None
+            ),
             "peak_vram_mb": args.peak_vram_mb,
             "vram_source": args.vram_source if args.peak_vram_mb is not None else None,
         },

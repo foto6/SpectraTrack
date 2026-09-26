@@ -250,3 +250,55 @@ def test_qa_runtime_policy_rejects_unknown_mode():
     detector = _FakePolicyDetector()
     with pytest.raises(ValueError, match="detector_mode"):
         _detect_with_runtime_policy(detector, object(), _policy_args("magic"))
+
+
+def test_bbox_stability_is_gt_relative_to_real_motion():
+    frames = [
+        gt(0, bbox=(0.0, 0.0, 10.0, 20.0)),
+        gt(1, bbox=(10.0, 0.0, 20.0, 20.0)),
+        gt(2, bbox=(20.0, 0.0, 30.0, 20.0)),
+    ]
+    predictions = {
+        ("clip.mp4", 0): [pred((1.0, 0.0, 11.0, 20.0))],
+        ("clip.mp4", 1): [pred((11.0, 0.0, 21.0, 20.0))],
+        ("clip.mp4", 2): [pred((21.0, 0.0, 31.0, 20.0))],
+    }
+    tracks = {
+        key: [PredictedObject(item[0].bbox, "person", 0.9, 7)]
+        for key, item in predictions.items()
+    }
+
+    metrics = evaluate_frames(frames, predictions, tracks)
+    detection = metrics["bbox_stability"]["detection"]
+    tracking = metrics["bbox_stability"]["tracking"]
+
+    assert detection["pair_count"] == 2
+    assert detection["normalized_center_jitter_mean"] == pytest.approx(0.0)
+    assert detection["width_log_jitter_mean"] == pytest.approx(0.0)
+    assert detection["height_log_jitter_mean"] == pytest.approx(0.0)
+    assert detection["area_log_jitter_mean"] == pytest.approx(0.0)
+    assert detection["temporal_iou_mean"] == pytest.approx(1.0)
+    assert tracking["normalized_center_jitter_mean"] == pytest.approx(0.0)
+
+
+def test_tracking_continuity_reports_run_length_and_recovery_latency():
+    frames = [gt(0), gt(1), gt(2), gt(4)]
+    detections = {("clip.mp4", frame.frame): [pred()] for frame in frames}
+    tracks = {
+        ("clip.mp4", 0): [pred(track_id=7)],
+        ("clip.mp4", 1): [pred(track_id=7)],
+        ("clip.mp4", 2): [],
+        ("clip.mp4", 4): [pred(track_id=7)],
+    }
+
+    metrics = evaluate_frames(frames, detections, tracks)
+    tracking = metrics["tracking"]
+
+    assert tracking["fragmentations"] == 1
+    assert tracking["id_switches"] == 0
+    assert tracking["uninterrupted_track_segments"] == 2
+    assert tracking["mean_uninterrupted_track_length_annotated_frames"] == pytest.approx(1.5)
+    assert tracking["recovery_events"] == 1
+    assert tracking["mean_recovery_latency_frames"] == pytest.approx(3.0)
+    assert tracking["max_recovery_latency_frames"] == 3
+
