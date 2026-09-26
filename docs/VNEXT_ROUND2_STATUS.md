@@ -16,6 +16,8 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 ## Global gates
 
+- **DONE** — all public-first role documentation heads are CI-green after strategy dispatch.
+
 - **DONE** — public `mot17-public-r1` frozen.
 - **DONE** — public `crowdhuman-val-fbox-r1` frozen.
 - **DONE** — Round-1 detector/fusion/tracking/enhancement/scheduler evidence collected.
@@ -67,7 +69,7 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-tracking @ 35de7cbdb4023c66cfdba27698bd8b62dd106e78`
+`agent/vnext-tracking @ 372c96e71e504a54ea2ac027ab988dfba2bd1918`
 
 Done:
 
@@ -137,7 +139,7 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-qa @ abc269f5ebe062c80d1fba8eb5c06b1b1450c6b9`
+`agent/vnext-qa @ f4f406182df54335e2c26a34091915408204789c`
 
 Done:
 
