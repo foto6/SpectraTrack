@@ -1201,3 +1201,115 @@ Production refs re-verified unchanged:
 - `main @ 2012eaae2f4ffe820a66d12e40346d911616cd03`
 
 Next architect action is to inspect every new specialist head as it appears: ownership/diff -> CI/tests -> artifact/provenance -> metrics/gates -> role/status/worklog update. No specialist feature coding is delegated to the architect unless a coordination-only fix is required.
+
+
+## 2026-09-26 — target-PC control restored and interrupted artifact verification
+
+### DONE — substantive target-PC control restored
+
+Device `DESKTOP-64LCMQ8` is online through Remote Desktop Commander. Verified:
+
+- device status: online;
+- ping: success;
+- substantive PowerShell command: success.
+
+This clears the prior relay-only blocker.
+
+### FAILED — first recovery inspection command syntax
+
+The first read-only PowerShell inspection command failed with a parser error caused by piping directly from a `foreach` statement.
+
+No benchmark process was launched, no artifact was changed, and no repository state was modified.
+
+The failure was corrected with a read-only object collection command.
+
+### DONE — process verification before restart
+
+No active SpectraTrack benchmark Python process was found.
+
+Observed Python processes were VS Code Black formatter services plus:
+
+- `C:\Users\foto6\SpectraTrack-control\supervisor.py run`
+
+No A1/A2/A3 benchmark command line was active.
+
+Therefore old interrupted results could be inspected safely without assuming a job was still running.
+
+### DONE — A2 old audit artifacts recovered
+
+Verified existing local artifacts:
+
+- `C:\Users\foto6\SpectraTrack-data\runs\a2-audit-hard-nms.json`
+  - 836,448,758 bytes
+  - modified 2026-09-26 09:50:26 UTC
+  - replay canonical SHA-256 `d27d45172a2df0a5c81ff83be2ceed03d2ed1eef922d3fde06f72b3126a89c59`
+  - replay source SHA-256 `b2719a2c93c353123437497ac9513033898d3d65750a32ed633d05e8fb65b2d4`
+  - ONNX calls 0
+  - wall 19.1857 s
+- `a2-audit-conservative-nmm.json`
+  - 945,546,052 bytes
+  - modified 2026-09-26 09:50:55 UTC
+  - canonical replay SHA-256 `a34f67210de56ca63ab03060876116eb3ab026376a58ce3d6f38dfd2f19785b6`
+  - replay source SHA-256 `ffcd3f5a1812afc83f392e4410a63e2cef3e5bab3491455a826ee65fac25cea1`
+  - ONNX calls 0
+  - wall 22.9854 s
+- `a2-audit-weighted.json`
+  - 953,219,839 bytes
+  - modified 2026-09-26 09:51:00 UTC
+  - canonical replay SHA-256 `d796c01a22fc93e8510db6420fd5799cfe92c69ae14e83a061e5eb41a1abd93d`
+  - replay source SHA-256 `91a3b4cedde639e04478a06be5a57697aa22651a7a02d61e87685b712eb7d007`
+  - ONNX calls 0
+  - wall 25.7062 s
+
+These are valid recovered old current-tracker audit artifacts, but they do **not** close Round-2 A2 because they do not contain the required `current-ambiguity-guard` real-replay comparison.
+
+### DONE — A3 strict weak-person artifact recovered
+
+Verified:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a3-round2-weak1.json`
+
+- 8,933 bytes;
+- modified 2026-09-26 09:56:06 UTC;
+- schema `spectratrack-vnext-enhancement-profile-v1`;
+- corpus `mot17-public-r1`;
+- source `MOT17-04-first300.mp4`;
+- source commit `86b1460b6f9879038de92eb1e1341a96221e6c03`;
+- model SHA-256 `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`;
+- providers DML + CPU fallback;
+- selective gate `weak-person`;
+- raw corroboration required;
+- 2,400 raw probe calls;
+- actual low-level ONNX calls across shared experiment: 2,726;
+- sampled source seconds: 10;
+- wall: 437.343 s.
+
+Recovered candidate deltas:
+
+- bilateral:
+  - 30 enhanced calls;
+  - 15 recovered GT;
+  - +372 pre-fusion FP observations;
+  - ~0.500 recovered GT / extra call;
+  - ~24.8 FP observations / recovered GT;
+  - 34.906 processing s / sampled source s.
+- current_adaptive_cached:
+  - 158 enhanced calls;
+  - 101 recovered GT;
+  - +2,170 pre-fusion FP observations;
+  - ~0.639 recovered GT / extra call;
+  - ~21.49 FP observations / recovered GT;
+  - 36.747 processing s / sampled source s;
+  - bbox center/size residual jitter worsened vs raw.
+- sharpen:
+  - 138 enhanced calls;
+  - 87 recovered GT;
+  - +1,890 pre-fusion FP observations;
+  - ~0.630 recovered GT / extra call;
+  - ~21.72 FP observations / recovered GT;
+  - 36.409 processing s / sampled source s;
+  - bbox center/size residual jitter worsened vs raw.
+
+A3 status changes from `NEEDS VERIFICATION` to **artifact verified** for this MOT17 strict-profile run.
+
+However this artifact reports **pre-fusion** FP deltas and A3 explicitly does not own final fusion. It therefore cannot by itself choose enhancement ON/OFF. Post-fusion quality plus NightOwls held-out evidence remain required.
