@@ -806,3 +806,16 @@ GitHub Actions run `36241047867`:
 - diagnostics/self-check/build/package/upload passed.
 
 The profiler now enforces a reproducible per-operation/source-frame enhanced-inference cap and records budget-skipped ROIs. The quality decision remains pending target-PC evidence.
+
+
+### IN PROGRESS — freeze A1 Round-2 MOT17 development/held-out split
+
+A1 already supports exact repeated `--include-video` selection. To prevent accidental held-out leakage, the sequence split itself will now be committed as immutable research metadata before the target-PC run.
+
+Split policy:
+
+- development: `MOT17-04` only, because Round-2 fusion thresholds/policy were already developed on its first 600 frames;
+- held-out validation: `MOT17-02`, `MOT17-05`, `MOT17-09`, `MOT17-10`, `MOT17-11`, `MOT17-13`;
+- CrowdHuman validation remains a separate dense detection-safety corpus and is not used for MOT17 tuning.
+
+No held-out result may be used to retune the policy in this Round-2 cycle.
