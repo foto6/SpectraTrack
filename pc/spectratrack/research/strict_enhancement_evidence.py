@@ -30,15 +30,31 @@ WEAK_MAX = 0.35
 CORROBORATION_IOU = 0.10
 
 
-def _source_image(source_root: Path, source: str):
+def _source_image(source_root: Path, source: str, source_frame: int | None):
     path = Path(source)
     if not path.is_absolute():
         path = source_root / path
     if not path.is_file():
         raise FileNotFoundError(path)
+
     frame = cv2.imread(str(path), cv2.IMREAD_COLOR)
-    if frame is None:
-        raise RuntimeError(f"cannot read source image: {path}")
+    if frame is not None:
+        return path, frame
+
+    if source_frame is None:
+        raise RuntimeError(
+            f"source is not a readable image and has no explicit source_frame: {path}"
+        )
+    capture = cv2.VideoCapture(str(path))
+    if not capture.isOpened():
+        raise RuntimeError(f"cannot open source image/video: {path}")
+    try:
+        capture.set(cv2.CAP_PROP_POS_FRAMES, int(source_frame))
+        ok, frame = capture.read()
+    finally:
+        capture.release()
+    if not ok or frame is None:
+        raise RuntimeError(f"cannot read source video frame {source_frame}: {path}")
     return path, frame
 
 
@@ -110,7 +126,11 @@ def run_strict_evidence(args: argparse.Namespace) -> dict[str, Any]:
     started = time.perf_counter()
 
     for record in records:
-        image_path, frame = _source_image(source_root, record.source)
+        image_path, frame = _source_image(
+            source_root,
+            record.source,
+            record.source_frame,
+        )
         source_key = str(image_path)
         if source_key not in source_hashes:
             source_hashes[source_key] = sha256_file(image_path)
