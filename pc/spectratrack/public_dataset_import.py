@@ -353,8 +353,10 @@ def import_mot17(
                         }
                     )
                 elif class_id in MOT17_IGNORE_CLASSES:
-                    if valid <= 0.0:
-                        continue
+                    # MOT17 stores target-like distractor/static/reflection regions with
+                    # the GT consider/ignore flag set to 0. They must still become
+                    # canonical ignore regions so predictions overlapping them are not
+                    # counted as ordinary false positives.
                     if not _bbox_intersects_image(annotation["bbox"], info["width"], info["height"]):
                         counts["non_intersecting_target_like_omitted"] += 1
                         continue

@@ -624,7 +624,7 @@ Preserved provenance:
 Scoring conversion:
 
 - class 1 pedestrian with mark > 0 -> scored `person`, stable ID `MOT17-XX:<id>`;
-- classes 2/7/8/12 -> canonical ignored person regions;
+- classes 2/7/8/12 -> canonical ignored person regions even when the MOT consider/ignore flag is 0;
 - zero-marked pedestrians -> omitted;
 - unrelated classes -> omitted;
 - 1-based MOT xywh -> 0-based xyxy without clipping;

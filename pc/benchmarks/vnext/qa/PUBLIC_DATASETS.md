@@ -101,7 +101,7 @@ Canonical scoring target:
 - class 1 pedestrian, mark > 0 -> scored `person`;
 - stable ID becomes `MOT17-XX:<original-id>`;
 - classes 2, 7, 8, 12 (person-on-vehicle, static person, distractor, reflection) ->
-  `person, ignore=true`;
+  `person, ignore=true`, including the MOT GT rows whose consider/ignore flag is `0`;
 - zero-marked pedestrian GT -> omitted from scored GT;
 - unrelated classes -> omitted;
 - original 1-based source frame -> `source_frame`;
