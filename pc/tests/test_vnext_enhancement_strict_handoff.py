@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 import spectratrack.research.strict_enhancement_evidence as evidence
+from spectratrack.research.apply_enhancement_alternates import apply_alternates
 from spectratrack.research.strict_weak_manifest import build_manifest
 
 
@@ -234,3 +235,87 @@ def test_strict_evidence_rejects_manifest_without_frozen_raw_support(tmp_path):
 
     with pytest.raises(ValueError, match="frozen raw_support"):
         evidence._validate_strict_records(records)
+
+
+def test_apply_alternates_replaces_same_source_measurement_without_new_evidence_source(
+    tmp_path,
+    monkeypatch,
+):
+    prefusion = tmp_path / "prefusion.jsonl"
+    source_map = tmp_path / "gt.jsonl"
+    roi_manifest = tmp_path / "roi.jsonl"
+    _write_prefusion(prefusion)
+    _write_source_map(source_map)
+    build_manifest(prefusion, roi_manifest, source_map_path=source_map)
+
+    source_root = tmp_path / "dataset"
+    image_dir = source_root / "images"
+    image_dir.mkdir(parents=True)
+    frame = np.full((64, 64, 3), 10, dtype=np.uint8)
+    assert cv2.imwrite(str(image_dir / "frame0.png"), frame)
+    model = tmp_path / "model.onnx"
+    model.write_bytes(b"fake-model")
+
+    class FakeDetector:
+        def __init__(self, *_args, **_kwargs):
+            self.providers = ["FakeExecutionProvider"]
+            self.input_w = 960
+            self.input_h = 960
+            self.class_thresholds = {}
+            self.last_stage_ms = {}
+            self.last_inference_calls = 0
+
+        def _reset_policy_metrics(self):
+            self.last_stage_ms = {}
+            self.last_inference_calls = 0
+
+        def _detect_once(self, _image, _thresholds):
+            self.last_inference_calls += 1
+            self.last_stage_ms["inference"] = self.last_stage_ms.get("inference", 0.0) + 2.0
+            from spectratrack.types import Detection
+
+            return [Detection((10.0, 10.0, 20.0, 40.0), 0.55, 0, "person")]
+
+    monkeypatch.setattr("spectratrack.detector.YoloOnnxDetector", FakeDetector)
+    evidence_path = tmp_path / "alternates.jsonl"
+    evidence.run_strict_evidence(
+        SimpleNamespace(
+            roi_manifest=str(roi_manifest),
+            source_root=str(source_root),
+            model=str(model),
+            operation="current_adaptive_cached",
+            output=str(evidence_path),
+            source_commit="a3",
+            input_size=960,
+            conf=0.35,
+            nms_iou=0.45,
+            cpu=True,
+        )
+    )
+
+    augmented = tmp_path / "augmented-prefusion.jsonl"
+    result = apply_alternates(prefusion, evidence_path, augmented)
+
+    assert result["alternate_measurements_replaced"] == 1
+    assert result["independent_sources_added"] == 0
+
+    rows = [json.loads(line) for line in augmented.read_text(encoding="utf-8").splitlines()]
+    frame_row = next(row for row in rows if row["type"] == "frame")
+    tile1 = [
+        candidate
+        for candidate in frame_row["candidates"]
+        if candidate["source_id"] == "tile:1"
+    ]
+    assert len(tile1) == 2
+    assert sorted(candidate["score"] for candidate in tile1) == pytest.approx([0.18, 0.55])
+    assert {candidate["source_id"] for candidate in frame_row["candidates"]} == {
+        "tile:0",
+        "tile:1",
+        "tile:2",
+        "full",
+    }
+
+    metadata = next(row for row in rows if row["type"] == "metadata")
+    assert metadata["a3_enhancement"]["semantics"].startswith("same-source")
+    summary = next(row for row in rows if row["type"] == "summary")
+    assert summary["a3_enhancement"]["independent_sources_added"] == 0
