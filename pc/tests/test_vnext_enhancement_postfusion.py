@@ -37,6 +37,23 @@ def _qa_result(
             "false_positives": fp,
             "false_negatives": fn,
             "matched_ground_truth": list(matched),
+            "by_tag": {
+                "night": {"tp": len(matched), "fn": fn, "gt": len(matched) + fn, "recall": recall}
+            },
+            "by_attribute": {
+                "occluded": {"tp": len(matched), "fn": fn, "gt": len(matched) + fn, "recall": recall}
+            },
+            "by_size": {
+                "height_lt_24": {
+                    "tp": len(matched),
+                    "fp": fp,
+                    "fn": fn,
+                    "gt": len(matched) + fn,
+                    "predictions": len(matched) + fp,
+                    "recall": recall,
+                    "precision": precision,
+                }
+            },
             "bbox_stability": {
                 "detection": {
                     "pair_count": 5,
@@ -141,6 +158,11 @@ def test_build_summary_reports_round2_quality_per_compute():
     performance = summary["postfusion_run_performance"]
     assert performance["wall_seconds_delta"] == pytest.approx(2.5)
     assert performance["postfusion_run_onnx_call_delta"] == pytest.approx(4.0)
+
+    subgroups = summary["subgroups"]
+    assert subgroups["by_tag"]["night"]["recall_delta"] == pytest.approx(0.25)
+    assert subgroups["by_attribute"]["occluded"]["recall_delta"] == pytest.approx(0.25)
+    assert subgroups["by_size"]["height_lt_24"]["precision_delta"] == pytest.approx(-0.05)
 
 
 def test_summary_rejects_non_strict_profile():
