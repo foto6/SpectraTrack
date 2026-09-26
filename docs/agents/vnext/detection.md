@@ -1408,3 +1408,30 @@ Run semantics remain frozen: input 960, detector conf 0.35, decoder-local NMS Io
 CrowdHuman is detection-only dense/close-person safety evidence. No tracking/ID metrics and no replay handoff are produced from this corpus. No threshold retuning is permitted.
 
 Decision: **START CROWDHUMAN DENSE-SAFETY AFTER THIS CHECKPOINT IS COMMITTED.**
+
+## Round 2 CrowdHuman dense-safety launch
+
+Status: **IN PROGRESS — REAL BENCHMARK PROCESS RUNNING**
+
+Exact experiment source commit: `06b3fee1791aeb7565b4e09fc874c44da2690252`.
+
+Target process chain:
+
+- Remote Desktop Commander launcher PID: `11292`;
+- Python launcher PID: `28260`;
+- benchmark worker PID: `19944`;
+- corpus: `crowdhuman-val-fbox-r1`;
+- GT SHA-256: `2576c6a1db502cef1ffd103337b7728e628d6dfca8bedb3df9d606ce2f23dd0f`;
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`;
+- methods: hard-nms / conservative-nmm / weighted / evidence-aware;
+- provider preference: DirectML with CPU fallback;
+- no tracking metrics; no replay output.
+
+Artifacts at launch:
+
+- result: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-crowdhuman.json` — absent;
+- completion marker: result + `.complete.json` — absent;
+- console log: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-crowdhuman.json.console.log` — present, 0 bytes at launch;
+- prefusion: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-crowdhuman` — present.
+
+Decision: **IN PROGRESS — DO NOT START A DUPLICATE CROWDHUMAN RUN.**
