@@ -1044,3 +1044,56 @@ Reviewed issues #18-#23 after the retry. No newer A1/A2/A3/A4 benchmark result h
 ### BLOCKED — private CCTV human review is now the actionable non-compute gate
 
 A5's 46-frame private review pack and machine draft preannotations are prepared. Human confirmation/correction is required before any `cctv-golden-r1` freeze. This is intentionally not bypassed by AI review.
+
+
+## 2026-09-26 — public-first benchmark strategy revision
+
+### DONE — owner changed benchmark priority
+
+The project owner explicitly moved private CCTV out of the primary benchmark role. Public human-annotated datasets now carry the main quantitative evidence. The current 46-frame private review pack is retained but human review is deferred until public finalists exist.
+
+### DONE — official dataset/terms research
+
+DanceTrack official repository findings:
+
+- public train and validation annotations provide bbox + stable identity in MOT-style `gt.txt`;
+- annotations are CC BY 4.0;
+- image/video dataset use is non-commercial research only;
+- code is MIT;
+- result: **ACCEPTED for isolated research import**, no raw dataset bytes in Git/product release.
+
+NightOwls official dataset findings:
+
+- night pedestrian dataset, 279k frames / 40 sequences;
+- PNG/JSON and Caltech-compatible distributions;
+- annotations include pedestrian boxes plus occlusion/difficulty/pose and tracking information;
+- official license allows academic/non-academic non-commercial research/personal experimentation, requires citation, and prohibits redistribution of the dataset or modified versions;
+- result: **ACCEPTED as primary isolated night research corpus**, no raw/modified dataset redistribution.
+
+LLVIP official repository findings:
+
+- visible + infrared paired low-light dataset;
+- non-commercial research/teaching/personal experimentation license;
+- result: **ACCEPTED as optional secondary research evidence using visible/RGB side only**; infrared is not SpectraTrack production input.
+
+KAIST:
+
+- visible + thermal pedestrian benchmark with dense manual annotations and temporal correspondence;
+- retained as **fallback**, not primary Round-2 night corpus, to avoid unnecessary multispectral-origin complexity; visible/RGB only if used.
+
+### DONE — architectural dataset decision
+
+Round-2 public evidence contract is now:
+
+- MOT17 -> A1 detection/fusion + A2 tracking;
+- CrowdHuman -> A1 dense/crowd/fusion safety, no tracking metrics;
+- DanceTrack -> A2 association/ID/crossing stress, association-only first;
+- NightOwls -> A1 night detection/fusion + A3 enhancement; A2 tracking only if importer validates stable IDs;
+- LLVIP visible -> optional secondary low-light detector/enhancement evidence;
+- private CCTV -> final reduced domain sanity check only.
+
+### IN PROGRESS — specialist dispatch update
+
+A5 is assigned DanceTrack + NightOwls importer/freeze work. A2 is assigned DanceTrack association-only after A5 freeze. A1/A3 are assigned NightOwls validation after A5 freeze. A4 remains parked until public quality finalists exist.
+
+The target-PC substantive control channel remains blocked; no local long-running job is restarted blindly.
