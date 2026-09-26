@@ -196,6 +196,55 @@ def _safe_stem(video: str) -> str:
     return stem.strip("._") or "video"
 
 
+def _artifact_record(path: str | Path) -> dict[str, Any]:
+    artifact = Path(path)
+    stat = artifact.stat()
+    return {
+        "path": str(artifact),
+        "sha256": sha256_file(artifact),
+        "size_bytes": int(stat.st_size),
+        "mtime_ns": int(stat.st_mtime_ns),
+    }
+
+
+def _artifact_manifest(
+    *,
+    prefusion_dir: str | Path | None,
+    replay_outputs: Mapping[str, Mapping[str, str]],
+    videos: Iterable[str],
+) -> dict[str, Any]:
+    prefusion: dict[str, Any] = {}
+    if prefusion_dir is not None:
+        root = Path(prefusion_dir)
+        for video in sorted(set(videos)):
+            path = root / f"{_safe_stem(video)}.jsonl"
+            if path.is_file():
+                prefusion[video] = _artifact_record(path)
+
+    replays: dict[str, Any] = {}
+    for video, methods in sorted(replay_outputs.items()):
+        replays[video] = {
+            method: _artifact_record(path)
+            for method, path in sorted(methods.items())
+        }
+    return {"prefusion": prefusion, "replays": replays}
+
+
+def _write_completion_marker(output_path: str | Path, report: Mapping[str, Any]) -> Path:
+    target = Path(output_path)
+    marker = target.with_name(target.name + ".complete.json")
+    payload = {
+        "schema": "spectratrack-vnext-a1-completion-v1",
+        "source_commit": report["source_commit"],
+        "corpus_revision": report["corpus_revision"],
+        "ground_truth_sha256": report["ground_truth_sha256"],
+        "model_sha256": report["model_sha256"],
+        "output": _artifact_record(target),
+    }
+    marker.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return marker
+
+
 def export_canonical_replays(
     *,
     prefusion_dir: str | Path,
@@ -456,6 +505,11 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
             methods=args.method,
             config=config,
         )
+    artifacts = _artifact_manifest(
+        prefusion_dir=prefusion_dir,
+        replay_outputs=replay_outputs,
+        videos=by_video,
+    )
     return {
         "schema": "spectratrack-vnext-fusion-corpus-v1",
         "source_commit": args.source_commit,
@@ -487,6 +541,7 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         "methods": methods,
         "per_video": per_video,
         "replays": replay_outputs,
+        "artifacts": artifacts,
         "note": "Research corpus evidence only; no production behavior changed.",
     }
 
@@ -535,7 +590,17 @@ def main() -> int:
     target = Path(args.output)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps(report["methods"], sort_keys=True))
+    marker = _write_completion_marker(target, report)
+    print(
+        json.dumps(
+            {
+                "methods": report["methods"],
+                "output": _artifact_record(target),
+                "completion_marker": _artifact_record(marker),
+            },
+            sort_keys=True,
+        )
+    )
     return 0
 
 
