@@ -2131,3 +2131,19 @@ Therefore the recovered-GT and FP deltas above remain **pre-fusion development e
 ### NEXT
 
 Wait for A5 to finish and freeze the official NightOwls corpus/slice. Do not start held-out enhancement inference before that immutable revision/hash exists.
+
+
+## 2026-09-27 — next major step: A4 existing quality/cadence audit
+
+### IN PROGRESS — audit existing A4 target-PC artifacts before any new scheduler run
+
+With A1 closed and A3 waiting only on frozen NightOwls, inspect existing A4 scheduler/call-budget artifacts and specialist handoff.
+
+Safety boundaries:
+
+- do not start a new GPU scheduler benchmark until existing artifacts are inventoried;
+- preserve RX 5700 XT / DirectML provenance;
+- use hard-NMS as the retained A1 fusion control;
+- treat A3 enhancement cost as provisional until NightOwls finalizes OFF/bilateral/current_adaptive_cached;
+- identify which 1–3 cadence configs can be quality-validated without duplicating completed cost work;
+- persist findings before any new A4 inference.
