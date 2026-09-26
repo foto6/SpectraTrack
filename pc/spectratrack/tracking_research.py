@@ -41,6 +41,7 @@ class ResearchScenario:
     truth_by_frame: dict[int, tuple[TruthObject, ...]]
     focus: str
     ignored_bboxes_by_frame: dict[int, tuple[BBox, ...]] = field(default_factory=dict)
+    evaluation_label: str = "person"
 
 
 @dataclass(frozen=True, slots=True)
@@ -1086,7 +1087,11 @@ def evaluate_tracking(
 
     for frame in scenario.replay.frames:
         truth = scenario.truth_by_frame.get(frame.frame, ())
-        tracks = outputs.get(frame.frame, [])
+        tracks = [
+            track
+            for track in outputs.get(frame.frame, [])
+            if track.label == scenario.evaluation_label
+        ]
         total_gt += len(truth)
         matches = _match_truth(truth, tracks)
         matched_gt += len(matches)
@@ -1294,7 +1299,11 @@ def mine_current_failure_windows(
 
     for frame in scenario.replay.frames:
         truth = scenario.truth_by_frame.get(frame.frame, ())
-        tracks = outputs.get(frame.frame, [])
+        tracks = [
+            track
+            for track in outputs.get(frame.frame, [])
+            if track.label == scenario.evaluation_label
+        ]
         matches = _match_truth(truth, tracks)
         used_track_ids = {tracks[column].track_id for column in matches.values()}
         ignored_bboxes = scenario.ignored_bboxes_by_frame.get(frame.frame, ())
@@ -1700,6 +1709,7 @@ def scenario_from_canonical_ground_truth(
         truth_by_frame=truth_by_frame,
         focus="current-vs-ambiguity-guard on identical canonical A1 replay bytes",
         ignored_bboxes_by_frame=ignored_bboxes_by_frame,
+        evaluation_label=label,
     )
 
 def run_scored_replay_candidate(
