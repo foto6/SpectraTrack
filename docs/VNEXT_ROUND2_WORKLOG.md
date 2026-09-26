@@ -1017,3 +1017,30 @@ Coordinator stop condition reached for two independent reasons:
 2. the target-PC substantive control channel is persistently unavailable and prevents safe verification/resumption of long local jobs.
 
 Production integration, `agent/vnext-integrator`, merge to `integration/main`, RC changes and release all remain locked.
+
+
+## 2026-09-26 20:17 +07 — continuation after owner authorization
+
+### DONE — retry minimum target-PC control probe
+
+Target PC `DESKTOP-64LCMQ8` answered ping successfully.
+
+A minimal substantive PowerShell probe containing only:
+
+`Write-Output 'ok'; Get-Date`
+
+still timed out through Remote Desktop Commander.
+
+This confirms the current blocker is not caused by a long Git/benchmark command. The control channel can resolve ping while failing even trivial substantive execution.
+
+### BLOCKED — target-PC experiment continuation remains unsafe
+
+Because the minimum command failed, no A1/A2/A3 local job was restarted and no artifact was overwritten. Existing local A2/A3 results remain **NEEDS VERIFICATION**; A1 held-out remains **NOT DONE**.
+
+### DONE — GitHub specialist issue review
+
+Reviewed issues #18-#23 after the retry. No newer A1/A2/A3/A4 benchmark result had been posted beyond the already recorded states. A1/A2/A3/A5 assignments remain active; A4 remains deferred until surviving quality policies are available.
+
+### BLOCKED — private CCTV human review is now the actionable non-compute gate
+
+A5's 46-frame private review pack and machine draft preannotations are prepared. Human confirmation/correction is required before any `cctv-golden-r1` freeze. This is intentionally not bypassed by AI review.
