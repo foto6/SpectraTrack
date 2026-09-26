@@ -535,3 +535,29 @@ GitHub Actions PC CI:
 - standalone Windows build, CLI smoke, packaging and artifact upload: success.
 
 This tooling does not itself constitute held-out quality evidence. The required next run remains the fixed MOT17 held-out sequence evaluation plus CrowdHuman dense-safety evaluation on the target evidence.
+
+
+## Round 2 supplement — fixed MOT17 validation split
+
+Split artifact:
+
+`pc/benchmarks/vnext/detection/round2_mot17_split.json`
+
+Development:
+
+- `MOT17-04` only.
+
+Held out:
+
+- `MOT17-02`
+- `MOT17-05`
+- `MOT17-09`
+- `MOT17-10`
+- `MOT17-11`
+- `MOT17-13`
+
+Rationale: the Round-2 evidence-aware policy was already tuned using MOT17-04 first-600-frame development evidence. The whole logical sequence is therefore excluded from held-out claims.
+
+CrowdHuman validation remains a separate dense-detection safety check.
+
+Held-out results are evaluation-only for this cycle: do not use them to silently retune the thresholds. A failed held-out gate must remain recorded as a failed candidate or trigger a separately versioned next research cycle.
