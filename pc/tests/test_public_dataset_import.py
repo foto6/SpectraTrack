@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import pytest
 
-from spectratrack.public_dataset_import import import_crowdhuman, import_mot17
+from spectratrack.public_dataset_import import import_crowdhuman, import_dancetrack, import_mot17
 from spectratrack.qa_benchmark import evaluate_frames, load_ground_truth
 from spectratrack.vnext_qa import build_frozen_manifest, inspect_corpus
 
@@ -250,3 +250,109 @@ def test_import_crowdhuman_rejects_training_annotations(tmp_path: Path):
             importer_source_commit="e" * 40,
             acknowledge_terms=True,
         )
+
+
+def _dancetrack_fixture(root: Path, *, trailing="1,1,1"):
+    sequence = root / "val" / "dancetrack0001"
+    image_dir = sequence / "img1"
+    _write_image(image_dir / "00000001.jpg")
+    _write_image(image_dir / "00000002.jpg")
+    (sequence / "gt").mkdir(parents=True)
+    (sequence / "seqinfo.ini").write_text(
+        "\n".join(
+            [
+                "[Sequence]",
+                "name=dancetrack0001",
+                "imDir=img1",
+                "frameRate=20",
+                "seqLength=2",
+                "imWidth=100",
+                "imHeight=80",
+                "imExt=.jpg",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (sequence / "gt" / "gt.txt").write_text(
+        "\n".join(
+            [
+                f"1,4,1,1,10,20,{trailing}",
+                f"2,4,2,1,10,20,{trailing}",
+                f"2,9,30,10,12,22,{trailing}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_import_dancetrack_reuses_mot_geometry_without_mot17_semantics(tmp_path: Path):
+    root = tmp_path / "DanceTrack"
+    _dancetrack_fixture(root)
+    gt = tmp_path / "dancetrack.jsonl"
+    manifest_path = tmp_path / "dancetrack.import.json"
+
+    manifest = import_dancetrack(
+        dataset_root=root,
+        output_ground_truth=gt,
+        output_manifest=manifest_path,
+        split="val",
+        importer_source_commit="f" * 40,
+        acknowledge_terms=True,
+    )
+
+    rows = _read_jsonl(gt)
+    assert len(rows) == 2
+    assert rows[0]["video"] == "golden/public/dancetrack-val/dancetrack0001"
+    assert rows[0]["frame"] == 0
+    assert rows[0]["source_frame"] == 1
+    assert rows[0]["source_sequence"] == "dancetrack0001"
+    assert rows[0]["source_fps"] == pytest.approx(20.0)
+    assert rows[0]["tags"] == []
+    assert rows[0]["objects"][0]["id"] == "DanceTrack:dancetrack0001:4"
+    assert rows[0]["objects"][0]["bbox"] == [0.0, 0.0, 10.0, 20.0]
+    assert rows[0]["objects"][0]["attributes"] if "attributes" in rows[0]["objects"][0] else [] == []
+    assert manifest["dataset"]["split"] == "val"
+    assert manifest["tracking_supported"] is True
+    assert manifest["conversion_settings"]["trailing_fields"].startswith("required constant")
+    assert "scored_classes" not in manifest["conversion_settings"]
+    assert "visibility_attributes" not in manifest["conversion_settings"]
+    assert manifest["sequences"][0]["gt_rows"] == 3
+    assert manifest["importer_source_commit"] == "f" * 40
+
+    parsed = load_ground_truth(gt)
+    assert parsed[0].source_sequence == "dancetrack0001"
+    assert parsed[0].objects[0].object_id == "DanceTrack:dancetrack0001:4"
+
+
+def test_import_dancetrack_rejects_nonconstant_trailing_fields(tmp_path: Path):
+    root = tmp_path / "DanceTrack"
+    _dancetrack_fixture(root, trailing="1,2,1")
+
+    with pytest.raises(ValueError, match="trailing fields"):
+        import_dancetrack(
+            dataset_root=root,
+            output_ground_truth=tmp_path / "bad.jsonl",
+            output_manifest=tmp_path / "bad.import.json",
+            split="val",
+            importer_source_commit="1" * 40,
+            acknowledge_terms=True,
+        )
+
+
+def test_import_dancetrack_validates_seqinfo_image_dimensions(tmp_path: Path):
+    root = tmp_path / "DanceTrack"
+    _dancetrack_fixture(root)
+    _write_image(root / "val" / "dancetrack0001" / "img1" / "00000002.jpg", width=99, height=80)
+
+    with pytest.raises(ValueError, match="dimensions"):
+        import_dancetrack(
+            dataset_root=root,
+            output_ground_truth=tmp_path / "bad.jsonl",
+            output_manifest=tmp_path / "bad.import.json",
+            split="val",
+            importer_source_commit="2" * 40,
+            acknowledge_terms=True,
+        )
+
