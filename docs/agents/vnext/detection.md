@@ -948,3 +948,53 @@ All result/prefusion/replay/marker paths remain those recorded in the launch che
 Decision:
 
 **IN PROGRESS — DO NOT START A DUPLICATE RUN.**
+
+
+## Round 2 live held-out verification — existing retry preserved
+
+Status:
+
+**IN PROGRESS — EXISTING RUN VERIFIED, DUPLICATE RESTART FORBIDDEN**
+
+Remote branch state observed before this checkpoint:
+
+`agent/vnext-detection @ 2a2176e5b21d9a0d7e472da0ec5cf76c550f4f9a`
+
+The coordinator-requested `bccf087df01b74bc463dcc3525e5665110ff8225` is a verified ancestor of the current branch; the branch is 16 commits ahead of that checkpoint. No reset/rebase/history rewrite was performed.
+
+Target PC:
+
+- device: `DESKTOP-64LCMQ8`;
+- retry terminal PID: `21908`;
+- benchmark launcher child: PID `2100`;
+- benchmark Python worker: PID `21104`;
+- worker state: alive/responding;
+- observed working set: about `658907136` bytes;
+- observed accumulated CPU at verification: about `241.9 s`;
+- process creation: `2026-09-26 23:34:38 +07`.
+
+The exact active command was re-read from the target process table and still binds:
+
+- source commit: `e2dad933119e0639413200466ffbda0baeba6b2e`;
+- corpus: `mot17-public-r1`;
+- GT: canonical MOT17 public JSONL;
+- model: `E:\SpectraTrack\yolo11x.onnx`;
+- held out only: MOT17-02/05/09/10/11/13;
+- `--resume --per-video`;
+- frozen policy/config from the previous launch checkpoint.
+
+Artifact state at verification:
+
+- final result JSON: ABSENT;
+- completion marker: ABSENT;
+- current console log: present, size `0` bytes, created/modified `2026-09-26T16:34:38.691Z`;
+- prefusion directory: present, currently empty, created `2026-09-26T16:34:42.807Z`;
+- replay directory: ABSENT.
+
+Interpretation:
+
+The run is active and has not yet reached the first persisted per-sequence prefusion artifact. Empty stdout/log at this point is not treated as a failure because the Python worker is alive and accumulating CPU. No duplicate run is authorized.
+
+Decision:
+
+**IN PROGRESS / NEEDS COMPLETION — preserve PID 21908 run and continue artifact/process monitoring.**
