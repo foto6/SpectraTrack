@@ -409,3 +409,24 @@ At the last successful control-channel check the processes were still active and
 7. Architect decision to unlock `agent/vnext-integrator`.
 
 No production merge/release is authorized yet.
+
+
+## 2026-09-26 — coordination rule tightened by project owner
+
+### DONE — Git-persistent step logging made mandatory
+
+New rule from this point forward:
+
+**Every meaningful step, completed item, failed attempt, blocker, and still-pending item must be written into Git-tracked project files.**
+
+Required behavior for architect and all A1-A5 roles:
+
+- before starting a major step, ensure the intended step is represented in the role/status/task ledger;
+- after the step, append the exact outcome to this worklog or the role handoff/log and update the live status file;
+- failed attempts are logged with cause and whether their results were rejected;
+- unfinished work is explicitly listed as NOT DONE / BLOCKED / IN PROGRESS;
+- exact branch/head, tests, benchmark inputs, artifact paths/hashes, and measured results are recorded when applicable;
+- local-only generated binaries/results may stay out of Git, but their existence, provenance, path/hash, and result summary must be recorded in Git;
+- no important project state may exist only in chat, terminal history, local logs, or memory.
+
+This rule is additive to the existing AGENTS/coordination rules and applies for the rest of Round 2 and later integrator work.
