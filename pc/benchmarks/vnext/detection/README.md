@@ -103,3 +103,51 @@ The synthetic result currently supports only this research conclusion:
 - envelope NMM can worsen localization geometry;
 - weighted coordinate fusion is worth continuing to real-corpus evaluation;
 - none of these statements proves a real CCTV quality gain.
+
+
+## Round 2 fixed public validation split
+
+Committed split metadata:
+
+`pc/benchmarks/vnext/detection/round2_mot17_split.json`
+
+Round-2 development sequence:
+
+- `golden/public/mot17/MOT17-04`
+
+Reason: the evidence-aware policy and threshold grid were already developed on the first 600 frames of this logical sequence, so the whole sequence is excluded from held-out claims.
+
+Round-2 held-out MOT17 sequences:
+
+- `golden/public/mot17/MOT17-02`
+- `golden/public/mot17/MOT17-05`
+- `golden/public/mot17/MOT17-09`
+- `golden/public/mot17/MOT17-10`
+- `golden/public/mot17/MOT17-11`
+- `golden/public/mot17/MOT17-13`
+
+CrowdHuman validation remains separate dense-detection safety evidence and is not part of the MOT17 tuning split.
+
+The held-out metrics must not be used to retune evidence thresholds or fusion parameters in this Round-2 cycle. If the held-out candidate fails, record the failure and start a new explicitly versioned research cycle rather than silently tuning on the held-out set.
+
+Example held-out invocation from `pc/`:
+
+```powershell
+python -m spectratrack.research.vnext_detection_corpus `
+  --model E:\SpectraTrack\yolo11x.onnx `
+  --ground-truth C:\Users\foto6\SpectraTrack-data\imports\mot17-public.jsonl `
+  --video-root C:\Users\foto6\SpectraTrack-data\public\MOT17\MOT17 `
+  --output C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json `
+  --prefusion-dir C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-mot17 `
+  --resume --per-video `
+  --source-commit <exact-A1-code-sha> `
+  --corpus-revision mot17-public-r1 `
+  --include-video golden/public/mot17/MOT17-02 `
+  --include-video golden/public/mot17/MOT17-05 `
+  --include-video golden/public/mot17/MOT17-09 `
+  --include-video golden/public/mot17/MOT17-10 `
+  --include-video golden/public/mot17/MOT17-11 `
+  --include-video golden/public/mot17/MOT17-13
+```
+
+Do not add `MOT17-04` to that held-out command.
