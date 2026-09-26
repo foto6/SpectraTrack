@@ -273,6 +273,81 @@ def inspect_qa_source(path: str | Path, *, fps_override: float | None = None) ->
     }
 
 
+def inspect_qa_logical_source(
+    frames: Iterable[GroundTruthFrame],
+    root: str | Path,
+) -> dict[str, Any]:
+    ordered = sorted(frames, key=lambda item: item.frame)
+    if not ordered:
+        raise ValueError("Logical QA source requires at least one frame")
+    root_path = Path(root)
+    source_names = {item.source or item.video for item in ordered}
+    fps_values = {item.source_fps for item in ordered if item.source_fps is not None}
+    if len(fps_values) > 1:
+        raise ValueError(f"Ground truth {ordered[0].video!r} has conflicting source_fps values")
+    fps_override = next(iter(fps_values)) if fps_values else None
+
+    if len(source_names) == 1:
+        source_name = next(iter(source_names))
+        meta = inspect_qa_source(root_path / source_name, fps_override=fps_override)
+        return {**meta, "source": source_name, "frame_sources": None}
+
+    if any(item.source is None for item in ordered):
+        raise ValueError(
+            f"Ground truth {ordered[0].video!r} mixes implicit and explicit physical sources"
+        )
+    expected_frames = list(range(len(ordered)))
+    actual_frames = [item.frame for item in ordered]
+    if actual_frames != expected_frames:
+        raise ValueError(
+            f"Multi-image logical source {ordered[0].video!r} must use contiguous canonical "
+            f"frames 0..{len(ordered) - 1}; got {actual_frames[:8]}"
+        )
+
+    digest = hashlib.sha256()
+    width: int | None = None
+    height: int | None = None
+    frame_sources: list[dict[str, Any]] = []
+    for item in ordered:
+        source_name = item.source
+        assert source_name is not None
+        source_path = root_path / source_name
+        meta = inspect_qa_source(source_path)
+        if meta["kind"] != "image":
+            raise ValueError(
+                f"Multi-source logical sequence {ordered[0].video!r} requires image sources; "
+                f"{source_name!r} is {meta['kind']}"
+            )
+        if width is None:
+            width = int(meta["width"])
+            height = int(meta["height"])
+        elif int(meta["width"]) != width or int(meta["height"]) != height:
+            raise ValueError(
+                f"Multi-source logical sequence {ordered[0].video!r} has inconsistent "
+                f"dimensions at {source_name!r}"
+            )
+        record = {
+            "frame": item.frame,
+            "source": source_name,
+            "sha256": meta["sha256"],
+        }
+        encoded = json.dumps(record, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        digest.update(len(encoded).to_bytes(4, "big"))
+        digest.update(encoded)
+        frame_sources.append(record)
+
+    return {
+        "kind": "frame_images",
+        "source": None,
+        "width": width,
+        "height": height,
+        "fps": fps_override,
+        "frame_count": len(ordered),
+        "sha256": digest.hexdigest(),
+        "frame_sources": frame_sources,
+    }
+
+
 def _truth_key(frame: GroundTruthFrame, index: int, obj: GroundTruthObject) -> str:
     suffix = obj.object_id if obj.object_id is not None else f"index:{index}"
     return f"{frame.video}#{frame.frame}#{suffix}"
@@ -743,23 +818,17 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     total_start = time.perf_counter()
 
     for video, video_annotations in sorted(grouped.items()):
-        source_names = {item.source or item.video for item in video_annotations}
-        source_fps_values = {item.source_fps for item in video_annotations if item.source_fps is not None}
-        if len(source_names) != 1:
-            raise ValueError(f"Ground truth {video!r} references multiple physical sources: {sorted(source_names)}")
-        if len(source_fps_values) > 1:
-            raise ValueError(f"Ground truth {video!r} has conflicting source_fps values")
-        source_name = next(iter(source_names))
-        source_path = Path(args.video_root) / source_name
-        fps_override = next(iter(source_fps_values)) if source_fps_values else None
-        meta = inspect_qa_source(source_path, fps_override=fps_override)
+        meta = inspect_qa_logical_source(video_annotations, args.video_root)
+        source_name = meta.get("source")
+        source_path = Path(args.video_root) / source_name if source_name is not None else None
 
         annotated_frames = {item.frame for item in video_annotations}
         last_needed = max(annotated_frames)
         frame_count = meta.get("frame_count")
         if frame_count is not None and last_needed >= int(frame_count):
             raise RuntimeError(
-                f"Source {source_path} ends before annotated frame {last_needed}; frame_count={frame_count}"
+                f"Logical source {video!r} ends before annotated frame {last_needed}; "
+                f"frame_count={frame_count}"
             )
 
         motion = GlobalMotionEstimator()
@@ -796,7 +865,21 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                     for track in tracks
                 ]
 
-        if meta["kind"] == "image":
+        if meta["kind"] == "frame_images":
+            by_frame = {item.frame: item for item in video_annotations}
+            for frame_index in range(last_needed + 1):
+                item = by_frame.get(frame_index)
+                if item is None or item.source is None:
+                    raise RuntimeError(
+                        f"Logical source {video!r} is missing physical image for frame {frame_index}"
+                    )
+                frame_path = Path(args.video_root) / item.source
+                frame = cv2.imread(str(frame_path), cv2.IMREAD_COLOR)
+                if frame is None:
+                    raise RuntimeError(f"Cannot read benchmark image: {frame_path}")
+                process_frame(frame_index, frame)
+        elif meta["kind"] == "image":
+            assert source_path is not None
             if last_needed != 0:
                 raise RuntimeError(f"Still-image source {source_path} can only use canonical frame 0")
             frame = cv2.imread(str(source_path), cv2.IMREAD_COLOR)
@@ -804,6 +887,7 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 raise RuntimeError(f"Cannot read benchmark image: {source_path}")
             process_frame(0, frame)
         elif meta["kind"] == "image_sequence":
+            assert source_path is not None
             sequence_files = image_sequence_files(source_path)
             for frame_index in range(last_needed + 1):
                 frame = cv2.imread(str(sequence_files[frame_index]), cv2.IMREAD_COLOR)
@@ -811,6 +895,7 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                     raise RuntimeError(f"Cannot read image-sequence frame: {sequence_files[frame_index]}")
                 process_frame(frame_index, frame)
         else:
+            assert source_path is not None
             cap = cv2.VideoCapture(str(source_path))
             if not cap.isOpened():
                 raise RuntimeError(f"Cannot open benchmark video: {source_path}")
@@ -837,6 +922,9 @@ def run_current_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 "video": video,
                 "source": source_name,
                 "source_kind": meta["kind"],
+                "source_count": (
+                    len(meta["frame_sources"]) if meta.get("frame_sources") is not None else 1
+                ),
                 "sha256": meta["sha256"],
                 "width": int(meta["width"]),
                 "height": int(meta["height"]),
