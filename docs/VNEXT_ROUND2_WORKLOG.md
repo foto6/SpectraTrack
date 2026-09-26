@@ -1705,3 +1705,29 @@ Decision:
 - do not start a blind 57.5 GB download yet;
 - NightOwls is now **BLOCKED ON SAFE LOCAL STORAGE PLAN**, not upstream availability;
 - first free/move sufficient space or establish a verified extraction/storage approach that preserves provenance without risking disk exhaustion.
+
+
+## 2026-09-27 — NightOwls storage blocker cleared
+
+Target-PC free-space recheck after user cleanup:
+
+- C: 58,165,911,552 bytes free
+- E: 210,024,607,744 bytes free
+
+Official NightOwls validation ZIP size previously verified by A5:
+
+- 57,481,286,834 bytes
+
+Decision:
+
+- previous NightOwls **BLOCKED ON SAFE LOCAL STORAGE PLAN** state is cleared;
+- use an isolated NightOwls data root on E: for archive + extraction + import artifacts;
+- do not place the ~57.5 GB archive on C:;
+- A5 may start official NightOwls download/intake after recording exact target paths and preserving official-source provenance;
+- no mirrors/resized substitutes/third-party conversions.
+
+At the same checkpoint A1 CrowdHuman remains active:
+- 994 / 4370 image-level prefusion artifacts persisted (~22.7%);
+- worker PID 19944 alive;
+- final CrowdHuman result/marker not yet present;
+- duplicate restart remains forbidden.
