@@ -670,6 +670,9 @@ def evaluate_fusion(
             localization_ious.append(bbox_iou(frame.ground_truth[gt_index].bbox, fused[pred_index].bbox))
 
     metrics = evaluate_frames(qa_frames, predictions, label="person", iou_threshold=match_iou)
+    precision = float(metrics["precision"])
+    recall = float(metrics["recall"])
+    f1 = (2.0 * precision * recall / (precision + recall)) if precision + recall > 0.0 else 0.0
     return {
         "method": method,
         "config": {
@@ -684,8 +687,9 @@ def evaluate_fusion(
         "tp": metrics["tp"],
         "fp": metrics["false_positives"],
         "fn": metrics["false_negatives"],
-        "recall": metrics["recall"],
-        "precision": metrics["precision"],
+        "recall": recall,
+        "precision": precision,
+        "f1": f1,
         "bbox_localization_iou": (sum(localization_ious) / len(localization_ious) if localization_ious else None),
         "duplicate_count_before_fusion": duplicate_count,
         "fusion_mistakes": fusion_mistakes,
