@@ -36,7 +36,7 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 Current known Round-2 head:
 
-`agent/vnext-detection @ 002b698b06c439694906c9c5b3e765e543bd0029`
+`agent/vnext-detection @ 32ae82052b6de37ae938e2e2cded27c9787118d5`
 
 Done:
 
@@ -44,6 +44,7 @@ Done:
 - default and threshold-grid MOT17-04 development evidence recorded;
 - canonical evidence-aware replay artifacts emitted locally;
 - resumable public-corpus runner implemented and CI-validated;
+- canonical held-out replay-export tooling fix `704c9a6...` validated by CI run `36241884895` (success);
 - fixed Round-2 MOT17 split committed before held-out evaluation:
   - development: MOT17-04;
   - held out: MOT17-02/05/09/10/11/13;
@@ -130,14 +131,15 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-qa @ b62509b6bbcf90e138b71fe48de51eb3c43c0787`
+`agent/vnext-qa @ 8faf6c9180c5d84555589e2ed7600832b036ac78`
 
 Done:
 
 - machine draft boxes can seed human review while human-saved rows take precedence;
 - 46-frame private CCTV review pack extracted from the three local test videos;
 - YOLO11x/DirectML draft pre-annotations and triage artifacts produced;
-- private AI drafts remain explicitly non-GOLDEN.
+- private AI drafts remain explicitly non-GOLDEN;
+- review-progress tooling is CI-green (`36241763043`) and counts only human-saved rows as reviewed; draft rows remain pending.
 
 Not done:
 
@@ -163,7 +165,7 @@ Unlock only when:
 
 - **DONE** — GitHub branch heads re-verified; none of A1-A5 advanced beyond the heads recorded above during the interruption.
 - **DONE** — target PC answered a direct connectivity ping.
-- **NEEDS VERIFICATION** — detailed target-PC process/GPU state; control queries timed out.
+- **NEEDS VERIFICATION** — detailed target-PC process/GPU state; repeated substantive control queries, including direct A3 artifact metadata, timed out.
 - **NEEDS VERIFICATION** — A2 audit output files after the interrupted run.
 - **NEEDS VERIFICATION** — A3 `a3-round2-weak1.json` completion after the interrupted run.
 - **RULE** — do not restart A2/A3 blindly until existing local process/artifact state is verified.
@@ -171,7 +173,7 @@ Unlock only when:
 
 ## Current execution blocker
 
-- **BLOCKED (control channel)** — target PC Remote Desktop Commander substantive operations are timing out.
+- **BLOCKED (control channel)** — target PC Remote Desktop Commander substantive operations are still timing out after successful ping; no blind A1/A2/A3 restart is authorized.
 - This does **not** mean A2/A3 benchmarks failed.
 - Do not restart A2/A3 until existing local process/artifact state is verified.
 - GitHub coordination, branch verification, and documentation remain available.
