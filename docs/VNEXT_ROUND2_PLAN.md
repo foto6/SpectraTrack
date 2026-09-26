@@ -212,3 +212,27 @@ Do not start production integration yet.
 5. A5 has `cctv-golden-r1` human-confirmed and the surviving candidate table is complete.
 
 At that point create `agent/vnext-integrator` from the immutable product baseline and integrate only the accepted minimum changes with full regression/packaging tests.
+
+
+## Mandatory Git-persistent execution log
+
+Project-owner requirement for all Round-2 roles and the architect:
+
+1. Before a major experiment/code step, ensure the intended step and current state are represented in a Git-tracked role/coordination file.
+2. After the step, commit the outcome before moving to the next major step.
+3. Use explicit states: `DONE`, `IN PROGRESS`, `FAILED`, `BLOCKED`, `NOT DONE`.
+4. Failed attempts stay in history with the exact failure cause; do not rewrite them away.
+5. For local-only large artifacts, record in Git:
+   - artifact path;
+   - source branch/commit;
+   - corpus/model/provider/config provenance;
+   - hash when practical;
+   - measured summary;
+   - whether the artifact is accepted or rejected evidence.
+6. Never leave the only copy of important state in chat, terminal history, process memory, or a local temp log.
+7. Each role must update its own handoff/status documentation before claiming the branch is ready for architect review.
+8. The architect maintains:
+   - `docs/VNEXT_ROUND2_WORKLOG.md` — chronological append-only coordination record;
+   - `docs/VNEXT_ROUND2_STATUS.md` — compact current state and remaining gates.
+
+A session restart must be recoverable from Git alone, except for re-verifying whether local long-running processes are still alive.
