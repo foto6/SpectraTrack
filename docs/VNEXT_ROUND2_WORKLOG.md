@@ -1782,3 +1782,16 @@ A one-line Python metadata probe for A1/A2/A3/NightOwls paths failed with a loca
 3. identify the canonical active worker and terminate only the duplicate if ownership is unambiguous;
 4. do not restart CrowdHuman;
 5. continue the existing NightOwls downloader untouched.
+
+
+### FAILED ATTEMPT — duplicate-process CPU/ancestry probe quoting
+
+The first PowerShell one-liner intended to sample PIDs 19944/28260 and supervisor PID 26224 failed in shell parsing because nested `$...` expressions were expanded/stripped before the inner script executed.
+
+Safety/result:
+
+- no target process was killed, restarted, paused, or otherwise changed;
+- no benchmark artifact was touched;
+- no process-ownership conclusion is drawn from this failed probe.
+
+Recovery: rerun the same read-only inspection from a temporary local `.ps1` file to avoid nested-shell quoting.
