@@ -658,6 +658,7 @@ Conversion:
 - `tag=person` + not ignored -> scored person;
 - `tag=mask` OR `extra.ignore=1` -> canonical ignored person region;
 - fbox/vbox xywh -> xyxy without clipping;
+- fully non-intersecting target-like boxes are omitted because canonical QA cannot observe or match them;
 - original fbox/vbox/box_id/occ remain in source provenance;
 - integer `extra.occ` is exposed literally as `crowdhuman_occ_<value>`;
 - visible/full area ratio is exposed only as explicit numeric visibility-bin attributes;

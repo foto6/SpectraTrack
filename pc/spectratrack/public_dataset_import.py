@@ -540,6 +540,7 @@ def import_crowdhuman(
         "images": 0,
         "scored_people": 0,
         "ignored_people_or_masks": 0,
+        "non_intersecting_target_like_omitted": 0,
     }
     bbox_key = "fbox" if bbox_kind == "full" else "vbox"
 
@@ -564,6 +565,9 @@ def import_crowdhuman(
             if tag not in {"person", "mask"}:
                 raise ValueError(f"CrowdHuman {image_id}: unsupported tag {tag!r}")
             bbox = _xywh_to_xyxy(gtbox.get(bbox_key), f"CrowdHuman {image_id} {bbox_key}")
+            if not _bbox_intersects_image(bbox, width, height):
+                stats["non_intersecting_target_like_omitted"] += 1
+                continue
             extra = gtbox.get("extra") if isinstance(gtbox.get("extra"), dict) else {}
             ignore = tag == "mask" or bool(extra.get("ignore", 0))
             if ignore:
@@ -642,6 +646,7 @@ def import_crowdhuman(
             "bbox_kind": bbox_kind,
             "bbox_source_field": bbox_key,
             "bbox_coordinates": "source xywh converted to xyxy without clipping",
+            "non_intersecting_target_like_boxes": "omitted",
             "ignore": "tag=mask OR extra.ignore=1",
             "stable_object_ids": "omitted because validation images are independent samples",
             "visible_ratio_attributes": [0.25, 0.50, 0.75],

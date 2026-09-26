@@ -241,6 +241,7 @@ Conversion policy:
 - `tag=person` and not ignored -> scored `person`;
 - `tag=mask` OR `extra.ignore=1` -> canonical `ignore=true`;
 - selected `fbox`/ `vbox` xywh -> xyxy without clipping;
+- source boxes may extend outside image bounds, but target-like boxes with no image intersection are omitted because canonical QA cannot observe or match them;
 - original fbox/vbox/box_id/occ remain in source provenance;
 - non-ignored integer `extra.occ` is exposed literally as an attribute such as
   `crowdhuman_occ_1`, so existing attribute metrics can report it without assigning an

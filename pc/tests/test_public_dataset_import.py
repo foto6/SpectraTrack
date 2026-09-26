@@ -154,6 +154,20 @@ def _crowdhuman_fixture(root: Path):
                 "hbox": [54, 7, 5, 5],
                 "extra": {"ignore": 1, "box_id": 12},
             },
+            {
+                "tag": "person",
+                "fbox": [150, 90, 20, 30],
+                "vbox": [152, 92, 10, 15],
+                "hbox": [154, 92, 5, 5],
+                "extra": {"ignore": 0, "box_id": 13},
+            },
+            {
+                "tag": "mask",
+                "fbox": [-40, 90, 10, 20],
+                "vbox": [-38, 92, 5, 10],
+                "hbox": [-36, 92, 3, 3],
+                "extra": {"ignore": 1, "box_id": 14},
+            },
         ],
     }
     (root / "annotation_val.odgt").write_text(json.dumps(annotation) + "\n", encoding="utf-8")
@@ -184,7 +198,10 @@ def test_import_crowdhuman_uses_full_body_by_default_and_disables_tracking(tmp_p
     assert "id" not in row["objects"][0]
     assert "crowdhuman_occ_1" in row["objects"][0]["attributes"]
     assert row["objects"][1]["ignore"] is True
+    assert len(row["objects"]) == 2
+    assert manifest["stats"]["non_intersecting_target_like_omitted"] == 2
     assert manifest["conversion_settings"]["bbox_kind"] == "full"
+    assert manifest["conversion_settings"]["non_intersecting_target_like_boxes"] == "omitted"
     assert manifest["tracking_supported"] is False
 
     frames = load_ground_truth(gt)
