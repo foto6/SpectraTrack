@@ -1097,3 +1097,16 @@ Round-2 public evidence contract is now:
 A5 is assigned DanceTrack + NightOwls importer/freeze work. A2 is assigned DanceTrack association-only after A5 freeze. A1/A3 are assigned NightOwls validation after A5 freeze. A4 remains parked until public quality finalists exist.
 
 The target-PC substantive control channel remains blocked; no local long-running job is restarted blindly.
+
+
+### DONE — public-first role directives committed
+
+Role handoff commits:
+
+- A1 detection: `bccf087df01b74bc463dcc3525e5665110ff8225` — NightOwls public validation assignment;
+- A2 tracking: `35de7cbdb4023c66cfdba27698bd8b62dd106e78` — DanceTrack association-only gate;
+- A3 enhancement: `4b13f8eaec4e9339ea3247fc759f85400e1a13b4` — NightOwls strict enhancement gate;
+- A4 performance: `45bd0bc85f7e677cd602b435108b2095ab0ee78b` — explicitly parked until public quality finalists;
+- A5 QA: `abc269f5ebe062c80d1fba8eb5c06b1b1450c6b9` — DanceTrack + NightOwls isolated importer/freeze assignment.
+
+Issues #18-#23 were updated with the same role boundaries and persistence requirements. No production branch or specialist branch was merged into another.
