@@ -825,7 +825,7 @@ This phase performs 0 ONNX inference calls and isolates geometry/lifecycle/assoc
 
 ## Round 2 execution checkpoint — 2026-09-26 replay promotion gate
 
-Status: **BLOCKED ON REAL A1 REPLAY BYTES / TOOLING READY**
+Status: **COMPLETED — RETAIN CURRENT TRACKER**
 
 Starting A2 HEAD verified before this execution step:
 
@@ -1021,9 +1021,9 @@ Validation:
 
 ### WAITING — DanceTrack association-only
 
-Current A5 branch observed after importer work:
+Current A5 branch re-checked after importer work:
 
-`agent/vnext-qa @ 0db6bc0473a66a56e22c5f7adaaf5ad44d201dd7`
+`agent/vnext-qa @ bf63820f81cd13fdfae8680a200e25f030d314fc`
 
 A5 has implemented the isolated DanceTrack importer and canonical provenance plumbing, but its tracked state still reports:
 
@@ -1049,3 +1049,97 @@ When/if explicitly re-opened after a valid freeze, phase 1 remains exactly:
 - current and `current-ambiguity-guard` consume identical observation bytes.
 
 Detector-replay DanceTrack remains forbidden until the ambiguity guard first survives this association-only gate.
+
+
+## Round 2 continuation checkpoint — 2026-09-26 final A2 gate state
+
+Exact A2 remote HEAD re-verified before this documentation update:
+
+`agent/vnext-tracking @ 9b733fdc40d71a81c190b7a3eefaa8ae9cc62fac`
+
+The user-provided earlier checkpoint `372c96e71e504a54ea2ac027ab988dfba2bd1918` is an ancestor. Seven subsequent A2 commits already completed and hardened the assigned identical-replay promotion experiment; they were preserved and not replayed or overwritten.
+
+Code validation at exact scored/evaluator HEAD `9b733fdc...`:
+
+- GitHub Actions run `36255611233`: **SUCCESS**;
+- compile + pytest: **172 passed in 1.47 s**;
+- tracker smoke: **1352.3 FPS**, crossing/reappearance smoke ID switches 0;
+- diagnostics: PASS;
+- self-check: PASS;
+- standalone Windows build and both CLI smoke tests: PASS.
+
+### Final Round-2 decision for current-ambiguity-guard
+
+Mandatory identical canonical A1 replay comparison already completed on `mot17-public-r1` / MOT17-04 first 600 frames.
+
+Control artifact provenance:
+
+- canonical replay file SHA-256: `b2719a2c93c353123437497ac9513033898d3d65750a32ed633d05e8fb65b2d4`;
+- canonical replay semantic SHA-256: `d27d45172a2df0a5c81ff83be2ceed03d2ed1eef922d3fde06f72b3126a89c59`;
+- canonical GT SHA-256: `28dcb9d197e0a098a1efb097f1589177350192a8f5f1be3e2ab5cd18d8f205c7`;
+- corpus revision: `mot17-public-r1`;
+- corpus SHA-256: `8bfa6e54ab7a0160c133d8c7d0a2896b7ba254a23cf06afee2d4c9c453836759`;
+- comparison artifact SHA-256: `bdb5dacb673cc80c2d3a02f977d4d7a0a6c44dd50c685b4c174c9578f001927b`;
+- switch-diff artifact SHA-256: `c5b0f5cd92a20ba443e183d3c81b8b8cf9f8bf5a45344be5df7a08054803d62c`;
+- tracker-only ONNX inference calls: **0**.
+
+Promotion-gate result remains:
+
+`RETAIN CURRENT TRACKER`
+
+Reason:
+
+- recall loss: **0.01867 percentage points** -> PASS;
+- ID switches: **335 -> 397** -> **FAIL**, 18.51% worse instead of >=10% improvement;
+- fragmentation: **281 -> 289** (+2.847%) -> PASS;
+- false track creations: **147 -> 147** -> PASS;
+- wrong-ID recovery: **116 -> 123** (worse);
+- mean uninterrupted track length: **41.1181 -> 36.9453 frames** (worse).
+
+Failure-window diff confirms the mechanism rather than only the aggregate:
+
+- current switch events: 335;
+- guard switch events: 397;
+- common: 277;
+- current-only switches removed by guard: 58;
+- new guard-only switches: 120.
+
+Interpretation: the ambiguity guard repairs some greedy mistakes but introduces about twice as many new GT identity discontinuities as it removes. Local maximum-score ambiguity resolution is not aligned strongly enough with identity continuity on this dense real replay.
+
+No alternative replay was searched and no guard threshold was retuned after observing the held-out result.
+
+### DanceTrack gate status
+
+A5 was re-checked at:
+
+`agent/vnext-qa @ bf63820f81cd13fdfae8680a200e25f030d314fc`
+
+A5 still reports:
+
+- real DanceTrack validation import: **NOT RUN**;
+- real artifact hashes: **NOT AVAILABLE**;
+- `dancetrack-public-r1`: **NOT FROZEN**;
+- frozen corpus hash: **NOT AVAILABLE**.
+
+A2 therefore has no valid DanceTrack artifact to consume.
+
+More importantly, the assigned prerequisite for advancing `current-ambiguity-guard` has already failed on the identical A1 replay. Under the Round-2 promotion contract, A2 does **not** advance the rejected guard to DanceTrack and does **not** start detector-replay DanceTrack. Running it anyway would override the explicit fail-safe gate rather than continue the assigned protocol.
+
+If the architect explicitly re-opens DanceTrack for CONTROL-only characterization or for a new narrow candidate later, the association-only input contract remains:
+
+- canonical GT bbox copied to tracker Detection;
+- person class/label;
+- score 1.0;
+- appearance null;
+- detector_ran=true;
+- GT identity evaluator-only;
+- 0 ONNX inference calls;
+- no synthetic detections through occlusion.
+
+### A2 Round-2 readiness
+
+- current tracker: **RETAIN AS CONTROL**;
+- `current-ambiguity-guard`: **REJECTED BY PROMOTION GATE**;
+- DanceTrack guard evaluation: **NOT ELIGIBLE under current gate outcome and also blocked by missing freeze**;
+- production `tracker.py`: unchanged;
+- next action: architect review / explicit new narrow hypothesis only. Do not resume wholesale global/Byte/BoT/OC replacement work.
