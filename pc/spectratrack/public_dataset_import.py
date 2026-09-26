@@ -368,7 +368,7 @@ def import_mot17(
                     "frame": frame_number - 1,
                     "source": source_rel,
                     "source_frame": frame_number,
-                    "source_sequence": base_name,
+                    "source_sequence": source_sequence,
                     "source_fps": info["fps"],
                     "allow_out_of_bounds": True,
                     "tags": tags,
