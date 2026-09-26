@@ -1313,3 +1313,169 @@ Recovered candidate deltas:
 A3 status changes from `NEEDS VERIFICATION` to **artifact verified** for this MOT17 strict-profile run.
 
 However this artifact reports **pre-fusion** FP deltas and A3 explicitly does not own final fusion. It therefore cannot by itself choose enhancement ON/OFF. Post-fusion quality plus NightOwls held-out evidence remain required.
+
+
+## 2026-09-26 23:40 +07 — full A1-A5 coordinator check
+
+### DONE — all specialist heads and CI re-checked
+
+Current remote heads:
+
+- A1 `agent/vnext-detection @ c4e20eed58dd11fa03a8b619b6af6bc34a3b1d0a`
+- A2 `agent/vnext-tracking @ d1470454129024d3767b6cb91a7d6ba66102d52d`
+- A3 `agent/vnext-enhancement @ 21e7b06dc470a346dd01e86b45e3e581e4f0d59d`
+- A4 `agent/vnext-performance @ 45bd0bc85f7e677cd602b435108b2095ab0ee78b`
+- A5 `agent/vnext-qa @ bf63820f81cd13fdfae8680a200e25f030d314fc`
+
+All current specialist heads have successful GitHub Actions PC CI at this checkpoint.
+
+### A1 — IN PROGRESS, real MOT17 held-out running
+
+A1 correctly verified no old held-out result/process before starting.
+
+The first launcher attempt failed before Python/inference because the Windows command omitted `&&`. The failed launch is preserved in the role handoff and produced no benchmark evidence.
+
+Retry source commit:
+
+`e2dad933119e0639413200466ffbda0baeba6b2e`
+
+Current target-PC process remains alive:
+
+- terminal PID `21908`
+- launcher Python PID `2100`
+- worker PID `21104`
+- worker CPU increased during coordinator checks, confirming active compute
+- working set approximately 660 MB
+
+Frozen held-out set remains MOT17-02/05/09/10/11/13 with no retune.
+
+Current artifact progress:
+
+- final result: not yet present
+- completion marker: not yet present
+- first prefusion artifact now exists:
+  `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-mot17\golden_public_mot17_MOT17-02.jsonl`
+- observed prefusion directory size at check: about 13.7 MB
+- duplicate restart remains forbidden.
+
+NightOwls gate is still not frozen, so A1 must not start NightOwls yet.
+
+### A2 — DONE, RETAIN CURRENT TRACKER
+
+A2 completed the required byte-identical real A1 replay comparison.
+
+Control current tracker:
+
+- tracking recall: 0.858482
+- ID switches: 335
+- fragmentation: 281
+- false track creations: 147
+
+`current-ambiguity-guard`:
+
+- tracking recall: 0.858295
+- ID switches: 397
+- fragmentation: 289
+- false track creations: 147
+
+Gate deltas:
+
+- recall loss: 0.01867 percentage points — PASS
+- ID switches: +62 / **18.51% worse** — FAIL
+- fragmentation: +2.847% — PASS
+- false-track delta: 0 — PASS
+- wrong-ID recovery: 116 -> 123 — worse
+- mean uninterrupted length: 41.1181 -> 36.9453 frames — worse
+
+Switch diff:
+
+- 58 control switch events removed
+- 120 new guard-only switch events created
+
+Decision:
+
+`RETAIN CURRENT TRACKER`
+
+`current-ambiguity-guard` is rejected for this cycle. No threshold retune or favorable replay search is authorized. Production tracker remains unchanged.
+
+### A3 — IN PROGRESS / BLOCKED on NightOwls + post-fusion contract
+
+MOT17 strict artifact is verified and was not rerun.
+
+NightOwls held-out candidate set was locked before held-out results:
+
+1. enhancement OFF
+2. bilateral
+3. current_adaptive_cached
+
+Sharpen was excluded before NightOwls based only on MOT17 development evidence.
+
+Strict semantics remain:
+
+- weak-person gate
+- max one enhanced ROI/source frame
+- raw corroboration mandatory
+
+A3 fixed one CI test-fixture provenance mismatch without relaxing the provenance invariant. Current A3 head CI is green.
+
+No NightOwls candidate run has started because A5 has not yet frozen NightOwls. Final A3 decision remains unresolved between OFF / bilateral / current_adaptive_cached.
+
+### A4 — PARKED BY DESIGN
+
+A4 has not advanced from `45bd0bc...`, which is correct.
+
+Existing RX 5700 XT / DirectML frontier remains cost evidence only. No new scheduler search should start until A1/A2/A3 public-quality decisions exist.
+
+### A5 — TOOLING DONE / REAL PUBLIC FREEZES NOT DONE
+
+A5 implemented and CI-validated isolated importers for:
+
+- DanceTrack
+- NightOwls
+
+Final validated code checkpoint recorded by A5:
+
+`55502f009f246e6437f12c8cff43f8b45edd343d`
+
+CI run `36255432085`: SUCCESS, 174 tests, full Windows build/package path green.
+
+Existing `mot17-public-r1` and `crowdhuman-val-fbox-r1` remain unchanged.
+
+A5 currently reports:
+
+- DanceTrack importer: READY
+- NightOwls importer: READY
+- deterministic NightOwls slice tooling: READY
+- `dancetrack-public-r1`: NOT FROZEN
+- `nightowls-public-r1`: NOT FROZEN
+
+### IN PROGRESS — DanceTrack official HF validation download on target PC
+
+Target PC currently contains:
+
+`C:\Users\foto6\SpectraTrack-data\public\DanceTrack\val.zip`
+
+Observed size:
+
+`4,209,785,614 bytes`
+
+A live curl/parallel-download process is using:
+
+`https://huggingface.co/datasets/noahcao/dancetrack/resolve/main/val.zip?download=true`
+
+The official DanceTrack repository currently directs users to Hugging Face for dataset download, so the host itself is consistent with the official project distribution.
+
+However official issue #43 contains conflicting user reports that some Hugging Face downloads lacked `gt.txt`; maintainer `noahcao` stated train/val should contain `gt.txt`, while a later 2025 report again claimed only `img1` + `seqinfo.ini`.
+
+Therefore:
+
+- do not freeze `dancetrack-public-r1` merely because `val.zip` finishes;
+- after download, validate ZIP/extracted contents contain per-sequence `gt/gt.txt`;
+- only then run A5 canonical import/provenance/freeze;
+- if GT is absent, record BLOCKED and obtain annotation bytes from an official project path rather than inventing or using an unverified mirror.
+
+### BLOCKED — NightOwls local bytes absent
+
+Target-PC data search found no NightOwls dataset/import/freeze artifact yet.
+
+A1/A3 NightOwls work remains blocked until A5 creates an exact frozen full validation or pre-result deterministic slice revision/hash.
