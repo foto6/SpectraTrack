@@ -1381,3 +1381,30 @@ The retained MOT17 downstream pair is hard-NMS control + evidence-aware challeng
 - **LOCKED — production integration:** no changes to production detector, `integration`, `main`, RC, or release are authorized from this handoff.
 
 Next step: run CrowdHuman dense-safety only after process/artifact/marker/log state is positively verified. No threshold retuning.
+
+## Round 2 CrowdHuman dense-safety restart guard
+
+Status: **VERIFIED ABSENT — FRESH START AUTHORIZED**
+
+Before launch, target-PC state was checked explicitly. No active `python.exe` running `spectratrack.research.vnext_detection_corpus` was present. Expected CrowdHuman Round-2 result, completion marker, console log and prefusion directory were all absent, so there is no prior A1 CrowdHuman job/artifact state to preserve.
+
+Verified clean worktree HEAD before this checkpoint: `68fd5f0459b5c0db3cbd128254aa78ab4e98da74`.
+
+Frozen inputs:
+
+- corpus revision: `crowdhuman-val-fbox-r1`;
+- GT: `C:\Users\foto6\SpectraTrack-data\imports\crowdhuman-val-fbox.jsonl`;
+- GT size: `42766074` bytes;
+- GT SHA-256: `2576c6a1db502cef1ffd103337b7728e628d6dfca8bedb3df9d606ce2f23dd0f`;
+- media root: `C:\Users\foto6\SpectraTrack-data\public\CrowdHuman`;
+- validation images: `4370`;
+- scored person boxes: `99481`;
+- model: `E:\SpectraTrack\yolo11x.onnx`;
+- model size: `228267957` bytes;
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`.
+
+Run semantics remain frozen: input 960, detector conf 0.35, decoder-local NMS IoU 0.45, person floor 0.12, tile 640, overlap 0.20, match/fusion IoU 0.50/0.55, center ratio 0.20, size ratio 1.80, evidence weak/solo/strong 0.12/0.20/0.35, evidence min sources 2, methods hard-nms/conservative-nmm/weighted/evidence-aware, DirectML preference with CPU fallback.
+
+CrowdHuman is detection-only dense/close-person safety evidence. No tracking/ID metrics and no replay handoff are produced from this corpus. No threshold retuning is permitted.
+
+Decision: **START CROWDHUMAN DENSE-SAFETY AFTER THIS CHECKPOINT IS COMMITTED.**
