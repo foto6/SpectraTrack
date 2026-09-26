@@ -11,6 +11,7 @@ from pathlib import Path
 import time
 from typing import Any, Iterable
 
+from .integrity import sha256_file
 from .tracker import bbox_iou
 
 SCHEMA_VERSION = 1
@@ -171,6 +172,99 @@ def ground_truth_sha256(path: str | Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+_IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".webp"}
+
+
+def image_sequence_files(path: str | Path) -> list[Path]:
+    root = Path(path)
+    if not root.is_dir():
+        return []
+    files = [
+        item
+        for item in root.iterdir()
+        if item.is_file() and item.suffix.lower() in _IMAGE_EXTENSIONS
+    ]
+    return sorted(files, key=lambda item: item.name)
+
+
+def qa_source_sha256(path: str | Path) -> str:
+    source = Path(path)
+    if source.is_file():
+        return sha256_file(source)
+    files = image_sequence_files(source)
+    if not files:
+        raise FileNotFoundError(f"QA source is neither a file nor an image-sequence directory: {source}")
+    digest = hashlib.sha256()
+    for item in files:
+        relative = item.relative_to(source).as_posix().encode("utf-8")
+        digest.update(len(relative).to_bytes(4, "big"))
+        digest.update(relative)
+        with item.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    return digest.hexdigest()
+
+
+def inspect_qa_source(path: str | Path, *, fps_override: float | None = None) -> dict[str, Any]:
+    import cv2
+
+    source = Path(path)
+    if source.is_dir():
+        files = image_sequence_files(source)
+        if not files:
+            raise RuntimeError(f"Image-sequence directory is empty: {source}")
+        first = cv2.imread(str(files[0]), cv2.IMREAD_COLOR)
+        if first is None:
+            raise RuntimeError(f"Cannot read first image-sequence frame: {files[0]}")
+        height, width = first.shape[:2]
+        return {
+            "kind": "image_sequence",
+            "width": int(width),
+            "height": int(height),
+            "fps": fps_override,
+            "frame_count": len(files),
+            "sha256": qa_source_sha256(source),
+        }
+
+    if not source.is_file():
+        raise FileNotFoundError(source)
+    if source.suffix.lower() in _IMAGE_EXTENSIONS:
+        image = cv2.imread(str(source), cv2.IMREAD_COLOR)
+        if image is None:
+            raise RuntimeError(f"Cannot read benchmark image: {source}")
+        height, width = image.shape[:2]
+        return {
+            "kind": "image",
+            "width": int(width),
+            "height": int(height),
+            "fps": None,
+            "frame_count": 1,
+            "sha256": sha256_file(source),
+        }
+
+    cap = cv2.VideoCapture(str(source))
+    if not cap.isOpened():
+        raise RuntimeError(f"Cannot open benchmark video: {source}")
+    try:
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = float(cap.get(cv2.CAP_PROP_FPS))
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    finally:
+        cap.release()
+    if width <= 0 or height <= 0:
+        raise RuntimeError(f"Invalid benchmark source dimensions for {source}: {width}x{height}")
+    measured_fps = fps if math.isfinite(fps) and fps > 0.0 else None
+    return {
+        "kind": "video",
+        "width": width,
+        "height": height,
+        "fps": fps_override if fps_override is not None else measured_fps,
+        "frame_count": frame_count if frame_count > 0 else None,
+        "sha256": sha256_file(source),
+    }
 
 
 def _truth_key(frame: GroundTruthFrame, index: int, obj: GroundTruthObject) -> str:
