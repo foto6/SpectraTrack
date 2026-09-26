@@ -1356,6 +1356,22 @@ def _build_parser() -> argparse.ArgumentParser:
     dance.add_argument("--importer-source-commit")
     dance.add_argument("--acknowledge-terms", action="store_true")
 
+    night = sub.add_parser(
+        "import-nightowls",
+        help="Convert official NightOwls validation JSON/PNG data to canonical QA JSONL",
+    )
+    night.add_argument("--dataset-root", required=True)
+    night.add_argument("--annotations", default="nightowls_validation.json")
+    night.add_argument("--images-dir", required=True)
+    night.add_argument("--sdk-dir", required=True)
+    night.add_argument("--output", required=True)
+    night.add_argument("--manifest", required=True)
+    night.add_argument("--logical-prefix", default="golden/public/nightowls-val")
+    night.add_argument("--slice-frames", type=int)
+    night.add_argument("--slice-seed", default="spectratrack-round2-nightowls-v1")
+    night.add_argument("--importer-source-commit")
+    night.add_argument("--acknowledge-terms", action="store_true")
+
     crowd = sub.add_parser(
         "import-crowdhuman",
         help="Convert CrowdHuman validation annotations to canonical QA JSONL",
@@ -1472,6 +1488,29 @@ def main() -> int:
             print(
                 f"gt_sha256={result['output']['ground_truth_sha256']} "
                 f"import_manifest_sha256={result['import_manifest_sha256']}"
+            )
+            return 0
+
+        if args.command == "import-nightowls":
+            from .public_dataset_import import import_nightowls
+
+            result = import_nightowls(
+                dataset_root=args.dataset_root,
+                annotations=args.annotations,
+                images_dir=args.images_dir,
+                sdk_dir=args.sdk_dir,
+                output_ground_truth=args.output,
+                output_manifest=args.manifest,
+                logical_prefix=args.logical_prefix,
+                slice_frames=args.slice_frames,
+                slice_seed=args.slice_seed,
+                importer_source_commit=args.importer_source_commit,
+                acknowledge_terms=args.acknowledge_terms,
+            )
+            print(
+                f"gt_sha256={result['output']['ground_truth_sha256']} "
+                f"import_manifest_sha256={result['import_manifest_sha256']} "
+                f"tracking_supported={result['tracking_supported']}"
             )
             return 0
 
