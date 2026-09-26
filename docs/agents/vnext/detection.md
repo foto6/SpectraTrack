@@ -1435,3 +1435,17 @@ Artifacts at launch:
 - prefusion: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-crowdhuman` — present.
 
 Decision: **IN PROGRESS — DO NOT START A DUPLICATE CROWDHUMAN RUN.**
+
+### CrowdHuman decision rule frozen before result
+
+This rule is recorded while the full validation run is still in progress and before aggregate candidate metrics are available.
+
+Evidence-aware **PASSES / remains retained** on CrowdHuman only if, versus hard-NMS on the identical frozen prefusion evidence:
+
+- precision is not lower;
+- recall is not lower;
+- F1 is not lower;
+- matched bbox localization IoU is not lower;
+- `fusion_mistakes` does not increase.
+
+Any violation is a **FAIL for the Round-2 dense-safety gate**. Conservative NMM and weighted remain rejected by MOT17 and cannot be resurrected from CrowdHuman results in this cycle. No threshold/config retuning is allowed from CrowdHuman validation metrics.
