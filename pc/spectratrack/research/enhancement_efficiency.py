@@ -55,6 +55,7 @@ class RoiRecord:
     source_id: str | None = None
     raw_support: tuple[Detection, ...] = ()
     source: str | None = None
+    source_frame: int | None = None
 
 
 @dataclass(frozen=True)
@@ -371,6 +372,7 @@ def load_roi_manifest(path: str | Path) -> tuple[dict[str, Any], list[RoiRecord]
             source_id = item.get("source_id")
             raw_support_data = item.get("raw_support", [])
             source = item.get("source")
+            source_frame = item.get("source_frame")
             if not isinstance(video, str) or not video:
                 raise ValueError(f"line {line_number}: video must be a non-empty string")
             if isinstance(frame, bool) or not isinstance(frame, int) or frame < 0:
@@ -443,6 +445,14 @@ def load_roi_manifest(path: str | Path) -> tuple[dict[str, Any], list[RoiRecord]
                 )
             if source is not None and (not isinstance(source, str) or not source):
                 raise ValueError(f"line {line_number}: source must be a non-empty string")
+            if source_frame is not None and (
+                isinstance(source_frame, bool)
+                or not isinstance(source_frame, int)
+                or source_frame < 0
+            ):
+                raise ValueError(
+                    f"line {line_number}: source_frame must be a non-negative integer"
+                )
             seen_ids.add(roi_id)
             records.append(
                 RoiRecord(
@@ -455,6 +465,7 @@ def load_roi_manifest(path: str | Path) -> tuple[dict[str, Any], list[RoiRecord]
                     source_id,
                     tuple(raw_support),
                     source,
+                    source_frame,
                 )
             )
 
