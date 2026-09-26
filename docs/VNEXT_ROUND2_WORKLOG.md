@@ -565,3 +565,20 @@ Safety response:
 - keep A1-A5 exact heads and remaining gates explicit;
 - retry the target-PC control channel on the next watch cycle;
 - once local control recovers, first verify existing artifacts/processes, then resume only missing jobs.
+
+
+### IN PROGRESS — prepare A1 multi-sequence corpus runner while target-PC control is blocked
+
+Git-side code review found that A1 already has canonical image/image-sequence source resolution in `vnext_detector_backend_lab.py`, while `vnext_detection_fusion.py` still only collects from a single video file.
+
+Planned isolated A1 step:
+
+- add corpus-aware pre-fusion collection for canonical A5 JSONL records;
+- reuse the existing A1 source-resolution helpers instead of creating another source-format implementation;
+- support MOT17 image sequences and CrowdHuman direct images;
+- preserve existing single-video `collect` behavior;
+- add tests using temporary image fixtures;
+- rely on GitHub CI while the target-PC control channel is unavailable;
+- after CI, use the command for held-out multi-sequence collection when local control recovers.
+
+No production detector/runtime files are in scope.
