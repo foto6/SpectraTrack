@@ -1268,16 +1268,53 @@ def _build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--video-root", required=True)
     validate.add_argument("--golden-ground-truth", required=True)
     validate.add_argument("--train-ground-truth")
+    validate.add_argument(
+        "--coverage-profile",
+        choices=("private-cctv", "public-dataset"),
+        default="private-cctv",
+    )
+    validate.add_argument("--dataset-import", action="append", default=[])
     validate.add_argument("--output")
 
     freeze = sub.add_parser("freeze-corpus", help="Freeze a human-confirmed corpus manifest/hash")
     freeze.add_argument("--video-root", required=True)
     freeze.add_argument("--golden-ground-truth", required=True)
     freeze.add_argument("--train-ground-truth")
+    freeze.add_argument(
+        "--coverage-profile",
+        choices=("private-cctv", "public-dataset"),
+        default="private-cctv",
+    )
+    freeze.add_argument("--dataset-import", action="append", default=[])
     freeze.add_argument("--revision", required=True)
     freeze.add_argument("--reviewer", required=True)
     freeze.add_argument("--confirm-human-reviewed", action="store_true")
+    freeze.add_argument("--confirm-public-dataset-terms", action="store_true")
     freeze.add_argument("--output", required=True)
+
+    mot = sub.add_parser("import-mot17", help="Convert MOT17 train GT to canonical QA JSONL")
+    mot.add_argument("--dataset-root", required=True)
+    mot.add_argument("--output", required=True)
+    mot.add_argument("--manifest", required=True)
+    mot.add_argument("--variant", default="FRCNN", choices=("DPM", "FRCNN", "SDP"))
+    mot.add_argument("--sequences")
+    mot.add_argument("--logical-prefix", default="golden/public/mot17")
+    mot.add_argument("--importer-source-commit")
+    mot.add_argument("--acknowledge-terms", action="store_true")
+
+    crowd = sub.add_parser(
+        "import-crowdhuman",
+        help="Convert CrowdHuman validation annotations to canonical QA JSONL",
+    )
+    crowd.add_argument("--dataset-root", required=True)
+    crowd.add_argument("--annotations", default="annotation_val.odgt")
+    crowd.add_argument("--images-dir", required=True)
+    crowd.add_argument("--output", required=True)
+    crowd.add_argument("--manifest", required=True)
+    crowd.add_argument("--bbox-kind", choices=("full", "visible"), default="full")
+    crowd.add_argument("--logical-prefix", default="golden/public/crowdhuman-val")
+    crowd.add_argument("--importer-source-commit")
+    crowd.add_argument("--acknowledge-terms", action="store_true")
 
     replay = sub.add_parser("validate-replay", help=f"Validate canonical {REPLAY_SCHEMA} provenance")
     replay.add_argument("--replay", required=True)
@@ -1330,11 +1367,52 @@ def main() -> int:
             annotate_frame_batch(args.batch, output_ground_truth=args.output, tags=tags)
             return 0
 
+        if args.command == "import-mot17":
+            from .public_dataset_import import import_mot17
+
+            result = import_mot17(
+                dataset_root=args.dataset_root,
+                output_ground_truth=args.output,
+                output_manifest=args.manifest,
+                detector_variant=args.variant,
+                sequences=args.sequences,
+                logical_prefix=args.logical_prefix,
+                importer_source_commit=args.importer_source_commit,
+                acknowledge_terms=args.acknowledge_terms,
+            )
+            print(
+                f"gt_sha256={result['output']['ground_truth_sha256']} "
+                f"import_manifest_sha256={result['import_manifest_sha256']}"
+            )
+            return 0
+
+        if args.command == "import-crowdhuman":
+            from .public_dataset_import import import_crowdhuman
+
+            result = import_crowdhuman(
+                dataset_root=args.dataset_root,
+                annotations=args.annotations,
+                images_dir=args.images_dir,
+                output_ground_truth=args.output,
+                output_manifest=args.manifest,
+                bbox_kind=args.bbox_kind,
+                logical_prefix=args.logical_prefix,
+                importer_source_commit=args.importer_source_commit,
+                acknowledge_terms=args.acknowledge_terms,
+            )
+            print(
+                f"gt_sha256={result['output']['ground_truth_sha256']} "
+                f"import_manifest_sha256={result['import_manifest_sha256']}"
+            )
+            return 0
+
         if args.command in {"validate-corpus", "freeze-corpus"}:
             report = inspect_corpus(
                 video_root=args.video_root,
                 golden_ground_truth=args.golden_ground_truth,
                 train_ground_truth=args.train_ground_truth,
+                coverage_profile=args.coverage_profile,
+                dataset_import_manifests=args.dataset_import,
             )
             if args.command == "validate-corpus":
                 if args.output:
@@ -1346,6 +1424,7 @@ def main() -> int:
                 revision=args.revision,
                 reviewer=args.reviewer,
                 human_confirmed=args.confirm_human_reviewed,
+                public_dataset_confirmed=args.confirm_public_dataset_terms,
             )
             _json_dump(args.output, manifest)
             print(f"corpus_revision={manifest['revision']} corpus_sha256={manifest['corpus_sha256']}")
