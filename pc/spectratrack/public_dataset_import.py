@@ -917,6 +917,521 @@ def import_crowdhuman(
     return manifest
 
 
+def _normalize_category_name(value: Any) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("NightOwls category name must be non-empty")
+    return value.strip().lower().replace("-", "").replace("_", "").replace(" ", "")
+
+
+def _stable_scalar_token(value: Any, where: str) -> str:
+    if isinstance(value, bool):
+        raise ValueError(f"{where}: boolean is not a valid stable scalar id")
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float) and math.isfinite(value) and value.is_integer():
+        return str(int(value))
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    raise ValueError(f"{where}: expected stable integer-like or string value")
+
+
+def _nightowls_pose_map(data: dict[str, Any]) -> dict[int, str]:
+    poses = data.get("poses", [])
+    if poses is None:
+        return {}
+    if not isinstance(poses, list):
+        raise ValueError("NightOwls poses must be a list when present")
+    result: dict[int, str] = {}
+    for index, pose in enumerate(poses, start=1):
+        if not isinstance(pose, dict):
+            raise ValueError("NightOwls pose entry must be an object")
+        pose_id = pose.get("id", index)
+        if not isinstance(pose_id, int) or isinstance(pose_id, bool):
+            raise ValueError("NightOwls pose id must be an integer")
+        name = pose.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("NightOwls pose name must be non-empty")
+        result[pose_id] = name.strip()
+    return result
+
+
+def _nightowls_official_sdk_files(sdk_root: Path) -> list[Path]:
+    expected = [
+        sdk_root / "README.md",
+        sdk_root / "python" / "coco.py",
+        sdk_root / "python" / "eval.py",
+        sdk_root / "python" / "eval_MR_multisetup.py",
+    ]
+    missing = [path for path in expected if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(f"NightOwls official SDK files missing: {missing}")
+    readme = expected[0].read_text(encoding="utf-8", errors="replace")
+    evaluator = expected[3].read_text(encoding="utf-8", errors="replace")
+    if "NightOwls API" not in readme or "non-commercial" not in readme:
+        raise ValueError("NightOwls SDK README does not match the official API/license text")
+    if "catIds = [1]" not in evaluator:
+        raise ValueError("NightOwls SDK evaluator does not expose the expected pedestrian category 1")
+    return expected
+
+
+def _nightowls_size_bin(height: float) -> str:
+    if height < 24:
+        return "lt24"
+    if height < 48:
+        return "24_47"
+    if height < 96:
+        return "48_95"
+    return "ge96"
+
+
+def _nightowls_image_strata(
+    image: dict[str, Any],
+    annotations: list[dict[str, Any]],
+    *,
+    pedestrian_category_id: int,
+) -> set[str]:
+    scored = [
+        ann
+        for ann in annotations
+        if ann.get("category_id") == pedestrian_category_id and not bool(ann.get("ignore", 0))
+    ]
+    strata = {"positive" if scored else "negative"}
+    daytime = image.get("daytime")
+    if isinstance(daytime, str) and daytime.strip():
+        strata.add(f"daytime:{daytime.strip().lower()}")
+    for ann in scored:
+        bbox = _xywh_to_xyxy(ann.get("bbox"), "NightOwls slice bbox")
+        strata.add(f"size:{_nightowls_size_bin(bbox[3] - bbox[1])}")
+        if ann.get("occluded") is True:
+            strata.add("occluded:true")
+        if ann.get("difficult") is True:
+            strata.add("difficult:true")
+        pose_id = ann.get("pose_id")
+        if isinstance(pose_id, int) and not isinstance(pose_id, bool):
+            strata.add(f"pose:{pose_id}")
+    return strata
+
+
+def _deterministic_nightowls_slice(
+    images: list[dict[str, Any]],
+    annotations_by_image: dict[int, list[dict[str, Any]]],
+    *,
+    pedestrian_category_id: int,
+    limit: int,
+    seed: str,
+) -> list[dict[str, Any]]:
+    if limit <= 0:
+        raise ValueError("NightOwls slice frame count must be > 0")
+    if limit >= len(images):
+        return list(images)
+
+    def rank(image: dict[str, Any]) -> str:
+        image_id = image.get("id")
+        payload = f"{seed}:{image_id}:{image.get('file_name', '')}".encode("utf-8")
+        return hashlib.sha256(payload).hexdigest()
+
+    ordered = sorted(images, key=lambda image: (rank(image), int(image["id"])))
+    best_for_stratum: dict[str, dict[str, Any]] = {}
+    for image in ordered:
+        image_id = int(image["id"])
+        for stratum in _nightowls_image_strata(
+            image,
+            annotations_by_image.get(image_id, []),
+            pedestrian_category_id=pedestrian_category_id,
+        ):
+            best_for_stratum.setdefault(stratum, image)
+
+    selected_by_id = {int(image["id"]): image for image in best_for_stratum.values()}
+    if len(selected_by_id) > limit:
+        raise ValueError(
+            f"NightOwls slice size {limit} is too small for deterministic source strata; "
+            f"minimum is {len(selected_by_id)}"
+        )
+    for image in ordered:
+        if len(selected_by_id) >= limit:
+            break
+        selected_by_id.setdefault(int(image["id"]), image)
+    return sorted(selected_by_id.values(), key=lambda image: int(image["id"]))
+
+
+def import_nightowls(
+    *,
+    dataset_root: str | Path,
+    annotations: str | Path,
+    images_dir: str | Path,
+    sdk_dir: str | Path,
+    output_ground_truth: str | Path,
+    output_manifest: str | Path,
+    logical_prefix: str = "golden/public/nightowls-val",
+    slice_frames: int | None = None,
+    slice_seed: str = "spectratrack-round2-nightowls-v1",
+    importer_source_commit: str | None = None,
+    acknowledge_terms: bool = False,
+) -> dict[str, Any]:
+    if not acknowledge_terms:
+        raise ValueError("NightOwls import requires --acknowledge-terms")
+    root = Path(dataset_root)
+    annotation_path = Path(annotations)
+    if not annotation_path.is_absolute():
+        annotation_path = root / annotation_path
+    if annotation_path.name != "nightowls_validation.json":
+        raise ValueError("Round-2 NightOwls importer accepts official nightowls_validation.json only")
+    image_root = Path(images_dir)
+    if not image_root.is_absolute():
+        image_root = root / image_root
+    sdk_root = Path(sdk_dir)
+    if not sdk_root.is_absolute():
+        sdk_root = root / sdk_root
+    if not image_root.is_dir():
+        raise FileNotFoundError(image_root)
+
+    sdk_files = _nightowls_official_sdk_files(sdk_root)
+    try:
+        data = json.loads(annotation_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{annotation_path}: invalid JSON") from exc
+    if not isinstance(data, dict):
+        raise ValueError("NightOwls annotation JSON must be an object")
+    images = data.get("images")
+    annotations_list = data.get("annotations")
+    categories = data.get("categories")
+    if not isinstance(images, list) or not isinstance(annotations_list, list) or not isinstance(categories, list):
+        raise ValueError("NightOwls JSON requires images, annotations and categories lists")
+
+    category_names: dict[int, str] = {}
+    for category in categories:
+        if not isinstance(category, dict):
+            raise ValueError("NightOwls category must be an object")
+        category_id = category.get("id")
+        if not isinstance(category_id, int) or isinstance(category_id, bool):
+            raise ValueError("NightOwls category id must be an integer")
+        category_names[category_id] = _normalize_category_name(category.get("name"))
+    if category_names.get(1) != "pedestrian":
+        raise ValueError(
+            f"NightOwls official pedestrian category must be id=1/name=pedestrian; got {category_names.get(1)!r}"
+        )
+    ignore_category_ids = {category_id for category_id, name in category_names.items() if name == "ignore"}
+    pose_names = _nightowls_pose_map(data)
+
+    images_by_id: dict[int, dict[str, Any]] = {}
+    for image in images:
+        if not isinstance(image, dict):
+            raise ValueError("NightOwls image record must be an object")
+        image_id = image.get("id")
+        if not isinstance(image_id, int) or isinstance(image_id, bool):
+            raise ValueError("NightOwls image id must be an integer")
+        if image_id in images_by_id:
+            raise ValueError(f"NightOwls duplicate image id {image_id}")
+        file_name = image.get("file_name")
+        width = image.get("width")
+        height = image.get("height")
+        if not isinstance(file_name, str) or not file_name:
+            raise ValueError(f"NightOwls image {image_id}: file_name must be non-empty")
+        if not isinstance(width, int) or width <= 0 or not isinstance(height, int) or height <= 0:
+            raise ValueError(f"NightOwls image {image_id}: invalid dimensions")
+        _stable_scalar_token(image.get("recordings_id"), f"NightOwls image {image_id} recordings_id")
+        timestamp = image.get("timestamp")
+        if (
+            isinstance(timestamp, bool)
+            or not isinstance(timestamp, (int, float))
+            or not math.isfinite(float(timestamp))
+        ):
+            raise ValueError(f"NightOwls image {image_id}: timestamp must be finite")
+        images_by_id[image_id] = image
+
+    annotations_by_image: dict[int, list[dict[str, Any]]] = {}
+    scored_pedestrian_annotations: list[dict[str, Any]] = []
+    trajectory_frames: dict[tuple[str, str], set[int]] = {}
+    tracking_fields_valid = True
+    for annotation in annotations_list:
+        if not isinstance(annotation, dict):
+            raise ValueError("NightOwls annotation must be an object")
+        image_id = annotation.get("image_id")
+        if image_id not in images_by_id:
+            raise ValueError(f"NightOwls annotation references unknown image_id {image_id!r}")
+        category_id = annotation.get("category_id")
+        if category_id not in category_names:
+            raise ValueError(f"NightOwls annotation uses unknown category_id {category_id!r}")
+        _xywh_to_xyxy(annotation.get("bbox"), f"NightOwls image {image_id} bbox")
+        annotations_by_image.setdefault(int(image_id), []).append(annotation)
+        if category_id == 1 and not bool(annotation.get("ignore", 0)):
+            scored_pedestrian_annotations.append(annotation)
+            tracking_id = annotation.get("tracking_id")
+            if (
+                isinstance(tracking_id, bool)
+                or not isinstance(tracking_id, int)
+                or tracking_id < 0
+            ):
+                tracking_fields_valid = False
+            else:
+                image = images_by_id[int(image_id)]
+                recording = _stable_scalar_token(
+                    image.get("recordings_id"),
+                    f"NightOwls image {image_id} recordings_id",
+                )
+                key = (recording, str(tracking_id))
+                frames = trajectory_frames.setdefault(key, set())
+                if int(image_id) in frames:
+                    raise ValueError(
+                        f"NightOwls duplicate tracking_id {tracking_id} in image {image_id}"
+                    )
+                frames.add(int(image_id))
+
+    repeated_trajectory = any(len(frame_ids) >= 2 for frame_ids in trajectory_frames.values())
+    full_tracking_supported = bool(scored_pedestrian_annotations) and tracking_fields_valid and repeated_trajectory
+
+    selected_images = (
+        _deterministic_nightowls_slice(
+            images,
+            annotations_by_image,
+            pedestrian_category_id=1,
+            limit=slice_frames,
+            seed=slice_seed,
+        )
+        if slice_frames is not None
+        else list(images)
+    )
+    selected_ids = {int(image["id"]) for image in selected_images}
+    tracking_supported = full_tracking_supported and slice_frames is None
+
+    by_recording: dict[str, list[dict[str, Any]]] = {}
+    for image in selected_images:
+        recording = _stable_scalar_token(
+            image.get("recordings_id"),
+            f"NightOwls image {image.get('id')} recordings_id",
+        )
+        by_recording.setdefault(recording, []).append(image)
+    for recording_images in by_recording.values():
+        recording_images.sort(key=lambda item: (float(item["timestamp"]), int(item["id"])))
+
+    source_files = [_source_file(annotation_path, root, "ground_truth")]
+    for sdk_file in sdk_files:
+        source_files.append(_source_file(sdk_file, root, "official_sdk"))
+
+    rows: list[dict[str, Any]] = []
+    sequence_manifest: list[dict[str, Any]] = []
+    stats = {
+        "selected_images": len(selected_images),
+        "scored_pedestrians": 0,
+        "ignored_pedestrians": 0,
+        "official_ignore_regions": 0,
+        "rider_or_other_classes_omitted": 0,
+        "non_intersecting_target_like_omitted": 0,
+    }
+
+    import cv2
+
+    for recording, recording_images in sorted(by_recording.items()):
+        logical_video = f"{logical_prefix.rstrip('/')}/recording-{recording}"
+        sequence_source_entries: list[dict[str, Any]] = []
+        for canonical_frame, image in enumerate(recording_images):
+            image_id = int(image["id"])
+            image_path = image_root / str(image["file_name"])
+            source_entry = _source_file(image_path, root, "image")
+            source_files.append(source_entry)
+            sequence_source_entries.append(source_entry)
+            loaded = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+            if loaded is None:
+                raise RuntimeError(f"Cannot read NightOwls image: {image_path}")
+            actual_height, actual_width = loaded.shape[:2]
+            if actual_width != int(image["width"]) or actual_height != int(image["height"]):
+                raise ValueError(
+                    f"NightOwls image {image_id}: file dimensions {actual_width}x{actual_height} "
+                    f"differ from JSON {image['width']}x{image['height']}"
+                )
+
+            objects: list[dict[str, Any]] = []
+            for annotation in annotations_by_image.get(image_id, []):
+                category_id = int(annotation["category_id"])
+                bbox = _xywh_to_xyxy(annotation["bbox"], f"NightOwls image {image_id} bbox")
+                if not _bbox_intersects_image(bbox, actual_width, actual_height):
+                    if category_id == 1 or category_id in ignore_category_ids:
+                        stats["non_intersecting_target_like_omitted"] += 1
+                    continue
+
+                source_annotation = {
+                    "dataset": "NightOwls",
+                    "annotation_id": annotation.get("id"),
+                    "category_id": category_id,
+                    "category_name": category_names[category_id],
+                    "tracking_id": annotation.get("tracking_id"),
+                    "occluded": annotation.get("occluded"),
+                    "difficult": annotation.get("difficult"),
+                    "pose_id": annotation.get("pose_id"),
+                    "truncated": annotation.get("truncated"),
+                    "ignore": annotation.get("ignore"),
+                    "area": annotation.get("area"),
+                }
+
+                if category_id == 1:
+                    ignored = bool(annotation.get("ignore", 0))
+                    attributes: list[str] = []
+                    for field_name in ("occluded", "difficult", "truncated"):
+                        value = annotation.get(field_name)
+                        if value is not None:
+                            if not isinstance(value, bool):
+                                raise ValueError(
+                                    f"NightOwls pedestrian {annotation.get('id')}: "
+                                    f"{field_name} must be boolean/null"
+                                )
+                            attributes.append(f"nightowls_{field_name}_{str(value).lower()}")
+                    pose_id = annotation.get("pose_id")
+                    if pose_id is not None:
+                        if not isinstance(pose_id, int) or isinstance(pose_id, bool):
+                            raise ValueError("NightOwls pedestrian pose_id must be integer/null")
+                        pose_name = pose_names.get(pose_id)
+                        attributes.append(
+                            f"nightowls_pose_{_normalize_token_for_attribute(pose_name or str(pose_id))}"
+                        )
+                    obj: dict[str, Any] = {
+                        "label": "person",
+                        "bbox": bbox,
+                        "attributes": attributes,
+                        "source_annotation": source_annotation,
+                    }
+                    if tracking_supported and not ignored:
+                        obj["id"] = (
+                            f"NightOwls:{recording}:{int(annotation['tracking_id'])}"
+                        )
+                    if ignored:
+                        obj["ignore"] = True
+                        stats["ignored_pedestrians"] += 1
+                    else:
+                        stats["scored_pedestrians"] += 1
+                    objects.append(obj)
+                elif category_id in ignore_category_ids:
+                    stats["official_ignore_regions"] += 1
+                    objects.append(
+                        {
+                            "label": "person",
+                            "bbox": bbox,
+                            "ignore": True,
+                            "attributes": ["nightowls_official_ignore_region"],
+                            "source_annotation": source_annotation,
+                        }
+                    )
+                else:
+                    # The official pedestrian evaluator accumulates category 1 only.
+                    # Rider classes remain separate and do not become pedestrian targets.
+                    stats["rider_or_other_classes_omitted"] += 1
+
+            daytime = image.get("daytime")
+            tags = ["night_dark"] if isinstance(daytime, str) and daytime.lower() == "night" else []
+            rows.append(
+                {
+                    "video": logical_video,
+                    "frame": canonical_frame,
+                    "source": source_entry["path"],
+                    "source_frame": image_id,
+                    "source_sequence": f"NightOwls:recording-{recording}",
+                    "allow_out_of_bounds": True,
+                    "tags": tags,
+                    "objects": objects,
+                    "source_metadata": {
+                        "dataset": "NightOwls",
+                        "dataset_split": "validation",
+                        "recordings_id": image.get("recordings_id"),
+                        "image_id": image_id,
+                        "timestamp": image.get("timestamp"),
+                        "daytime": daytime,
+                        "file_name": image.get("file_name"),
+                    },
+                }
+            )
+
+        sequence_manifest.append(
+            {
+                "logical_video": logical_video,
+                "recordings_id": recording,
+                "frame_count": len(recording_images),
+                "first_timestamp": recording_images[0]["timestamp"],
+                "last_timestamp": recording_images[-1]["timestamp"],
+                "source_images_sha256": _canonical_sha256(
+                    [
+                        {"path": item["path"], "sha256": item["sha256"]}
+                        for item in sequence_source_entries
+                    ]
+                ),
+            }
+        )
+
+    rows.sort(key=lambda item: (item["video"], item["frame"]))
+    _write_jsonl(output_ground_truth, rows)
+    gt_sha = ground_truth_sha256(output_ground_truth)
+    selected_id_list = sorted(selected_ids)
+    slice_info = (
+        {
+            "kind": "deterministic_stratified_round2",
+            "frame_limit": slice_frames,
+            "seed": slice_seed,
+            "selection_inputs": (
+                "official image metadata + official pedestrian annotations only; no model output"
+            ),
+            "selected_image_ids": selected_id_list,
+            "selected_image_ids_sha256": _canonical_sha256(selected_id_list),
+            "tracking_supported": False,
+        }
+        if slice_frames is not None
+        else None
+    )
+    manifest = {
+        "schema": IMPORT_SCHEMA,
+        "dataset": {
+            "name": "NightOwls",
+            "version": "NightOwls",
+            "split": "validation",
+            "terms": NIGHTOWLS_TERMS,
+        },
+        "annotation_origin": "official_public_ground_truth",
+        "terms_acknowledged": True,
+        "tracking_supported": tracking_supported,
+        "tracking_contract": {
+            "official_documentation_states_tracking_information": True,
+            "all_scored_pedestrians_have_valid_tracking_id": tracking_fields_valid,
+            "repeated_trajectory_observed": repeated_trajectory,
+            "disabled_for_stratified_slice": slice_frames is not None,
+        },
+        "importer_source_commit": _importer_commit(importer_source_commit),
+        "selected_sequences": sorted(by_recording),
+        "conversion_settings": {
+            "scored_category": {"id": 1, "name": "pedestrian"},
+            "official_ignore_categories": sorted(ignore_category_ids),
+            "rider_and_other_categories": "omitted; never relabeled as pedestrian",
+            "pedestrian_ignore_flag": "preserved as canonical ignore",
+            "bbox_coordinates": "official xywh converted to xyxy without clipping",
+            "stable_object_ids": (
+                "NightOwls:<recording>:<tracking_id>"
+                if tracking_supported
+                else "omitted because stable temporal scoring was not validated for this import"
+            ),
+            "attributes": ["occluded", "difficult", "pose", "truncated"],
+            "semantic_tags": "night_dark only when official image daytime metadata equals night",
+        },
+        "slice": slice_info,
+        "logical_prefix": logical_prefix.rstrip("/"),
+        "source_files": source_files,
+        "source_files_sha256": _canonical_sha256(
+            [{"path": item["path"], "sha256": item["sha256"]} for item in source_files]
+        ),
+        "sequences": sequence_manifest,
+        "stats": stats,
+        "output": {
+            "ground_truth": str(Path(output_ground_truth).name),
+            "ground_truth_sha256": gt_sha,
+        },
+    }
+    manifest["import_manifest_sha256"] = _canonical_sha256(manifest)
+    _write_json(output_manifest, manifest)
+    return manifest
+
+
+def _normalize_token_for_attribute(value: str) -> str:
+    token = value.strip().lower().replace("-", "_").replace(" ", "_").replace("/", "_")
+    while "__" in token:
+        token = token.replace("__", "_")
+    return token or "unknown"
+
+
 def load_import_manifest(path: str | Path) -> dict[str, Any]:
     manifest = json.loads(Path(path).read_text(encoding="utf-8"))
     if manifest.get("schema") != IMPORT_SCHEMA:
