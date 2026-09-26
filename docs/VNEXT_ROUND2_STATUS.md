@@ -16,6 +16,8 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 ## Global gates
 
+- **READY** — NightOwls storage blocker cleared: E: now has 210,024,607,744 bytes free; A5 may start official intake under isolated E: data root.
+
 - **DONE** — DanceTrack frozen: dancetrack-public-r1, corpus SHA df240532ad3f2099947f318b682737ccdb3e6345dc9da1e380ff4cab8d6c6b5c; 25 sequences / 25,508 frames / 225,148 people; validation clean.
 - **IN PROGRESS** — A1 CrowdHuman dense-safety running; ~20% image-level prefusion artifacts persisted at latest live check.
 - **BLOCKED** — NightOwls official archive is reachable but safe local storage is insufficient for archive + extraction on current C:/E: free space.
