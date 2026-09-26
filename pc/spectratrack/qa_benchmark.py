@@ -36,6 +36,7 @@ class GroundTruthFrame:
     source_frame: int | None = None
     source_sequence: str | None = None
     source_fps: float | None = None
+    allow_out_of_bounds: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +105,10 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
                     raise ValueError(f"{source}:{line_number}: source_fps must be finite and > 0 when present")
                 source_fps = float(source_fps_raw)
 
+            allow_out_of_bounds = data.get("allow_out_of_bounds", False)
+            if not isinstance(allow_out_of_bounds, bool):
+                raise ValueError(f"{source}:{line_number}: allow_out_of_bounds must be a boolean")
+
             key = (video, frame)
             if key in seen:
                 raise ValueError(f"{source}:{line_number}: duplicate frame {video!r}#{frame}")
@@ -159,6 +164,7 @@ def load_ground_truth(path: str | Path) -> list[GroundTruthFrame]:
                     source_frame=source_frame,
                     source_sequence=source_sequence,
                     source_fps=source_fps,
+                    allow_out_of_bounds=allow_out_of_bounds,
                 )
             )
     if not frames:
