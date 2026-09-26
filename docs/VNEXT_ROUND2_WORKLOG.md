@@ -746,3 +746,25 @@ GitHub Actions run `36240708158`:
 - Windows build was still running at the last check.
 
 Do not mark fully validated until the workflow concludes successfully.
+
+
+### DONE — A2 ambiguity-scoped candidate CI validation
+
+Final A2 role-handoff head:
+
+`8c4c9b69f9d3f332ed2d655ff5f7bc9cb69cb6e4`
+
+Research code head:
+
+`c552b0f45e033628e188f91df11839025c2ed359`
+
+GitHub Actions run `36240708158` completed successfully:
+
+- ruff passed;
+- compile + pytest: **166 passed in 2.09 s**;
+- tracker benchmark: 1643.4 tracker FPS on the synthetic smoke;
+- crossing/reappearance smoke ID switches: 0;
+- diagnostics and self-check passed;
+- Windows standalone build/smoke/package/upload passed.
+
+The candidate is now mechanism-valid but remains **NOT YET ACCEPTED** for production. Real replay comparison is still required once target-PC artifact access is reliable.
