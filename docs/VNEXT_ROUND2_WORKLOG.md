@@ -975,3 +975,45 @@ Interpretation:
 4. then run A1 held-out without retune and evaluate A2/A3 from existing or resumed artifacts;
 5. A4 remains parked until surviving quality policies exist;
 6. stop for the project owner only when the compact private CCTV pack is ready for human review or a non-recoverable blocker remains.
+
+
+## 2026-09-26 19:40 +07 — coordinator stop gate reached
+
+### DONE — docs-only specialist CI completed
+
+A1 documentation head:
+
+`32ae82052b6de37ae938e2e2cded27c9787118d5`
+
+GitHub Actions run `36242653285`: **SUCCESS**.
+
+A5 documentation head:
+
+`8faf6c9180c5d84555589e2ed7600832b036ac78`
+
+GitHub Actions run `36242654534`: **SUCCESS**.
+
+These runs do not replace the already recorded code/evidence CI; they confirm the current branch heads remain green after the mandatory state-documentation updates.
+
+### FAILED / BLOCKED — control channel remains unusable
+
+A later Remote Desktop Commander meta/history probe also timed out. Combined with the earlier process/session/file-info timeouts, the target PC can currently be pinged but cannot be safely inspected or commanded for substantive work.
+
+Safety decision:
+
+- do not restart A1 held-out, A2 replay, or A3 strict profile blindly;
+- keep their local completion state at **NEEDS VERIFICATION / NOT DONE** as applicable;
+- do not invent target-PC artifacts or benchmark results.
+
+### BLOCKED — human private CCTV review gate reached
+
+A5 already prepared the compact 46-frame private review pack from the three user CCTV clips plus machine draft preannotations/triage. This is the point where project-owner human confirmation is explicitly required.
+
+`cctv-golden-r1` remains **NOT DONE** and must not be frozen until the human-reviewed output exists.
+
+Coordinator stop condition reached for two independent reasons:
+
+1. human review is now required for the private CCTV pack;
+2. the target-PC substantive control channel is persistently unavailable and prevents safe verification/resumption of long local jobs.
+
+Production integration, `agent/vnext-integrator`, merge to `integration/main`, RC changes and release all remain locked.
