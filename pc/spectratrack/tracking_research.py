@@ -610,29 +610,26 @@ class AmbiguityGuardCurrentTracker(MultiObjectTracker):
         if not candidates:
             return []
 
-        competitive_edges: set[tuple[int, int]] = set()
-        for track_id, rows in by_track.items():
-            ranked = sorted(rows, reverse=True)
-            if len(ranked) < 2 or ranked[0][0] - ranked[1][0] > self.ambiguity_margin:
-                continue
-            best = ranked[0][0]
-            competitive_edges.update(
-                (track_id, detection_id)
-                for score, detection_id in ranked
-                if best - score <= self.ambiguity_margin
-            )
-        for detection_id, rows in by_detection.items():
-            ranked = sorted(rows, reverse=True)
-            if len(ranked) < 2 or ranked[0][0] - ranked[1][0] > self.ambiguity_margin:
-                continue
-            best = ranked[0][0]
-            competitive_edges.update(
-                (track_id, detection_id)
-                for score, track_id in ranked
-                if best - score <= self.ambiguity_margin
-            )
+        ranked_by_track = {
+            track_id: sorted(rows, reverse=True)
+            for track_id, rows in by_track.items()
+        }
+        ranked_by_detection = {
+            detection_id: sorted(rows, reverse=True)
+            for detection_id, rows in by_detection.items()
+        }
+        ambiguous_tracks = {
+            track_id
+            for track_id, ranked in ranked_by_track.items()
+            if len(ranked) >= 2 and ranked[0][0] - ranked[1][0] <= self.ambiguity_margin
+        }
+        ambiguous_detections = {
+            detection_id
+            for detection_id, ranked in ranked_by_detection.items()
+            if len(ranked) >= 2 and ranked[0][0] - ranked[1][0] <= self.ambiguity_margin
+        }
 
-        if not competitive_edges:
+        if not ambiguous_tracks and not ambiguous_detections:
             candidates.sort(reverse=True)
             remaining_tracks = set(track_ids)
             remaining_detections = set(det_ids)
@@ -645,27 +642,44 @@ class AmbiguityGuardCurrentTracker(MultiObjectTracker):
                 matches.append((track_id, detection_id))
             return matches
 
+        # Expand only through each node's two best accepted alternatives. This
+        # gives an ambiguous competition enough context for a one-to-one solve
+        # without turning every crowded frame into wholesale global assignment.
+        support_edges: set[tuple[int, int]] = set()
+        for track_id, ranked in ranked_by_track.items():
+            support_edges.update((track_id, detection_id) for _, detection_id in ranked[:2])
+        for detection_id, ranked in ranked_by_detection.items():
+            support_edges.update((track_id, detection_id) for _, track_id in ranked[:2])
+
         track_neighbors: dict[int, set[int]] = {}
         detection_neighbors: dict[int, set[int]] = {}
-        for track_id, detection_id in competitive_edges:
+        for track_id, detection_id in support_edges:
             track_neighbors.setdefault(track_id, set()).add(detection_id)
             detection_neighbors.setdefault(detection_id, set()).add(track_id)
 
         components: list[tuple[set[int], set[int]]] = []
-        unseen_tracks = set(track_neighbors)
-        while unseen_tracks:
-            seed = min(unseen_tracks)
+        seed_nodes = (
+            [("track", track_id) for track_id in sorted(ambiguous_tracks)]
+            + [("detection", detection_id) for detection_id in sorted(ambiguous_detections)]
+        )
+        visited_tracks: set[int] = set()
+        visited_detections: set[int] = set()
+        for seed_kind, seed_id in seed_nodes:
+            if seed_kind == "track" and seed_id in visited_tracks:
+                continue
+            if seed_kind == "detection" and seed_id in visited_detections:
+                continue
             component_tracks: set[int] = set()
             component_detections: set[int] = set()
-            pending_tracks = [seed]
-            pending_detections: list[int] = []
+            pending_tracks = [seed_id] if seed_kind == "track" else []
+            pending_detections = [seed_id] if seed_kind == "detection" else []
             while pending_tracks or pending_detections:
                 while pending_tracks:
                     track_id = pending_tracks.pop()
                     if track_id in component_tracks:
                         continue
                     component_tracks.add(track_id)
-                    unseen_tracks.discard(track_id)
+                    visited_tracks.add(track_id)
                     for detection_id in track_neighbors.get(track_id, ()):
                         if detection_id not in component_detections:
                             pending_detections.append(detection_id)
@@ -674,6 +688,7 @@ class AmbiguityGuardCurrentTracker(MultiObjectTracker):
                     if detection_id in component_detections:
                         continue
                     component_detections.add(detection_id)
+                    visited_detections.add(detection_id)
                     for track_id in detection_neighbors.get(detection_id, ()):
                         if track_id not in component_tracks:
                             pending_tracks.append(track_id)
