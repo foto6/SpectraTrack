@@ -607,3 +607,55 @@ NightOwls is a public night detector/fusion gate, not a new tuning corpus unless
 For surviving temporal policies, emit canonical `spectratrack-detection-replay-v1` for A2.
 
 Do not change detector families or production detector semantics in response to held-out results during this cycle.
+
+
+## Round 2 execution recovery checkpoint — 2026-09-26
+
+Starting branch/head verified before work:
+
+`agent/vnext-detection @ bccf087df01b74bc463dcc3525e5665110ff8225`
+
+Canonical Round-2 coordination docs were read from `coord/vnext-round2` because those coordination-only files are not copied into the specialist branch.
+
+### Target-PC restart guard
+
+Status: **NEEDS VERIFICATION / BLOCKED BY CONTROL CHANNEL**
+
+Required held-out command remains unchanged and no held-out threshold/fusion retuning has occurred.
+
+Remote target-PC device observed:
+
+- device: `DESKTOP-64LCMQ8`;
+- initial status during recovery: briefly online, then offline before process/file interrogation could complete;
+- last observed remote timestamp: `2026-09-26T15:54:48.004Z`.
+
+Because the device went offline before substantive queries completed, the following local state cannot yet be positively determined:
+
+- active A1 held-out process;
+- partial/completed `a1-round2-mot17-heldout.json`;
+- `a1-round2-prefusion-mot17` contents;
+- completion marker;
+- run log tail;
+- artifact timestamp/size/hash.
+
+GitHub repository/issue/PR search found no uploaded held-out A1 result or prefusion artifact for:
+
+- `a1-round2-mot17-heldout`;
+- `a1-round2-prefusion-mot17`;
+- evidence-aware MOT17 held-out;
+- CrowdHuman Round-2 evidence-aware fusion.
+
+Therefore **no restart is authorized yet**. When the target PC is reachable again, inspect process + artifact + marker + log + timestamp/size first and resume/reuse existing prefusion evidence when provenance matches. Only start fresh if existing state is positively absent or invalid.
+
+### Current evidence state
+
+- MOT17 DEV remains `MOT17-04`.
+- MOT17 HELD OUT remains `02/05/09/10/11/13`.
+- held-out retuning remains prohibited.
+- CrowdHuman validation remains NOT DONE for the Round-2 candidate.
+- `nightowls-public-r1` is not yet available to A1; NightOwls run remains pending A5 freeze.
+- canonical replay export tooling is CI-validated and ready for surviving policies once held-out evidence exists.
+
+Decision at this checkpoint:
+
+**NEEDS MORE EVIDENCE** — no A1 policy can be accepted/rejected from held-out until target-PC artifact state is recovered and the frozen runs complete.
