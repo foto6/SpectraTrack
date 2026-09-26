@@ -29,6 +29,7 @@ The importer requires `--acknowledge-terms` so the generated import manifest rec
 the user accepted the applicable dataset terms.
 
 Dataset binaries remain under the gitignored local `benchmarks/vnext/qa/public/` directory.
+Generated converted JSONL/import/freeze artifacts belong under the separate gitignored `benchmarks/vnext/qa/imports/` directory.
 
 ---
 
@@ -72,8 +73,8 @@ From `pc/`:
 python -m spectratrack.vnext_qa import-mot17 `
   --dataset-root benchmarks/vnext/qa/public/MOT17 `
   --variant FRCNN `
-  --output benchmarks/vnext/qa/mot17-public.jsonl `
-  --manifest benchmarks/vnext/qa/mot17-public.import.json `
+  --output benchmarks/vnext/qa/imports/mot17-public.jsonl `
+  --manifest benchmarks/vnext/qa/imports/mot17-public.import.json `
   --acknowledge-terms
 ```
 
@@ -88,8 +89,8 @@ python -m spectratrack.vnext_qa import-mot17 `
   --dataset-root benchmarks/vnext/qa/public/MOT17 `
   --variant FRCNN `
   --sequences 02,04,05,09,10,11,13 `
-  --output benchmarks/vnext/qa/mot17-public.jsonl `
-  --manifest benchmarks/vnext/qa/mot17-public.import.json `
+  --output benchmarks/vnext/qa/imports/mot17-public.jsonl `
+  --manifest benchmarks/vnext/qa/imports/mot17-public.import.json `
   --acknowledge-terms
 ```
 
@@ -127,10 +128,10 @@ No automatic `partial_occlusion` or `heavy_occlusion` label is invented from vis
 ```powershell
 python -m spectratrack.vnext_qa validate-corpus `
   --video-root benchmarks/vnext/qa/public/MOT17 `
-  --golden-ground-truth benchmarks/vnext/qa/mot17-public.jsonl `
+  --golden-ground-truth benchmarks/vnext/qa/imports/mot17-public.jsonl `
   --coverage-profile public-dataset `
-  --dataset-import benchmarks/vnext/qa/mot17-public.import.json `
-  --output benchmarks/vnext/qa/mot17-public.validation.json
+  --dataset-import benchmarks/vnext/qa/imports/mot17-public.import.json `
+  --output benchmarks/vnext/qa/imports/mot17-public.validation.json
 ```
 
 ## Freeze
@@ -138,13 +139,13 @@ python -m spectratrack.vnext_qa validate-corpus `
 ```powershell
 python -m spectratrack.vnext_qa freeze-corpus `
   --video-root benchmarks/vnext/qa/public/MOT17 `
-  --golden-ground-truth benchmarks/vnext/qa/mot17-public.jsonl `
+  --golden-ground-truth benchmarks/vnext/qa/imports/mot17-public.jsonl `
   --coverage-profile public-dataset `
-  --dataset-import benchmarks/vnext/qa/mot17-public.import.json `
+  --dataset-import benchmarks/vnext/qa/imports/mot17-public.import.json `
   --revision mot17-public-r1 `
   --reviewer "MOTChallenge official GT" `
   --confirm-public-dataset-terms `
-  --output benchmarks/vnext/qa/mot17-public.manifest.json
+  --output benchmarks/vnext/qa/imports/mot17-public.manifest.json
 ```
 
 Freeze re-hashes every source file listed by the importer. Moving files is fine only if the
@@ -227,8 +228,8 @@ python -m spectratrack.vnext_qa import-crowdhuman `
   --annotations annotation_val.odgt `
   --images-dir Images `
   --bbox-kind full `
-  --output benchmarks/vnext/qa/crowdhuman-val-fbox.jsonl `
-  --manifest benchmarks/vnext/qa/crowdhuman-val-fbox.import.json `
+  --output benchmarks/vnext/qa/imports/crowdhuman-val-fbox.jsonl `
+  --manifest benchmarks/vnext/qa/imports/crowdhuman-val-fbox.import.json `
   --acknowledge-terms
 ```
 
@@ -252,22 +253,22 @@ Conversion policy:
 ```powershell
 python -m spectratrack.vnext_qa validate-corpus `
   --video-root benchmarks/vnext/qa/public/CrowdHuman `
-  --golden-ground-truth benchmarks/vnext/qa/crowdhuman-val-fbox.jsonl `
+  --golden-ground-truth benchmarks/vnext/qa/imports/crowdhuman-val-fbox.jsonl `
   --coverage-profile public-dataset `
-  --dataset-import benchmarks/vnext/qa/crowdhuman-val-fbox.import.json `
-  --output benchmarks/vnext/qa/crowdhuman-val-fbox.validation.json
+  --dataset-import benchmarks/vnext/qa/imports/crowdhuman-val-fbox.import.json `
+  --output benchmarks/vnext/qa/imports/crowdhuman-val-fbox.validation.json
 ```
 
 ```powershell
 python -m spectratrack.vnext_qa freeze-corpus `
   --video-root benchmarks/vnext/qa/public/CrowdHuman `
-  --golden-ground-truth benchmarks/vnext/qa/crowdhuman-val-fbox.jsonl `
+  --golden-ground-truth benchmarks/vnext/qa/imports/crowdhuman-val-fbox.jsonl `
   --coverage-profile public-dataset `
-  --dataset-import benchmarks/vnext/qa/crowdhuman-val-fbox.import.json `
+  --dataset-import benchmarks/vnext/qa/imports/crowdhuman-val-fbox.import.json `
   --revision crowdhuman-val-fbox-r1 `
   --reviewer "CrowdHuman official validation GT" `
   --confirm-public-dataset-terms `
-  --output benchmarks/vnext/qa/crowdhuman-val-fbox.manifest.json
+  --output benchmarks/vnext/qa/imports/crowdhuman-val-fbox.manifest.json
 ```
 
 As with MOT17, resulting metrics use the common SpectraTrack A5 evaluator. They should not be
@@ -282,8 +283,8 @@ python -m spectratrack.vnext_qa import-crowdhuman `
   --annotations annotation_val.odgt `
   --images-dir Images `
   --bbox-kind visible `
-  --output benchmarks/vnext/qa/crowdhuman-val-vbox.jsonl `
-  --manifest benchmarks/vnext/qa/crowdhuman-val-vbox.import.json `
+  --output benchmarks/vnext/qa/imports/crowdhuman-val-vbox.jsonl `
+  --manifest benchmarks/vnext/qa/imports/crowdhuman-val-vbox.import.json `
   --acknowledge-terms
 ```
 
