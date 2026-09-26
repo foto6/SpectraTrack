@@ -8,6 +8,7 @@ from spectratrack.tracking_research import (
     CurrentTrackerRunner,
     GlobalAssignmentCurrentRunner,
     ReferenceStyleTracker,
+    TrackView,
     _aggregate,
     ambiguity_guard_promotion_gate,
     compare_current_ambiguity_guard,
@@ -318,6 +319,28 @@ def test_ignored_gt_regions_do_not_count_as_false_track_creation():
     assert metrics["gt"] == 0
     assert metrics["false_track_creations"] == 0
     assert mined["summary"]["false_track_ids"] == 0
+
+
+def test_nonperson_tracks_do_not_count_as_false_person_creations():
+    scenario = _scenario("camera_pan")
+    outputs = {}
+    runner = CurrentTrackerRunner()
+    for frame in scenario.replay.frames:
+        rows = runner.step(frame)
+        rows.append(
+            TrackView(
+                track_id=999,
+                bbox=(5.0, 5.0, 30.0, 30.0),
+                class_id=2,
+                label="car",
+                missed=0,
+                confirmed=True,
+            )
+        )
+        outputs[frame.frame] = rows
+
+    metrics = evaluate_tracking(scenario, outputs)
+    assert metrics["false_track_creations"] == 0
 
 def test_round2_promotion_gate_retains_current_on_any_required_regression():
     control = {
