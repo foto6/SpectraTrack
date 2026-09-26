@@ -549,7 +549,12 @@ def import_dancetrack(
     root = Path(dataset_root)
     split_root = root / split
     selected = _selected_subdirectories(split_root, sequences)
-    prefix = logical_prefix or f"golden/public/dancetrack-{split}"
+    default_prefix = (
+        "golden/public/dancetrack-val"
+        if split == "val"
+        else "train/public/dancetrack-train"
+    )
+    prefix = logical_prefix or default_prefix
 
     rows: list[dict[str, Any]] = []
     source_files: list[dict[str, Any]] = []
