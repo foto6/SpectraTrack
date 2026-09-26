@@ -1350,6 +1350,19 @@ def _build_parser() -> argparse.ArgumentParser:
     mot.add_argument("--importer-source-commit")
     mot.add_argument("--acknowledge-terms", action="store_true")
 
+    dance = sub.add_parser(
+        "import-dancetrack",
+        help="Convert DanceTrack train/validation MOT-style GT to canonical QA JSONL",
+    )
+    dance.add_argument("--dataset-root", required=True)
+    dance.add_argument("--output", required=True)
+    dance.add_argument("--manifest", required=True)
+    dance.add_argument("--split", choices=("train", "val"), default="val")
+    dance.add_argument("--sequences")
+    dance.add_argument("--logical-prefix")
+    dance.add_argument("--importer-source-commit")
+    dance.add_argument("--acknowledge-terms", action="store_true")
+
     crowd = sub.add_parser(
         "import-crowdhuman",
         help="Convert CrowdHuman validation annotations to canonical QA JSONL",
@@ -1439,6 +1452,25 @@ def main() -> int:
                 output_ground_truth=args.output,
                 output_manifest=args.manifest,
                 detector_variant=args.variant,
+                sequences=args.sequences,
+                logical_prefix=args.logical_prefix,
+                importer_source_commit=args.importer_source_commit,
+                acknowledge_terms=args.acknowledge_terms,
+            )
+            print(
+                f"gt_sha256={result['output']['ground_truth_sha256']} "
+                f"import_manifest_sha256={result['import_manifest_sha256']}"
+            )
+            return 0
+
+        if args.command == "import-dancetrack":
+            from .public_dataset_import import import_dancetrack
+
+            result = import_dancetrack(
+                dataset_root=args.dataset_root,
+                output_ground_truth=args.output,
+                output_manifest=args.manifest,
+                split=args.split,
                 sequences=args.sequences,
                 logical_prefix=args.logical_prefix,
                 importer_source_commit=args.importer_source_commit,
