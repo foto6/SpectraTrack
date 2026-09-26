@@ -819,3 +819,57 @@ Planned local artifact paths:
 Decision:
 
 **IN PROGRESS — START HELD-OUT.** Fresh start is permitted because prior process/artifact state was positively verified absent.
+
+
+## Round 2 MOT17 held-out launch
+
+Status:
+
+**IN PROGRESS**
+
+Target-PC launch was authorized only after the prior process/artifact state was positively verified absent.
+
+Exact experiment source commit:
+
+`c5f913f7c6b007dbcedc84aa03e4235f589ee062`
+
+Target environment:
+
+- device: `DESKTOP-64LCMQ8`;
+- worktree: `C:\Users\foto6\SpectraTrack-worktrees\a1`;
+- Python: `C:\Users\foto6\SpectraTrack-env\Scripts\python.exe`;
+- Python version: 3.12.10;
+- ONNX Runtime: 1.24.4;
+- providers available: `DmlExecutionProvider,CPUExecutionProvider`;
+- OpenCV: 4.14.0;
+- NumPy: 2.5.3.
+
+Launch process:
+
+- Remote Desktop Commander process PID: `16456`;
+- corpus revision: `mot17-public-r1`;
+- GT SHA-256: `28dcb9d197e0a098a1efb097f1589177350192a8f5f1be3e2ab5cd18d8f205c7`;
+- model: `E:\SpectraTrack\yolo11x.onnx`;
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`;
+- provider preference: DirectML, baseline CPU fallback;
+- DEV excluded: `MOT17-04`;
+- HELD OUT: `MOT17-02/05/09/10/11/13`;
+- methods: `hard-nms`, `conservative-nmm`, `weighted`, `evidence-aware`;
+- person floor: 0.12;
+- input size: 960;
+- decoder NMS IoU: 0.45;
+- tile size/overlap: 640 / 0.20;
+- match/fusion IoU: 0.50 / 0.55;
+- evidence weak/solo/strong: 0.12 / 0.20 / 0.35;
+- evidence min independent sources: 2;
+- held-out retuning: FORBIDDEN.
+
+Artifacts:
+
+- result: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json`;
+- completion marker: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json.complete.json`;
+- log: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json.console.log`;
+- prefusion directory: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-mot17`;
+- replay directory: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-replays-mot17`.
+
+No quality/cost claim is made until the process exits successfully and output + completion marker hashes/sizes are verified.
