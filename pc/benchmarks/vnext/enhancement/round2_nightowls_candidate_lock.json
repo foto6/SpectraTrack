@@ -1,0 +1,68 @@
+{
+  "schema": "spectratrack-vnext-a3-nightowls-candidate-lock-v1",
+  "status": "FROZEN_BEFORE_HELDOUT_RESULTS",
+  "role": "A3-enhancement",
+  "decision_basis": {
+    "development_corpus": "mot17-public-r1 / MOT17-04 first 300",
+    "verified_evidence_file": "pc/benchmarks/vnext/enhancement/round2_mot17_weak1_verified.json",
+    "source_artifact_sha256": "cad760e97e32380ac3da87d66f56bfc5d2a11097839b45e1806b3d9469e291a6",
+    "heldout_nightowls_results_seen_before_lock": false
+  },
+  "strict_configuration": {
+    "selective_gate": "weak-person",
+    "max_enhanced_rois_per_source_frame": 1,
+    "raw_corroboration_required": true,
+    "person_conf": 0.12,
+    "probe_conf": 0.08,
+    "corroboration_iou": 0.1
+  },
+  "primary_heldout": {
+    "corpus_revision": "nightowls-public-r1",
+    "split": "official validation or A5-frozen deterministic validation slice",
+    "retuning_after_results": "forbidden"
+  },
+  "candidates": [
+    {
+      "name": "OFF",
+      "role": "baseline"
+    },
+    {
+      "name": "bilateral",
+      "role": "low-work selective candidate",
+      "development_evidence": {
+        "recovered_gt_per_extra_call_pre_fusion": 0.5,
+        "fp_cost_per_recovered_gt_pre_fusion": 24.8,
+        "center_residual_step_delta": 0.000035743041467636155,
+        "size_residual_step_delta": -0.0001287290402114255
+      }
+    },
+    {
+      "name": "current_adaptive_cached",
+      "role": "higher-recovery selective candidate",
+      "development_evidence": {
+        "recovered_gt_per_extra_call_pre_fusion": 0.6392405063291139,
+        "fp_cost_per_recovered_gt_pre_fusion": 21.485148514851485,
+        "center_residual_step_delta": 0.0009605396469757679,
+        "size_residual_step_delta": 0.001051999268435591
+      }
+    }
+  ],
+  "excluded_before_heldout": [
+    {
+      "name": "sharpen",
+      "reason": [
+        "not better than current_adaptive_cached on recovered GT per extra call",
+        "not better than current_adaptive_cached on FP cost per recovered GT",
+        "larger center and size jitter regressions than current_adaptive_cached",
+        "its small measured incremental-ms-per-recovery advantage is not enough to establish a convincing quality-per-compute advantage from one development run"
+      ],
+      "development_evidence": {
+        "recovered_gt_per_extra_call_pre_fusion": 0.6304347826086957,
+        "fp_cost_per_recovered_gt_pre_fusion": 21.724137931034484,
+        "center_residual_step_delta": 0.0011781160523947828,
+        "size_residual_step_delta": 0.001453531841443853
+      }
+    }
+  ],
+  "final_decision_rule": "If neither strict bilateral nor strict current_adaptive_cached shows a convincing post-fusion quality-per-compute and stability gain over OFF on the frozen held-out evidence, hand off ENHANCEMENT OFF."
+}

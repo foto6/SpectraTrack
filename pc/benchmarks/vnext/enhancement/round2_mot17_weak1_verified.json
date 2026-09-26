@@ -1,0 +1,97 @@
+{
+  "schema": "spectratrack-vnext-a3-round2-verified-artifact-v1",
+  "status": "VERIFIED_PRE_FUSION_ONLY",
+  "source_artifact": {
+    "path": "C:\\Users\\foto6\\SpectraTrack-data\\runs\\a3-round2-weak1.json",
+    "sha256": "cad760e97e32380ac3da87d66f56bfc5d2a11097839b45e1806b3d9469e291a6",
+    "size_bytes": 8933,
+    "last_write_utc": "2026-09-26T09:56:06Z",
+    "source_commit": "86b1460b6f9879038de92eb1e1341a96221e6c03"
+  },
+  "experiment": {
+    "id": "a3-round2-weak1",
+    "corpus_revision": "mot17-public-r1",
+    "ground_truth_sha256": "b32f401268055f585b2e2b2ed90fb62749c924f3e3ff2986b15d390c323c35f4",
+    "video_sha256": "13a4760ab8c9b54b9ce998a46179e8483609019f41fd521f4e199eb156d32642",
+    "roi_manifest_sha256": "55ac3fa574fd7e3653b68538974a728c4f68e789cdbf7b73fbea059e4d44430f",
+    "model_sha256": "e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73",
+    "model_input": [960, 960],
+    "providers": ["DmlExecutionProvider", "CPUExecutionProvider"],
+    "sampled_source_seconds": 10.0,
+    "multi_candidate_wall_seconds": 437.34295319998637,
+    "actual_low_level_onnx_calls_shared_experiment": 2726
+  },
+  "strict_configuration": {
+    "selective_gate": "weak-person",
+    "max_selected_weak_rois_per_source_frame": 1,
+    "budget_enforcement": "preselected ROI manifest; artifact predates explicit profiler max_enhanced_rois_per_frame field",
+    "raw_corroboration_required": true,
+    "person_conf": 0.12,
+    "probe_conf": 0.08,
+    "corroboration_iou": 0.1
+  },
+  "raw_baseline": {
+    "raw_probe_calls": 2400,
+    "raw_matched_gt_persons": 9547,
+    "raw_fp_observations_pre_fusion": 10599,
+    "center_residual_step_mean": 0.02065849843735761,
+    "size_residual_step_mean": 0.0415235713085516
+  },
+  "operations": {
+    "bilateral": {
+      "affected_rois": 30,
+      "extra_enhancement_onnx_calls": 30,
+      "recovered_gt_pre_fusion": 15,
+      "lost_gt_pre_fusion": 0,
+      "new_fp_observations_pre_fusion": 372,
+      "recovered_gt_per_extra_call_pre_fusion": 0.5,
+      "fp_cost_per_recovered_gt_pre_fusion": 24.8,
+      "operation_preprocessing_ms": 70.83659991621971,
+      "enhanced_detector_ms": 3880.1864000270143,
+      "enhanced_inference_ms": 3163.2823002291843,
+      "center_residual_step_delta": 0.000035743041467636155,
+      "size_residual_step_delta": -0.0001287290402114255
+    },
+    "current_adaptive_cached": {
+      "affected_rois": 158,
+      "extra_enhancement_onnx_calls": 158,
+      "recovered_gt_pre_fusion": 101,
+      "lost_gt_pre_fusion": 0,
+      "new_fp_observations_pre_fusion": 2170,
+      "recovered_gt_per_extra_call_pre_fusion": 0.6392405063291139,
+      "fp_cost_per_recovered_gt_pre_fusion": 21.485148514851485,
+      "operation_preprocessing_ms": 870.7341003464535,
+      "enhanced_detector_ms": 21498.366899671964,
+      "enhanced_inference_ms": 17034.452000283636,
+      "center_residual_step_delta": 0.0009605396469757679,
+      "size_residual_step_delta": 0.001051999268435591
+    },
+    "sharpen": {
+      "affected_rois": 138,
+      "extra_enhancement_onnx_calls": 138,
+      "recovered_gt_pre_fusion": 87,
+      "lost_gt_pre_fusion": 0,
+      "new_fp_observations_pre_fusion": 1890,
+      "recovered_gt_per_extra_call_pre_fusion": 0.6304347826086957,
+      "fp_cost_per_recovered_gt_pre_fusion": 21.724137931034484,
+      "operation_preprocessing_ms": 226.52929928153753,
+      "enhanced_detector_ms": 18754.684299696237,
+      "enhanced_inference_ms": 14856.207501143217,
+      "center_residual_step_delta": 0.0011781160523947828,
+      "size_residual_step_delta": 0.001453531841443853
+    }
+  },
+  "interpretation": {
+    "post_fusion_status": "NOT_DONE",
+    "post_fusion_recall": null,
+    "post_fusion_precision": null,
+    "post_fusion_fp_delta": null,
+    "accepted_for_final_enhancement_decision": false,
+    "notes": [
+      "Artifact was verified on the target PC before any restart; no matching A3 benchmark process remained alive.",
+      "The explicit profiler cap field did not exist at source_commit; the ROI manifest itself selected at most one weak-person ROI per source frame.",
+      "All quality counts above are ROI-local/pre-fusion and cannot decide enhancement ON/OFF.",
+      "NightOwls held-out remains the primary final night enhancement gate once A5 freezes nightowls-public-r1."
+    ]
+  }
+}
