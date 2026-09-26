@@ -582,3 +582,29 @@ Planned isolated A1 step:
 - after CI, use the command for held-out multi-sequence collection when local control recovers.
 
 No production detector/runtime files are in scope.
+
+
+### IN PROGRESS — A1 resumable corpus runner implemented, CI running
+
+A1 branch advanced with research-only public-corpus tooling:
+
+- `15d9df37ba78482da2825f9e517eef9ce71734b8` — add resumable public-corpus fusion runner;
+- `6c06a87cbe3c60423370be9827c8b8117ecf832b` — add source-resolution / GT / aggregate/per-video tests;
+- `fd9cd0f776d1abb86b7063731af9a77343fc37c8` — pin frame-limit settings in resumable provenance and split new vs reused inference-call accounting.
+
+New module:
+
+`pc/spectratrack/research/vnext_detection_corpus.py`
+
+Purpose:
+
+- use the canonical A5 GT JSONL plus the existing A1 source-resolution helpers;
+- support MOT17 image sequences and CrowdHuman direct images;
+- evaluate hard-NMS / conservative-NMM / weighted / evidence-aware on identical candidate evidence;
+- optionally emit per-video pre-fusion artifacts;
+- support resume only when model/GT/corpus/config/source-commit provenance matches;
+- report aggregate and optional per-video metrics without changing production runtime.
+
+GitHub Actions run `36239750252` is currently in progress for A1 HEAD `fd9cd0f...`.
+
+Do not mark this step DONE until CI completes successfully.
