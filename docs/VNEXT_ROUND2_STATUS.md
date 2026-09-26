@@ -31,7 +31,7 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 Current known Round-2 head:
 
-`agent/vnext-detection @ 043931fb0bda2a10716ca19d2381adbd56c8d59b`
+`agent/vnext-detection @ 3dc31c8fa8b323ce86afc14c3105a0c2247a2c48`
 
 Done:
 
@@ -188,3 +188,10 @@ Unlock only when:
 - **FAIL / REJECT CHALLENGER** — evidence-aware vs hard-NMS: precision +4.447576 pp, recall -0.706668 pp, F1 +3.115044 pp, FP -20,677, bbox IoU +0.007883, fusion mistakes -502. Because the frozen rule required recall not lower, the challenger fails dense safety.
 - **RETAIN CONTROL** — hard-NMS remains the A1 Round-2 fusion policy. No held-out retuning.
 - **A1 NIGHTOWLS CHALLENGER GATE NO LONGER BLOCKING** — there is no surviving new fusion challenger to rescue in this cycle. NightOwls intake remains required for A3 and may be used for hard-NMS baseline characterization only.
+
+
+## A1 specialist handoff synchronization
+
+- **DONE** — A1 branch advanced handoff-only to `3dc31c8fa8b323ce86afc14c3105a0c2247a2c48`.
+- **DONE** — issue #18 records the same CrowdHuman FAIL / hard-NMS retain decision.
+- No production/runtime code was changed by this final handoff update.
