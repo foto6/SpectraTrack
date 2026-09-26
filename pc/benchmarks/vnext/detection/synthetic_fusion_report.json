@@ -1,0 +1,103 @@
+{
+  "config": {
+    "center_ratio": 0.2,
+    "full_weight": 1.0,
+    "fusion_iou": 0.55,
+    "match_iou": 0.5,
+    "score_power": 1.0,
+    "size_ratio": 1.8,
+    "tile_weight": 1.0
+  },
+  "detector": "synthetic-prefusion-fixture",
+  "experiment_id": "a1-fusion-synthetic-001",
+  "frame_count": 14,
+  "ground_truth_count": 16,
+  "inference_calls": 0,
+  "methods": {
+    "conservative-nmm": {
+      "area_jitter_ratio": 0.0,
+      "bbox_localization_iou": 0.8678556580221225,
+      "center_jitter_px": 0.0,
+      "config": {
+        "center_ratio": 0.2,
+        "full_weight": 1.0,
+        "iou_threshold": 0.55,
+        "match_iou": 0.5,
+        "score_power": 1.0,
+        "size_ratio": 1.8,
+        "tile_weight": 1.0
+      },
+      "duplicate_count_before_fusion": 15,
+      "fn": 0,
+      "fp": 1,
+      "fusion_mistakes": 0,
+      "height_jitter_px": 0.0,
+      "jitter_pair_count": 7,
+      "method": "conservative-nmm",
+      "precision": 0.9411764705882353,
+      "recall": 1.0,
+      "temporal_iou": 1.0,
+      "tp": 16,
+      "width_jitter_px": 0.0
+    },
+    "hard-nms": {
+      "area_jitter_ratio": 0.3220833333333332,
+      "bbox_localization_iou": 0.8915587678943234,
+      "center_jitter_px": 1.4142135623730951,
+      "config": {
+        "center_ratio": 0.2,
+        "full_weight": 1.0,
+        "iou_threshold": 0.55,
+        "match_iou": 0.5,
+        "score_power": 1.0,
+        "size_ratio": 1.8,
+        "tile_weight": 1.0
+      },
+      "duplicate_count_before_fusion": 15,
+      "fn": 1,
+      "fp": 1,
+      "fusion_mistakes": 1,
+      "height_jitter_px": 8.0,
+      "jitter_pair_count": 7,
+      "method": "hard-nms",
+      "precision": 0.9375,
+      "recall": 0.9375,
+      "temporal_iou": 0.7368510638297873,
+      "tp": 15,
+      "width_jitter_px": 10.0
+    },
+    "weighted": {
+      "area_jitter_ratio": 0.02734550157200255,
+      "bbox_localization_iou": 0.9582909016396477,
+      "center_jitter_px": 0.12010665422067489,
+      "config": {
+        "center_ratio": 0.2,
+        "full_weight": 1.0,
+        "iou_threshold": 0.55,
+        "match_iou": 0.5,
+        "score_power": 1.0,
+        "size_ratio": 1.8,
+        "tile_weight": 1.0
+      },
+      "duplicate_count_before_fusion": 15,
+      "fn": 0,
+      "fp": 1,
+      "fusion_mistakes": 0,
+      "height_jitter_px": 0.6794258373205224,
+      "jitter_pair_count": 7,
+      "method": "weighted",
+      "precision": 0.9411764705882353,
+      "recall": 1.0,
+      "temporal_iou": 0.9744789899570786,
+      "tp": 16,
+      "width_jitter_px": 0.8492822966507134
+    }
+  },
+  "model_sha256": null,
+  "note": "Synthetic stress data only; not CCTV quality evidence.",
+  "policy_runs": 0,
+  "provider": "none-synthetic",
+  "schema": "spectratrack-vnext-fusion-synthetic-v1",
+  "source_commit": "d03af3ae6425d3ea2e4d52e25389fecc09957394",
+  "wall_time_s": 0.002002216999983375
+}
