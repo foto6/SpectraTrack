@@ -1449,3 +1449,63 @@ Evidence-aware **PASSES / remains retained** on CrowdHuman only if, versus hard-
 - `fusion_mistakes` does not increase.
 
 Any violation is a **FAIL for the Round-2 dense-safety gate**. Conservative NMM and weighted remain rejected by MOT17 and cannot be resurrected from CrowdHuman results in this cycle. No threshold/config retuning is allowed from CrowdHuman validation metrics.
+
+
+## Round 2 CrowdHuman dense-safety final decision
+
+Status: **DONE — DENSE-SAFETY GATE FAILED; HARD-NMS RETAINED**
+
+Verified result:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a1-round2-crowdhuman.json`
+
+Integrity/provenance:
+
+- result SHA-256: `c09f91ec4c27f28057c8937c84390e10c80cbd16ae56fe3840cbf1363055690a`
+- completion-marker SHA-256: `23f3cc80df109fc1e0d93851b14f57a6f432e7e02039dd343b9b20e249de5957`
+- corpus revision: `crowdhuman-val-fbox-r1`
+- GT SHA-256: `2576c6a1db502cef1ffd103337b7728e628d6dfca8bedb3df9d606ce2f23dd0f`
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`
+- experiment source commit: `06b3fee1791aeb7565b4e09fc874c44da2690252`
+- frame/selected/prefusion count: `4370 / 4370 / 4370`
+- selected IDs unique: `4370`
+- actual ONNX calls: `41,578`
+- benchmark wall: `5298.5990031 s`
+- provider priority: DirectML with CPU fallback
+- frozen policy/config unchanged; no CrowdHuman retuning
+
+| metric | hard-NMS control | evidence-aware | delta |
+| --- | ---: | ---: | ---: |
+| TP | 56,728 | 56,025 | -703 |
+| FP | 111,218 | 90,541 | -20,677 |
+| FN | 42,753 | 43,456 | +703 |
+| precision | 0.337775237 | 0.382250999 | +4.447576 pp |
+| recall | 0.570239543 | 0.563172867 | **-0.706668 pp** |
+| F1 | 0.424250356 | 0.455400797 | +3.115044 pp |
+| bbox localization IoU | 0.742124771 | 0.750007453 | +0.007882682 |
+| fusion mistakes | 1022 | 520 | -502 (-49.119%) |
+
+Supporting already-rejected policies:
+
+- conservative-NMM: precision 0.321643556, recall 0.601572160, F1 0.419169226, bbox IoU 0.757733404, fusion mistakes 520;
+- weighted: precision 0.315183938, recall 0.589861381, F1 0.410840936, bbox IoU 0.746784240, fusion mistakes 520.
+
+The CrowdHuman decision rule was frozen before aggregate metrics were available:
+
+- precision not lower;
+- recall not lower;
+- F1 not lower;
+- bbox localization IoU not lower;
+- fusion mistakes not higher.
+
+Evidence-aware violates the mandatory recall condition. Therefore:
+
+**REJECT evidence-aware for Round-2 production/integrator progression.**
+
+The positive MOT17 held-out result remains valid research evidence but does not override this dense-safety failure. Conservative-NMM and weighted remain rejected. Hard-NMS remains the control/retained fusion behavior.
+
+No threshold/config retuning is allowed from this held-out result. A1 has no surviving new fusion challenger in this Round-2 cycle. NightOwls no longer gates this A1 challenger decision; a later hard-NMS NightOwls run would be baseline characterization only unless a new research cycle is explicitly opened.
+
+A1 Round-2 handoff decision:
+
+**RETAIN CURRENT HARD-NMS / REJECT NEW FUSION CHALLENGERS.**
