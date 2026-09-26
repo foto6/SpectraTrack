@@ -873,3 +873,46 @@ Artifacts:
 - replay directory: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-replays-mot17`.
 
 No quality/cost claim is made until the process exits successfully and output + completion marker hashes/sizes are verified.
+
+
+## Round 2 MOT17 held-out first launch failure
+
+Status:
+
+**FAILED LAUNCH — NO BENCHMARK INFERENCE EXECUTED**
+
+Attempted experiment source commit:
+
+`c5f913f7c6b007dbcedc84aa03e4235f589ee062`
+
+Observed process:
+
+- target process PID: `16456`;
+- exit code: `1`;
+- runtime: about `0.03 s`;
+- console log path: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json.console.log`;
+- log size: `66` bytes;
+- log created/modified: `2026-09-26T16:31:03.231Z`.
+
+Cause:
+
+The launcher command was assembled without the required `&&` separator between the `cd /d ...\pc` command and the Python invocation. Windows `cmd` therefore rejected the shell syntax before Python / ONNX Runtime / dataset code executed.
+
+Post-failure artifact verification:
+
+- result JSON: ABSENT;
+- completion marker: ABSENT;
+- prefusion directory: ABSENT;
+- replay directory: ABSENT.
+
+Therefore this failed launch contains **zero benchmark evidence** and cannot be interpreted as a detector/corpus failure.
+
+Recovery rule:
+
+- fix only the shell command separator;
+- do not alter held-out split, thresholds, model, fusion config, or corpus;
+- repeat only after this failure is Git-persisted.
+
+Decision:
+
+**RETRY AUTHORIZED — launcher-only failure, no inference/artifact state to preserve.**
