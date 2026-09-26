@@ -501,3 +501,37 @@ On the existing MOT17-04 first-600-frame development subset at person floor 0.12
 - fusion mistakes: `60`.
 
 This is a substantial precision/stability improvement over the prior weighted/NMM candidates, but it does **not** yet preserve their recall gain. It therefore remains a development candidate only. Held-out MOT17 sequence validation and threshold-policy refinement are required before any integrator recommendation.
+
+
+## Round 2 supplement — resumable public-corpus fusion runner
+
+A1 now includes:
+
+`python -m spectratrack.research.vnext_detection_corpus`
+
+Purpose:
+
+- collect full-frame + tile pre-fusion evidence from canonical A5 public JSONL records;
+- resolve both MOT17 image sequences and CrowdHuman direct images using the existing A1 source-resolution helpers;
+- evaluate `hard-nms`, `conservative-nmm`, `weighted`, and `evidence-aware` on identical detector evidence;
+- optionally report per-video metrics;
+- optionally write one prefusion artifact per logical video;
+- resume only when source commit, corpus revision, GT hash, model hash, detector settings, and frame-limit settings match exactly;
+- separate newly executed inference calls from inference calls represented by reused prefusion artifacts.
+
+Research-code HEAD:
+
+`fd9cd0f776d1abb86b7063731af9a77343fc37c8`
+
+GitHub Actions PC CI:
+
+- run: `36239750252`;
+- conclusion: **success**;
+- ruff: success;
+- compile + pytest: **163 passed in 1.68s**;
+- synthetic tracker benchmark: **1369.3 tracker FPS**, crossing/reappearance ID switches 0;
+- diagnostics: `DmlExecutionProvider,CPUExecutionProvider`, `directml=yes`;
+- self-check: `SELF_CHECK=PASS`;
+- standalone Windows build, CLI smoke, packaging and artifact upload: success.
+
+This tooling does not itself constitute held-out quality evidence. The required next run remains the fixed MOT17 held-out sequence evaluation plus CrowdHuman dense-safety evaluation on the target evidence.
