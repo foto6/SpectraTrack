@@ -16,6 +16,8 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 ## Global gates
 
+- **IN PROGRESS** — A1 MOT17 held-out: 4/6 sequences complete (02/05/09/10); provisional evidence-aware aggregate F1 0.558231 vs hard-NMS 0.547869. Final decision waits for 11/13.
+
 - **DONE** — A2 Round-2 decision: RETAIN CURRENT TRACKER; ambiguity-guard rejected by real identical-replay ID-switch gate.
 - **IN PROGRESS** — A1 real MOT17 held-out retry is active on target PC; first MOT17-02 prefusion artifact is present.
 - **IN PROGRESS** — official DanceTrack validation download is active on target PC; freeze waits for verified per-sequence GT.
@@ -53,7 +55,7 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 Current known Round-2 head:
 
-`agent/vnext-detection @ c4e20eed58dd11fa03a8b619b6af6bc34a3b1d0a`
+`agent/vnext-detection @ 8f4f7a287311d864807e5d2b1a439b11cb1401b1`
 
 Done:
 
