@@ -13,10 +13,12 @@ WEAK_MIN = 0.12
 WEAK_MAX = 0.35
 
 
-def _load_source_map(path: str | Path | None) -> tuple[dict[tuple[str, int], str], str | None]:
+def _load_source_map(
+    path: str | Path | None,
+) -> tuple[dict[tuple[str, int], dict[str, Any]], str | None]:
     if path is None:
         return {}, None
-    source_map: dict[tuple[str, int], str] = {}
+    source_map: dict[tuple[str, int], dict[str, Any]] = {}
     with Path(path).open("r", encoding="utf-8") as handle:
         for line_number, raw in enumerate(handle, start=1):
             raw = raw.strip()
@@ -26,6 +28,7 @@ def _load_source_map(path: str | Path | None) -> tuple[dict[tuple[str, int], str
             video = data.get("video")
             frame = data.get("frame")
             source = data.get("source")
+            source_frame = data.get("source_frame")
             if not isinstance(video, str) or not video:
                 raise ValueError(f"{path}:{line_number}: video must be non-empty")
             if isinstance(frame, bool) or not isinstance(frame, int) or frame < 0:
@@ -34,10 +37,18 @@ def _load_source_map(path: str | Path | None) -> tuple[dict[tuple[str, int], str
                 continue
             if not isinstance(source, str) or not source:
                 raise ValueError(f"{path}:{line_number}: source must be a non-empty string")
+            if source_frame is not None and (
+                isinstance(source_frame, bool)
+                or not isinstance(source_frame, int)
+                or source_frame < 0
+            ):
+                raise ValueError(
+                    f"{path}:{line_number}: source_frame must be a non-negative integer"
+                )
             key = (video, frame)
             if key in source_map:
                 raise ValueError(f"{path}:{line_number}: duplicate source mapping for {key}")
-            source_map[key] = source
+            source_map[key] = {"source": source, "source_frame": source_frame}
     return source_map, sha256_file(path)
 
 
@@ -140,7 +151,9 @@ def build_manifest(
                 "trigger": _support_json(trigger),
             }
             if key in source_map:
-                row["source"] = source_map[key]
+                row["source"] = source_map[key]["source"]
+                if source_map[key]["source_frame"] is not None:
+                    row["source_frame"] = source_map[key]["source_frame"]
             elif source_map:
                 raise ValueError(f"source map is missing selected frame {key}")
             frame_rows.append(row)
