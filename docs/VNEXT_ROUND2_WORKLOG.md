@@ -1138,3 +1138,25 @@ Safety decision unchanged:
 - do not restart A2/A3 interrupted jobs blindly;
 - do not infer completion/failure from GPU idleness or relay timeout;
 - continue Git-side public dataset coordination only until process/artifact inspection works.
+
+
+### DONE — unified public evidence contract committed
+
+Added:
+
+`docs/VNEXT_ROUND2_PUBLIC_EVIDENCE.md`
+
+Commit:
+
+`727a259d1ceaff5fe33bb4138514a3ddc0eeee2a`
+
+The contract pins:
+
+- corpus purpose/roles;
+- official source and research-use constraints;
+- DanceTrack association-only input semantics;
+- NightOwls held-out and deterministic-slice policy;
+- LLVIP visible-only and KAIST visible-only fallback rules;
+- canonical import/freeze provenance;
+- required A1-A4 metrics;
+- private CCTV deferred to the final reduced domain sanity pack.
