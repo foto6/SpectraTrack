@@ -20,7 +20,8 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 - **DONE** — public `crowdhuman-val-fbox-r1` frozen.
 - **DONE** — Round-1 detector/fusion/tracking/enhancement/scheduler evidence collected.
 - **DONE** — Round-2 evidence review and assignments created.
-- **NOT DONE** — A1 held-out multi-sequence Round-2 validation.
+- **DONE** — A1 resumable canonical public-corpus runner implemented and CI-validated.
+- **NOT DONE** — A1 held-out multi-sequence Round-2 validation (target-PC run still required).
 - **IN PROGRESS / needs verification** — A2 failure-audit runs and targeted candidate work.
 - **IN PROGRESS / needs verification** — A3 strict weak-evidence enhancement profile.
 - **DONE** — A4 real RX 5700 XT execution-cost frontier.
