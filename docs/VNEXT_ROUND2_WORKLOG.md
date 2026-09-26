@@ -471,3 +471,16 @@ Current state therefore remains:
 ### DONE — persistence rule reconfirmed
 
 Project-owner instruction reconfirmed: every subsequent meaningful coordinator action, including failures and not-done work, must be persisted in Git-tracked project files before the next major step.
+
+
+### DONE — propagate persistent logging rule to the Round-2 plan and all role issues
+
+Updated `docs/VNEXT_ROUND2_PLAN.md` to make Git-persistent execution logging a formal Round-2 requirement.
+
+Commit:
+
+`e58dc3046df96b78d2f9c18cd06a62f5fca7277e`
+
+The rule now requires each role to persist major-step intent/outcome, failed attempts, blockers, local artifact provenance/path/hash/summary, and not-done work before claiming readiness.
+
+Posted the same requirement to issues #18, #19, #20, #21, #22, and #23 so the specialist assignments themselves carry the persistence contract.
