@@ -16,6 +16,8 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 ## Global gates
 
+- **DONE** — unified public evidence contract committed in `docs/VNEXT_ROUND2_PUBLIC_EVIDENCE.md`.
+
 - **DONE** — all public-first role documentation heads are CI-green after strategy dispatch.
 
 - **DONE** — public `mot17-public-r1` frozen.
