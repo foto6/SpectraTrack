@@ -21,11 +21,13 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 - **DONE** — Round-1 detector/fusion/tracking/enhancement/scheduler evidence collected.
 - **DONE** — Round-2 evidence review and assignments created.
 - **DONE** — A1 resumable canonical public-corpus runner implemented and CI-validated.
+- **DONE** — A1 canonical replay-export fix validated; branch docs head `32ae820...` CI-green (`36242653285`).
 - **NOT DONE** — A1 held-out multi-sequence Round-2 validation (target-PC run still required).
 - **IN PROGRESS / needs verification** — A2 failure-audit runs and targeted candidate work.
 - **IN PROGRESS / needs verification** — A3 strict weak-evidence enhancement profile.
 - **DONE** — A4 real RX 5700 XT execution-cost frontier.
 - **DONE** — A5 draft-seeded private review tooling and 46-frame review pack preparation.
+- **DONE** — A5 review-progress accounting validated; branch docs head `8faf6c9...` CI-green (`36242654534`).
 - **NOT DONE** — human-confirmed private CCTV annotations.
 - **NOT DONE** — `cctv-golden-r1` freeze.
 - **NOT DONE** — final cross-role candidate table on `cctv-golden-r1`.
@@ -173,7 +175,8 @@ Unlock only when:
 
 ## Current execution blocker
 
-- **BLOCKED (control channel)** — target PC Remote Desktop Commander substantive operations are still timing out after successful ping; no blind A1/A2/A3 restart is authorized.
+- **BLOCKED (control channel)** — target PC Remote Desktop Commander substantive operations are still timing out after successful ping, including process/file/meta history probes; no blind A1/A2/A3 restart is authorized.
+- **BLOCKED (human gate)** — the 46-frame private CCTV pack now requires human confirmation/correction before `cctv-golden-r1` can be frozen.
 - This does **not** mean A2/A3 benchmarks failed.
 - Do not restart A2/A3 until existing local process/artifact state is verified.
 - GitHub coordination, branch verification, and documentation remain available.
