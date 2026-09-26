@@ -9,7 +9,12 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .integrity import sha256_file
-from .qa_benchmark import SCHEMA_VERSION, ground_truth_sha256, load_ground_truth
+from .qa_benchmark import (
+    SCHEMA_VERSION,
+    ground_truth_sha256,
+    inspect_qa_source,
+    load_ground_truth,
+)
 
 CORPUS_SCHEMA = "spectratrack-cctv-corpus-v1"
 FRAME_BATCH_SCHEMA = "spectratrack-cctv-frame-batch-v1"
@@ -93,29 +98,6 @@ def _is_hex(value: Any, length: int) -> bool:
     return True
 
 
-def _video_metadata(path: Path) -> dict[str, Any]:
-    import cv2
-
-    cap = cv2.VideoCapture(str(path))
-    if not cap.isOpened():
-        raise RuntimeError(f"Cannot open video: {path}")
-    try:
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = float(cap.get(cv2.CAP_PROP_FPS))
-        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    finally:
-        cap.release()
-    if width <= 0 or height <= 0:
-        raise RuntimeError(f"Invalid video dimensions for {path}: {width}x{height}")
-    return {
-        "width": width,
-        "height": height,
-        "fps": fps if math.isfinite(fps) and fps > 0.0 else None,
-        "frame_count": frame_count if frame_count > 0 else None,
-    }
-
-
 def _coverage_for_frame(frame) -> set[str]:
     frame_tags = {_normalize_token(tag) for tag in frame.tags}
     people = [obj for obj in frame.objects if obj.label == "person"]
@@ -162,9 +144,12 @@ def inspect_split(
     split: str,
     *,
     allowed_labels: Iterable[str] = ("person",),
+    coverage_profile: str = "private-cctv",
 ) -> dict[str, Any]:
     if split not in {"train", "golden"}:
         raise ValueError("split must be train or golden")
+    if coverage_profile not in {"private-cctv", "public-dataset"}:
+        raise ValueError("coverage_profile must be private-cctv or public-dataset")
     frames = load_ground_truth(ground_truth_path)
     root = Path(video_root)
     allowed = set(allowed_labels)
@@ -190,13 +175,25 @@ def inspect_split(
 
     videos: list[dict[str, Any]] = []
     for video, video_frames in sorted(grouped.items()):
-        video_path = root / video
-        if not video_path.is_file():
-            errors.append(f"missing video: {video}")
+        source_names = {frame.source or frame.video for frame in video_frames}
+        source_fps_values = {frame.source_fps for frame in video_frames if frame.source_fps is not None}
+        if len(source_names) != 1:
+            errors.append(f"{video}: multiple physical sources declared: {sorted(source_names)}")
+            continue
+        if len(source_fps_values) > 1:
+            errors.append(f"{video}: conflicting source_fps values")
+            continue
+        source_name = next(iter(source_names))
+        source_path = root / source_name
+        if not source_path.exists():
+            errors.append(f"missing source: {source_name}")
             continue
         try:
-            meta = _video_metadata(video_path)
-        except RuntimeError as exc:
+            meta = inspect_qa_source(
+                source_path,
+                fps_override=next(iter(source_fps_values)) if source_fps_values else None,
+            )
+        except (FileNotFoundError, RuntimeError) as exc:
             errors.append(str(exc))
             continue
 
@@ -213,9 +210,16 @@ def inspect_split(
         for frame in video_frames:
             for obj in frame.objects:
                 x1, y1, x2, y2 = obj.bbox
-                if x1 < 0.0 or y1 < 0.0 or x2 > width or y2 > height:
+                outside = x1 < 0.0 or y1 < 0.0 or x2 > width or y2 > height
+                if outside and not frame.allow_out_of_bounds:
                     errors.append(
                         f"{video}#{frame.frame}: bbox {obj.bbox} outside {width}x{height}"
+                    )
+                if frame.allow_out_of_bounds and (
+                    x2 <= 0.0 or y2 <= 0.0 or x1 >= width or y1 >= height
+                ):
+                    errors.append(
+                        f"{video}#{frame.frame}: bbox {obj.bbox} does not intersect {width}x{height}"
                     )
                 if obj.label == "person" and not obj.ignore:
                     valid_people += 1
@@ -223,8 +227,10 @@ def inspect_split(
         videos.append(
             {
                 "video": video,
+                "source": source_name,
+                "source_kind": meta["kind"],
                 "split": split,
-                "sha256": sha256_file(video_path),
+                "sha256": meta["sha256"],
                 "width": width,
                 "height": height,
                 "fps": meta.get("fps"),
@@ -234,7 +240,7 @@ def inspect_split(
             }
         )
 
-    if split == "golden":
+    if split == "golden" and coverage_profile == "private-cctv":
         missing_coverage = [name for name in REQUIRED_GOLDEN_COVERAGE if coverage.get(name, 0) == 0]
         if missing_coverage:
             errors.append("golden coverage missing: " + ", ".join(missing_coverage))
@@ -251,6 +257,7 @@ def inspect_split(
         if split == "golden"
         else {},
         "errors": errors,
+        "coverage_profile": coverage_profile,
         "warnings": warnings,
     }
 
@@ -260,13 +267,19 @@ def inspect_corpus(
     video_root: str | Path,
     golden_ground_truth: str | Path,
     train_ground_truth: str | Path | None = None,
+    coverage_profile: str = "private-cctv",
 ) -> dict[str, Any]:
     train = (
-        inspect_split(train_ground_truth, video_root, "train")
+        inspect_split(train_ground_truth, video_root, "train", coverage_profile=coverage_profile)
         if train_ground_truth is not None
         else None
     )
-    golden = inspect_split(golden_ground_truth, video_root, "golden")
+    golden = inspect_split(
+        golden_ground_truth,
+        video_root,
+        "golden",
+        coverage_profile=coverage_profile,
+    )
     errors: list[str] = []
     warnings: list[str] = []
     if train is not None:
@@ -290,6 +303,7 @@ def inspect_corpus(
         "train": train,
         "golden": golden,
         "errors": errors,
+        "coverage_profile": coverage_profile,
         "warnings": warnings,
         "valid": not errors,
     }
