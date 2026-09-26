@@ -132,6 +132,51 @@ def _stability_summary(
     return {"baseline": base, "candidate": cand, "delta": delta}
 
 
+def _subgroup_summary(
+    baseline: dict[str, Any],
+    candidate: dict[str, Any],
+    section: str,
+) -> dict[str, Any]:
+    base_groups = baseline.get("metrics", {}).get(section, {})
+    cand_groups = candidate.get("metrics", {}).get(section, {})
+    if not isinstance(base_groups, dict) or not isinstance(cand_groups, dict):
+        return {}
+
+    output: dict[str, Any] = {}
+    for name in sorted(set(base_groups) | set(cand_groups)):
+        base = base_groups.get(name, {})
+        cand = cand_groups.get(name, {})
+        if not isinstance(base, dict) or not isinstance(cand, dict):
+            continue
+        base_recall = _finite_number(base.get("recall"))
+        cand_recall = _finite_number(cand.get("recall"))
+        base_precision = _finite_number(base.get("precision"))
+        cand_precision = _finite_number(cand.get("precision"))
+        output[name] = {
+            "baseline_recall": base_recall,
+            "candidate_recall": cand_recall,
+            "recall_delta": (
+                cand_recall - base_recall
+                if base_recall is not None and cand_recall is not None
+                else None
+            ),
+            "baseline_precision": base_precision,
+            "candidate_precision": cand_precision,
+            "precision_delta": (
+                cand_precision - base_precision
+                if base_precision is not None and cand_precision is not None
+                else None
+            ),
+            "baseline_gt": base.get("gt"),
+            "candidate_gt": cand.get("gt"),
+            "baseline_tp": base.get("tp"),
+            "candidate_tp": cand.get("tp"),
+            "baseline_fn": base.get("fn"),
+            "candidate_fn": cand.get("fn"),
+        }
+    return output
+
+
 def _performance_summary(
     baseline: dict[str, Any],
     candidate: dict[str, Any],
@@ -257,6 +302,11 @@ def build_summary(
             "lost_gt_count": len(lost),
         },
         "bbox_stability": _stability_summary(baseline, candidate),
+        "subgroups": {
+            "by_tag": _subgroup_summary(baseline, candidate, "by_tag"),
+            "by_attribute": _subgroup_summary(baseline, candidate, "by_attribute"),
+            "by_size": _subgroup_summary(baseline, candidate, "by_size"),
+        },
         "compute": {
             "raw_onnx_calls": raw_calls,
             "extra_enhancement_onnx_calls": extra_calls,
@@ -276,6 +326,7 @@ def build_summary(
             "Fusion is not implemented by A3; baseline/candidate inputs must already be canonical post-fusion results.",
             "A3 cost fields come from the strict weak-person profile and are validated against its GT/model provenance when available.",
             "A positive temporal_iou_mean delta is better; lower center/width/height/area jitter deltas are better.",
+            "NightOwls low-light/blur/low-contrast/occlusion slices are reported only when A5 ground truth exposes those official tags/attributes; A3 does not invent labels.",
         ],
     }
 
