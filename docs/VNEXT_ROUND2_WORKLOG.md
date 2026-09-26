@@ -519,3 +519,24 @@ No completion/failure claim was made for A2/A3 based on this timeout.
 5. present the private review pack for human confirmation;
 6. freeze `cctv-golden-r1` only after human review;
 7. only then evaluate the architect integration gate.
+
+
+## 2026-09-26 — unattended execution authorized
+
+### IN PROGRESS — autonomous Round-2 continuation on target PC
+
+Project owner explicitly authorized continued unattended work on the connected PC while away.
+
+Immediate execution order:
+
+1. verify whether interrupted A2 audit and A3 strict-gate artifacts already completed;
+2. do not duplicate completed work;
+3. if missing and no matching process is alive, resume only the missing A2/A3 jobs;
+4. complete A1 held-out multi-sequence MOT17 validation and CrowdHuman dense-safety evidence;
+5. close A2 with a targeted candidate or explicit retain-current decision;
+6. close A3 with strict-gated candidate or enhancement-off;
+7. run A4 quality/cadence validation using the surviving A1/A3 evidence;
+8. prepare A5 private review materials for later human confirmation, but do not freeze AI-only annotations;
+9. keep integrator/production/release locked until all documented gates are met.
+
+Every major step and failure will be appended to this Git worklog/status before moving on.
