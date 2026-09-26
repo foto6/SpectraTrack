@@ -10,6 +10,7 @@ from spectratrack.research.vnext_detection_fusion import (
     collect_prefusion_people_recall,
     conservative_nmm_fusion,
     convert_prefusion_to_replay,
+    evidence_aware_fusion,
     synthetic_frames,
     synthetic_report,
     weighted_coordinate_fusion,
@@ -63,6 +64,29 @@ def test_weighted_coordinates_stay_between_duplicate_evidence():
     assert 0.0 < y1 < 2.0
     assert 18.0 < x2 < 20.0
     assert 38.0 < y2 < 40.0
+
+
+def test_evidence_aware_fusion_rejects_weak_single_source_but_keeps_corroborated_weak():
+    config = FusionConfig(iou_threshold=0.5)
+    single = [FusionCandidate((0.0, 0.0, 20.0, 40.0), 0.15, 0, "person", "tile", "tile:0")]
+    corroborated = [
+        FusionCandidate((0.0, 0.0, 20.0, 40.0), 0.15, 0, "person", "tile", "tile:0"),
+        FusionCandidate((1.0, 1.0, 21.0, 41.0), 0.14, 0, "person", "tile", "tile:1"),
+    ]
+
+    assert evidence_aware_fusion(single, config) == []
+    assert len(evidence_aware_fusion(corroborated, config)) == 1
+
+
+def test_evidence_aware_fusion_keeps_full_medium_or_any_strong_detection():
+    config = FusionConfig()
+    full_medium = [FusionCandidate((0.0, 0.0, 20.0, 40.0), 0.21, 0, "person", "full", "full")]
+    tile_medium = [FusionCandidate((0.0, 0.0, 20.0, 40.0), 0.21, 0, "person", "tile", "tile:0")]
+    strong = [FusionCandidate((0.0, 0.0, 20.0, 40.0), 0.40, 0, "person", "tile", "tile:0")]
+
+    assert len(evidence_aware_fusion(full_medium, config)) == 1
+    assert evidence_aware_fusion(tile_medium, config) == []
+    assert len(evidence_aware_fusion(strong, config)) == 1
 
 
 class _FakeDetector:

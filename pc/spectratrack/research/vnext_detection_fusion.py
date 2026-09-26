@@ -46,6 +46,10 @@ class FusionConfig:
     score_power: float = 1.0
     full_weight: float = 1.0
     tile_weight: float = 1.0
+    evidence_weak_score: float = 0.12
+    evidence_solo_score: float = 0.20
+    evidence_strong_score: float = 0.35
+    evidence_min_sources: int = 2
 
     def validate(self) -> None:
         if not 0.0 < self.iou_threshold <= 1.0:
@@ -58,6 +62,10 @@ class FusionConfig:
             raise ValueError("score_power must be > 0")
         if self.full_weight <= 0.0 or self.tile_weight <= 0.0:
             raise ValueError("evidence weights must be > 0")
+        if not 0.0 <= self.evidence_weak_score <= self.evidence_solo_score <= self.evidence_strong_score <= 1.0:
+            raise ValueError("evidence score thresholds must satisfy weak <= solo <= strong in [0, 1]")
+        if self.evidence_min_sources < 2:
+            raise ValueError("evidence_min_sources must be >= 2")
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,9 +140,7 @@ def hard_nms_fusion(candidates: Iterable[FusionCandidate], config: FusionConfig)
             if item.class_id == seed.class_id and bbox_iou(seed.bbox, item.bbox) >= config.iou_threshold:
                 members.append(index)
                 remaining.remove(index)
-        output.append(
-            FusionDetection(seed.bbox, seed.score, seed.class_id, seed.label, tuple(members))
-        )
+        output.append(FusionDetection(seed.bbox, seed.score, seed.class_id, seed.label, tuple(members)))
     return output
 
 
@@ -218,6 +224,50 @@ def weighted_coordinate_fusion(
     return output
 
 
+def evidence_aware_fusion(
+    candidates: Iterable[FusionCandidate],
+    config: FusionConfig,
+) -> list[FusionDetection]:
+    """Weighted geometry plus stricter acceptance for weak single-source evidence."""
+    config.validate()
+    items = list(candidates)
+    output: list[FusionDetection] = []
+    for members in _greedy_groups(items, config):
+        group = [items[index] for index in members]
+        max_score = max(item.score for item in group)
+        independent_sources = {item.source_id for item in group}
+        corroborated = len(independent_sources) >= config.evidence_min_sources
+        has_full_frame_evidence = any(item.source_kind == "full" for item in group)
+        accepted = (
+            max_score >= config.evidence_strong_score
+            or (has_full_frame_evidence and max_score >= config.evidence_solo_score)
+            or (max_score >= config.evidence_weak_score and corroborated)
+        )
+        if not accepted:
+            continue
+
+        weights = []
+        for item in group:
+            evidence = config.full_weight if item.source_kind == "full" else config.tile_weight
+            weights.append(max(item.score, 1e-6) ** config.score_power * evidence)
+        total = sum(weights)
+        coords = tuple(
+            sum(item.bbox[axis] * weight for item, weight in zip(group, weights)) / total for axis in range(4)
+        )
+        seed_index = max(members, key=lambda index: items[index].score)
+        seed = items[seed_index]
+        output.append(
+            FusionDetection(
+                (float(coords[0]), float(coords[1]), float(coords[2]), float(coords[3])),
+                max_score,
+                seed.class_id,
+                seed.label,
+                members,
+            )
+        )
+    return output
+
+
 def fuse_candidates(
     candidates: Iterable[FusionCandidate],
     method: str,
@@ -229,6 +279,8 @@ def fuse_candidates(
         return conservative_nmm_fusion(candidates, config)
     if method == "weighted":
         return weighted_coordinate_fusion(candidates, config)
+    if method == "evidence-aware":
+        return evidence_aware_fusion(candidates, config)
     raise ValueError(f"unknown fusion method: {method}")
 
 
@@ -328,7 +380,9 @@ def write_prefusion_dump(
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     with target.open("w", encoding="utf-8") as handle:
-        handle.write(json.dumps({"type": "metadata", "schema": PREFUSION_SCHEMA, **dict(metadata)}, sort_keys=True) + "\n")
+        handle.write(
+            json.dumps({"type": "metadata", "schema": PREFUSION_SCHEMA, **dict(metadata)}, sort_keys=True) + "\n"
+        )
         for frame in frames:
             handle.write(
                 json.dumps(
@@ -450,6 +504,10 @@ def convert_prefusion_to_replay(
         "score_power": config.score_power,
         "full_weight": config.full_weight,
         "tile_weight": config.tile_weight,
+        "evidence_weak_score": config.evidence_weak_score,
+        "evidence_solo_score": config.evidence_solo_score,
+        "evidence_strong_score": config.evidence_strong_score,
+        "evidence_min_sources": config.evidence_min_sources,
         "prefusion_summary": {
             "policy_runs": summary.get("policy_runs"),
             "inference_calls": summary.get("inference_calls"),
@@ -534,9 +592,7 @@ def _jitter_metrics(
             obj = frame.ground_truth[gt_index]
             if obj.object_id is None:
                 continue
-            objects.setdefault((frame.video, obj.object_id), []).append(
-                (frame.frame, obj.bbox, fused[pred_index].bbox)
-            )
+            objects.setdefault((frame.video, obj.object_id), []).append((frame.frame, obj.bbox, fused[pred_index].bbox))
 
     center: list[float] = []
     width: list[float] = []
@@ -630,9 +686,7 @@ def evaluate_fusion(
         "fn": metrics["false_negatives"],
         "recall": metrics["recall"],
         "precision": metrics["precision"],
-        "bbox_localization_iou": (
-            sum(localization_ious) / len(localization_ious) if localization_ious else None
-        ),
+        "bbox_localization_iou": (sum(localization_ious) / len(localization_ious) if localization_ious else None),
         "duplicate_count_before_fusion": duplicate_count,
         "fusion_mistakes": fusion_mistakes,
         **_jitter_metrics(items, fused_by_key, match_iou),
@@ -934,13 +988,21 @@ def _build_parser() -> argparse.ArgumentParser:
     replay = sub.add_parser("replay", help="Fuse prefusion dump into canonical tracker replay JSONL")
     replay.add_argument("--input", required=True)
     replay.add_argument("--output", required=True)
-    replay.add_argument("--method", choices=("hard-nms", "conservative-nmm", "weighted"), required=True)
+    replay.add_argument(
+        "--method",
+        choices=("hard-nms", "conservative-nmm", "weighted", "evidence-aware"),
+        required=True,
+    )
     replay.add_argument("--fusion-iou", type=float, default=0.55)
     replay.add_argument("--center-ratio", type=float, default=0.20)
     replay.add_argument("--size-ratio", type=float, default=1.80)
     replay.add_argument("--score-power", type=float, default=1.0)
     replay.add_argument("--full-weight", type=float, default=1.0)
     replay.add_argument("--tile-weight", type=float, default=1.0)
+    replay.add_argument("--evidence-weak-score", type=float, default=0.12)
+    replay.add_argument("--evidence-solo-score", type=float, default=0.20)
+    replay.add_argument("--evidence-strong-score", type=float, default=0.35)
+    replay.add_argument("--evidence-min-sources", type=int, default=2)
     return parser
 
 
@@ -963,6 +1025,10 @@ def main() -> int:
         score_power=args.score_power,
         full_weight=args.full_weight,
         tile_weight=args.tile_weight,
+        evidence_weak_score=args.evidence_weak_score,
+        evidence_solo_score=args.evidence_solo_score,
+        evidence_strong_score=args.evidence_strong_score,
+        evidence_min_sources=args.evidence_min_sources,
     )
     config.validate()
     convert_prefusion_to_replay(args.input, args.output, method=args.method, config=config)

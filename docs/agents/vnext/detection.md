@@ -486,3 +486,18 @@ A1 Phase-0 deliverables are complete and reproducible:
 **NOT READY FOR PRODUCTION INTEGRATION DECISION.**
 
 The missing dependency is the frozen, human-confirmed A5 corpus plus exact backend model artifacts for real execution.
+
+
+## Round 2 supplement — evidence-aware weak-person fusion
+
+A new research-only `evidence-aware` fusion policy keeps weighted geometry but changes weak-detection acceptance. It accepts: (a) any strong detection, (b) medium-confidence detections when full-frame evidence exists, or (c) weak detections only when at least two independent inference sources corroborate the same conservative fusion group. Single weak tile-only detections are rejected. Tracker state is not used.
+
+On the existing MOT17-04 first-600-frame development subset at person floor 0.12, the default round-2 policy measured:
+
+- recall: `0.7499813`;
+- precision: `0.6095377`;
+- bbox localization IoU: `0.8231071`;
+- center jitter: `1.6979 px`;
+- fusion mistakes: `60`.
+
+This is a substantial precision/stability improvement over the prior weighted/NMM candidates, but it does **not** yet preserve their recall gain. It therefore remains a development candidate only. Held-out MOT17 sequence validation and threshold-policy refinement are required before any integrator recommendation.
