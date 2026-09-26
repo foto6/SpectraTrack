@@ -1325,3 +1325,35 @@ Required intake order after the ZIP is complete:
 11. only then release the exact frozen bytes/hash to A3.
 
 No AI annotation is involved in this public-GT freeze.
+
+## Round 2 NightOwls real-intake checkpoint — official null recording IDs
+
+Target-PC real import attempt on 2026-09-27 failed closed before producing a canonical JSONL.
+
+Exact pre-fix branch HEAD:
+
+`522e50c45bc3afffa5f03479880c4b9f9d0a676e`
+
+Failure:
+
+`ERROR: NightOwls image 7000000 recordings_id: expected stable integer-like or string value`
+
+Official validation JSON audit established:
+
+- `recordings_id=None`: **1,318 images**;
+- integral-float recording IDs: **34.0, 35.0, 36.0, 37.0, 38.0** on 50,530 images;
+- null-recording images with any annotation: **918**;
+- null-recording images with scored pedestrian: **834**.
+
+This is an importer compatibility gap, not corrupted source data. The locked slice selection inputs do not use `recordings_id`, so the already locked 5000/seed/prefix/revision selection contract is unchanged.
+
+Fail-safe resolution:
+
+- integral float recording IDs remain normalized to their integer token as before;
+- official null `recordings_id` is preserved in source metadata;
+- a null-recording image is treated as a standalone logical sequence namespaced by its official `image_id`, not assigned an invented recording ID;
+- any scored pedestrian without an official recording namespace makes the full tracking contract unsupported;
+- sparse locked slice remains `tracking_supported=false` regardless;
+- deterministic slice-selection function is unchanged.
+
+Focused NightOwls tests after the fix: **5 passed**.

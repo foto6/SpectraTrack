@@ -236,3 +236,7 @@ Licensing/terms constraints recorded by the importer:
 
 Reason: public annotations reduce manual labeling cost and improve repeatability, but domain shift means a small private CCTV holdout remains necessary for product-specific evidence.
 
+
+## 2026-09-27 — NightOwls null recording IDs fail safe
+
+Official NightOwls validation metadata contains both integral-float recording IDs and null `recordings_id` values. A null recording ID is not promoted into an invented stable recording namespace. For imported QA evidence, such an image is a standalone logical source keyed by its official image ID, while the original null remains in source metadata. If a scored pedestrian lacks an official recording namespace, full temporal tracking support is false. Sparse deterministic NightOwls slices remain tracking-disabled. This handling is additive to the existing public import manifest and does not alter deterministic slice selection.

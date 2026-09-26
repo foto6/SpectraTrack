@@ -1134,7 +1134,9 @@ def import_nightowls(
             raise ValueError(f"NightOwls image {image_id}: file_name must be non-empty")
         if not isinstance(width, int) or width <= 0 or not isinstance(height, int) or height <= 0:
             raise ValueError(f"NightOwls image {image_id}: invalid dimensions")
-        _stable_scalar_token(image.get("recordings_id"), f"NightOwls image {image_id} recordings_id")
+        recording_value = image.get("recordings_id")
+        if recording_value is not None:
+            _stable_scalar_token(recording_value, f"NightOwls image {image_id} recordings_id")
         timestamp = image.get("timestamp")
         if (
             isinstance(timestamp, bool)
@@ -1148,6 +1150,7 @@ def import_nightowls(
     scored_pedestrian_annotations: list[dict[str, Any]] = []
     trajectory_frames: dict[tuple[str, str], set[int]] = {}
     tracking_fields_valid = True
+    recording_fields_valid = True
     for annotation in annotations_list:
         if not isinstance(annotation, dict):
             raise ValueError("NightOwls annotation must be an object")
@@ -1162,16 +1165,24 @@ def import_nightowls(
         if category_id == 1 and not bool(annotation.get("ignore", 0)):
             scored_pedestrian_annotations.append(annotation)
             tracking_id = annotation.get("tracking_id")
+            image = images_by_id[int(image_id)]
+            recording_value = image.get("recordings_id")
             if (
                 isinstance(tracking_id, bool)
                 or not isinstance(tracking_id, int)
                 or tracking_id < 0
             ):
                 tracking_fields_valid = False
-            else:
-                image = images_by_id[int(image_id)]
+            if recording_value is None:
+                recording_fields_valid = False
+            if (
+                not isinstance(tracking_id, bool)
+                and isinstance(tracking_id, int)
+                and tracking_id >= 0
+                and recording_value is not None
+            ):
                 recording = _stable_scalar_token(
-                    image.get("recordings_id"),
+                    recording_value,
                     f"NightOwls image {image_id} recordings_id",
                 )
                 key = (recording, str(tracking_id))
@@ -1183,7 +1194,12 @@ def import_nightowls(
                 frames.add(int(image_id))
 
     repeated_trajectory = any(len(frame_ids) >= 2 for frame_ids in trajectory_frames.values())
-    full_tracking_supported = bool(scored_pedestrian_annotations) and tracking_fields_valid and repeated_trajectory
+    full_tracking_supported = (
+        bool(scored_pedestrian_annotations)
+        and tracking_fields_valid
+        and recording_fields_valid
+        and repeated_trajectory
+    )
 
     selected_images = (
         _deterministic_nightowls_slice(
@@ -1201,9 +1217,15 @@ def import_nightowls(
 
     by_recording: dict[str, list[dict[str, Any]]] = {}
     for image in selected_images:
-        recording = _stable_scalar_token(
-            image.get("recordings_id"),
-            f"NightOwls image {image.get('id')} recordings_id",
+        image_id = int(image["id"])
+        recording_value = image.get("recordings_id")
+        recording = (
+            f"unassigned-image-{image_id}"
+            if recording_value is None
+            else _stable_scalar_token(
+                recording_value,
+                f"NightOwls image {image_id} recordings_id",
+            )
         )
         by_recording.setdefault(recording, []).append(image)
     for recording_images in by_recording.values():
@@ -1393,6 +1415,7 @@ def import_nightowls(
         "tracking_contract": {
             "official_documentation_states_tracking_information": True,
             "all_scored_pedestrians_have_valid_tracking_id": tracking_fields_valid,
+            "all_scored_pedestrians_have_recording_id": recording_fields_valid,
             "repeated_trajectory_observed": repeated_trajectory,
             "disabled_for_stratified_slice": slice_frames is not None,
         },
@@ -1408,6 +1431,9 @@ def import_nightowls(
                 "NightOwls:<recording>:<tracking_id>"
                 if tracking_supported
                 else "omitted because stable temporal scoring was not validated for this import"
+            ),
+            "null_recordings_id": (
+                "standalone logical sequence by official image_id; disables full tracking contract"
             ),
             "attributes": ["occluded", "difficult", "pose", "truncated"],
             "semantic_tags": "night_dark only when official image daytime metadata equals night",

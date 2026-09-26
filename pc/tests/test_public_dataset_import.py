@@ -380,7 +380,7 @@ def _nightowls_sdk_fixture(root: Path):
     )
 
 
-def _nightowls_fixture(root: Path, *, missing_tracking=False):
+def _nightowls_fixture(root: Path, *, missing_tracking=False, null_recording=False):
     _nightowls_sdk_fixture(root)
     image_dir = root / "nightowls_validation"
     for index in range(4):
@@ -393,7 +393,7 @@ def _nightowls_fixture(root: Path, *, missing_tracking=False):
             "width": 1024,
             "height": 640,
             "daytime": "night",
-            "recordings_id": 7.0,
+            "recordings_id": None if null_recording else 7.0,
             "timestamp": 1000 + index * 10,
         }
         for index in range(4)
@@ -572,6 +572,35 @@ def test_import_nightowls_disables_tracking_when_official_ids_are_incomplete(tmp
         for obj in row["objects"]
         if not obj.get("ignore", False)
     ]
+    assert all("id" not in obj for obj in scored)
+
+
+def test_import_nightowls_null_recording_is_standalone_and_tracking_fails_safe(tmp_path: Path):
+    root = tmp_path / "NightOwls"
+    root.mkdir()
+    _nightowls_fixture(root, null_recording=True)
+    gt = tmp_path / "nightowls.jsonl"
+
+    manifest = import_nightowls(
+        dataset_root=root,
+        annotations="nightowls_validation.json",
+        images_dir="nightowls_validation",
+        sdk_dir="nightowlsapi",
+        output_ground_truth=gt,
+        output_manifest=tmp_path / "nightowls.import.json",
+        importer_source_commit="a" * 40,
+        acknowledge_terms=True,
+    )
+
+    assert manifest["tracking_supported"] is False
+    assert manifest["tracking_contract"]["all_scored_pedestrians_have_valid_tracking_id"] is True
+    assert manifest["tracking_contract"]["all_scored_pedestrians_have_recording_id"] is False
+    rows = _read_jsonl(gt)
+    first = next(row for row in rows if row["source_frame"] == 100)
+    assert first["video"].endswith("/recording-unassigned-image-100")
+    assert first["source_sequence"] == "NightOwls:recording-unassigned-image-100"
+    scored = [obj for obj in first["objects"] if not obj.get("ignore", False)]
+    assert scored
     assert all("id" not in obj for obj in scored)
 
 
