@@ -224,3 +224,6 @@ Unlock only when:
 - official SDK commit: `ad0f18fc95e093e86036f055ab210a3de46021b7`
 - **NOT STARTED** — no candidate inference until ZIP integrity, import, validation and frozen slice hash are complete.
 - Sparse slice is detection/enhancement evidence only; tracking is unsupported and it must not be described as full NightOwls validation.
+
+
+- **A5 handoff-only HEAD** — `522e50c45bc3afffa5f03479880c4b9f9d0a676e`; NightOwls slice lock recorded, no code change.
