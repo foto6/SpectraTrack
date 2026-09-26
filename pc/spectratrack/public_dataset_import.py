@@ -26,6 +26,20 @@ CROWDHUMAN_TERMS = {
         "Non-commercial research/education only; CrowdHuman images must not be redistributed."
     ),
 }
+DANCETRACK_TERMS = {
+    "annotations": "CC BY 4.0",
+    "dataset_media": "non-commercial research only",
+    "code": "MIT",
+    "url": "https://github.com/DanceTrack/DanceTrack",
+}
+NIGHTOWLS_TERMS = {
+    "name": "NightOwls dataset terms",
+    "url": "https://www.nightowls-dataset.org/",
+    "note": (
+        "Non-commercial research/teaching/personal experimentation; citation required; "
+        "dataset and modified versions must not be redistributed."
+    ),
+}
 
 MOT17_TARGET_CLASS = 1
 MOT17_IGNORE_CLASSES = {2, 7, 8, 12}
@@ -449,6 +463,241 @@ def import_mot17(
         ),
         "sequences": sequence_manifest,
         "stats": {**counts, "frame_records": len(rows)},
+        "output": {
+            "ground_truth": str(Path(output_ground_truth).name),
+            "ground_truth_sha256": gt_sha,
+        },
+    }
+    manifest["import_manifest_sha256"] = _canonical_sha256(manifest)
+    _write_json(output_manifest, manifest)
+    return manifest
+
+
+def _selected_subdirectories(root: Path, value: str | None) -> list[str]:
+    if not root.is_dir():
+        raise FileNotFoundError(root)
+    available = sorted(item.name for item in root.iterdir() if item.is_dir())
+    if value is None or not value.strip():
+        if not available:
+            raise ValueError(f"No sequence directories found under {root}")
+        return available
+    selected = sorted({item.strip() for item in value.split(",") if item.strip()})
+    missing = [name for name in selected if name not in available]
+    if missing:
+        raise ValueError(f"Unknown sequence(s) under {root}: {missing}")
+    if not selected:
+        raise ValueError("No sequences selected")
+    return selected
+
+
+def _validate_mot_image_sequence(
+    image_dir: Path,
+    *,
+    frame_count: int,
+    extension: str,
+    width: int,
+    height: int,
+) -> list[Path]:
+    import cv2
+
+    files = sorted(
+        item
+        for item in image_dir.iterdir()
+        if item.is_file() and item.suffix.lower() == extension.lower()
+    )
+    if len(files) != frame_count:
+        raise ValueError(
+            f"{image_dir}: seqinfo frame_count={frame_count} but found {len(files)} {extension} images"
+        )
+    for expected_frame, image_path in enumerate(files, start=1):
+        try:
+            actual_frame = int(image_path.stem)
+        except ValueError as exc:
+            raise ValueError(f"{image_path}: expected numeric MOT frame filename") from exc
+        if actual_frame != expected_frame:
+            raise ValueError(
+                f"{image_dir}: expected frame {expected_frame:08d}, found {image_path.name}"
+            )
+        image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+        if image is None:
+            raise RuntimeError(f"Cannot read sequence image: {image_path}")
+        actual_height, actual_width = image.shape[:2]
+        if actual_width != width or actual_height != height:
+            raise ValueError(
+                f"{image_path}: dimensions {actual_width}x{actual_height} differ from "
+                f"seqinfo {width}x{height}"
+            )
+    return files
+
+
+def import_dancetrack(
+    *,
+    dataset_root: str | Path,
+    output_ground_truth: str | Path,
+    output_manifest: str | Path,
+    split: str = "val",
+    sequences: str | None = None,
+    logical_prefix: str | None = None,
+    importer_source_commit: str | None = None,
+    acknowledge_terms: bool = False,
+) -> dict[str, Any]:
+    if not acknowledge_terms:
+        raise ValueError("DanceTrack import requires --acknowledge-terms")
+    if split not in {"train", "val"}:
+        raise ValueError("DanceTrack split must be train or val; test GT is not public")
+
+    root = Path(dataset_root)
+    split_root = root / split
+    selected = _selected_subdirectories(split_root, sequences)
+    prefix = logical_prefix or f"golden/public/dancetrack-{split}"
+
+    rows: list[dict[str, Any]] = []
+    source_files: list[dict[str, Any]] = []
+    sequence_manifest: list[dict[str, Any]] = []
+    total_gt_rows = 0
+    non_intersecting_omitted = 0
+
+    for sequence_name in selected:
+        sequence_dir = split_root / sequence_name
+        seqinfo_path = sequence_dir / "seqinfo.ini"
+        gt_path = sequence_dir / "gt" / "gt.txt"
+        info = _read_seqinfo(seqinfo_path)
+        if info["name"] != sequence_name:
+            raise ValueError(
+                f"{seqinfo_path}: sequence name {info['name']!r} does not match {sequence_name!r}"
+            )
+        image_dir = sequence_dir / info["im_dir"]
+        if not image_dir.is_dir():
+            raise FileNotFoundError(image_dir)
+        image_files = _validate_mot_image_sequence(
+            image_dir,
+            frame_count=info["frame_count"],
+            extension=info["extension"],
+            width=info["width"],
+            height=info["height"],
+        )
+        gt = _parse_mot_gt(gt_path)
+        unexpected_frames = sorted(frame for frame in gt if frame > info["frame_count"])
+        if unexpected_frames:
+            raise ValueError(
+                f"{gt_path}: GT contains frame(s) beyond seqLength: {unexpected_frames[:5]}"
+            )
+
+        source_files.append(_source_file(seqinfo_path, root, "sequence_metadata"))
+        source_files.append(_source_file(gt_path, root, "ground_truth"))
+        image_entries = [_source_file(path, root, "image") for path in image_files]
+        source_files.extend(image_entries)
+
+        source_rel = _relative_path(image_dir, root)
+        logical_video = f"{prefix.rstrip('/')}/{sequence_name}"
+        sequence_gt_rows = 0
+        sequence_scored = 0
+        for frame_number in range(1, info["frame_count"] + 1):
+            objects: list[dict[str, Any]] = []
+            for annotation in gt.get(frame_number, []):
+                sequence_gt_rows += 1
+                total_gt_rows += 1
+                # DanceTrack uses MOT geometry/layout, but the final 1,1,1 fields are
+                # format constants. They are not MOT17 class/visibility semantics.
+                if (
+                    float(annotation["valid"]) != 1.0
+                    or int(annotation["class_id"]) != 1
+                    or float(annotation["visibility"]) != 1.0
+                ):
+                    raise ValueError(
+                        f"{gt_path}: DanceTrack GT trailing fields must be exactly 1,1,1"
+                    )
+                bbox = annotation["bbox"]
+                if not _bbox_intersects_image(bbox, info["width"], info["height"]):
+                    non_intersecting_omitted += 1
+                    continue
+                original_id = int(annotation["id"])
+                objects.append(
+                    {
+                        "id": f"DanceTrack:{sequence_name}:{original_id}",
+                        "label": "person",
+                        "bbox": bbox,
+                        "source_annotation": {
+                            "dataset": "DanceTrack",
+                            "original_id": original_id,
+                        },
+                    }
+                )
+                sequence_scored += 1
+
+            rows.append(
+                {
+                    "video": logical_video,
+                    "frame": frame_number - 1,
+                    "source": source_rel,
+                    "source_frame": frame_number,
+                    "source_sequence": sequence_name,
+                    "source_fps": info["fps"],
+                    "allow_out_of_bounds": True,
+                    "tags": [],
+                    "objects": objects,
+                    "source_metadata": {
+                        "dataset": "DanceTrack",
+                        "dataset_split": split,
+                        "source_sequence": sequence_name,
+                        "original_frame": frame_number,
+                    },
+                }
+            )
+
+        sequence_manifest.append(
+            {
+                "logical_video": logical_video,
+                "source_sequence": sequence_name,
+                "source": source_rel,
+                "fps": info["fps"],
+                "frame_count": info["frame_count"],
+                "width": info["width"],
+                "height": info["height"],
+                "gt_rows": sequence_gt_rows,
+                "scored_people": sequence_scored,
+                "image_files_sha256": _canonical_sha256(
+                    [{"path": item["path"], "sha256": item["sha256"]} for item in image_entries]
+                ),
+            }
+        )
+
+    rows.sort(key=lambda item: (item["video"], item["frame"]))
+    _write_jsonl(output_ground_truth, rows)
+    gt_sha = ground_truth_sha256(output_ground_truth)
+    manifest = {
+        "schema": IMPORT_SCHEMA,
+        "dataset": {
+            "name": "DanceTrack",
+            "version": "DanceTrack",
+            "split": split,
+            "terms": DANCETRACK_TERMS,
+        },
+        "annotation_origin": "official_public_ground_truth",
+        "terms_acknowledged": True,
+        "tracking_supported": True,
+        "importer_source_commit": _importer_commit(importer_source_commit),
+        "selected_sequences": selected,
+        "conversion_settings": {
+            "layout": "MOT-style",
+            "canonical_frame_index": "DanceTrack source frame minus 1",
+            "canonical_bbox": "MOT 1-based xywh converted to 0-based xyxy without clipping",
+            "stable_object_ids": "namespaced by DanceTrack sequence",
+            "trailing_fields": "required constant 1,1,1; no MOT17 semantics inherited",
+            "semantic_tags": "none inferred automatically",
+            "non_intersecting_boxes": "omitted",
+        },
+        "logical_prefix": prefix.rstrip("/"),
+        "source_files": source_files,
+        "source_files_sha256": _canonical_sha256(
+            [{"path": item["path"], "sha256": item["sha256"]} for item in source_files]
+        ),
+        "sequences": sequence_manifest,
+        "stats": {
+            "frame_records": len(rows),
+            "ground_truth_rows": total_gt_rows,
+            "non_intersecting_boxes_omitted": non_intersecting_omitted,
+        },
         "output": {
             "ground_truth": str(Path(output_ground_truth).name),
             "ground_truth_sha256": gt_sha,
