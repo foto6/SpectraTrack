@@ -236,3 +236,75 @@ Project-owner requirement for all Round-2 roles and the architect:
    - `docs/VNEXT_ROUND2_STATUS.md` — compact current state and remaining gates.
 
 A session restart must be recoverable from Git alone, except for re-verifying whether local long-running processes are still alive.
+
+
+## Public-first evidence amendment — 2026-09-26
+
+This section supersedes the earlier execution order that treated private CCTV human review as the immediate next gate. The underlying requirement for a final private domain check remains, but it moves to the end of Round 2.
+
+### Strategy
+
+Use existing human-annotated public datasets for the main quantitative research:
+
+- `mot17-public-r1` — A1 detection/fusion and A2 tracking held-out evidence;
+- `crowdhuman-val-fbox-r1` — A1 dense crowd / close-person / fusion safety; no tracking metrics;
+- `dancetrack-public-r1` — new A2 association / crossing / identity-stability stress corpus;
+- `nightowls-public-r1` — new primary night/low-light/blur/occlusion corpus for A1/A3, and A2 only when stable identity import semantics are validated;
+- LLVIP visible/RGB — optional secondary low-light detector/enhancement evidence under its non-commercial terms;
+- KAIST visible/RGB — fallback only if additional multispectral-origin evidence is needed; thermal/LWIR must not be used as SpectraTrack RGB input.
+
+Private user CCTV is no longer the main benchmark and no human review is requested now. After the public gates pass, A5 will reduce the current 46-frame pack to roughly 10-15 hardest standalone frames plus 3-5 short temporal episodes, with AI boxes remaining DRAFT-only until human confirmation.
+
+### A5 immediate work
+
+1. Preserve existing `mot17-public-r1` and `crowdhuman-val-fbox-r1` unchanged.
+2. Verify official DanceTrack terms and MOT-format annotations; add an isolated importer into the existing canonical QA JSONL only if terms are acceptable.
+3. Freeze `dancetrack-public-r1` from public train/validation annotations with hashes/provenance; no raw dataset bytes in Git.
+4. Verify NightOwls official non-commercial terms and JSON/Caltech annotations; add an isolated importer into the same canonical QA JSONL.
+5. Freeze `nightowls-public-r1` under explicit research-only provenance; do not redistribute raw/modified dataset bytes.
+6. Document LLVIP-visible as optional secondary evidence and KAIST-visible as fallback; no thermal input for SpectraTrack comparisons.
+7. Maintain a unified public evidence contract without inventing a synthetic overall score.
+
+### A1 public work
+
+- finish the frozen MOT17 held-out comparison without retuning;
+- run CrowdHuman dense-safety on the same candidate policies;
+- after NightOwls freeze, run surviving A1 policies on NightOwls validation without threshold retuning on that validation set;
+- emit canonical replays for A2 where temporal identity is valid.
+
+### A2 public work
+
+- keep current tracker as CONTROL and `current-ambiguity-guard` as the only targeted candidate in this round;
+- finish MOT17 current-vs-ambiguity comparison on byte-identical A1 replays;
+- use DanceTrack first as **association-only** evidence: derive detector observations directly from GT geometry so detector failures cannot mask association behavior;
+- only if the candidate survives association-only DanceTrack, spend detector inference on a second DanceTrack replay phase;
+- keep the existing promotion gates unchanged.
+
+### A3 public work
+
+- keep enhancement OFF as a first-class finalist;
+- finish strict weak-person / max-one-enhanced-ROI evidence when target-PC control is available;
+- use NightOwls as the primary public night benchmark for bilateral/current_adaptive_cached/(optional sharpen);
+- use LLVIP visible only as secondary low-light evidence if needed;
+- never use IR/thermal as production detector input;
+- if no candidate clears quality/cost gates, record `ENHANCEMENT OFF`.
+
+### A4 timing
+
+A4 remains parked until A1/A2/A3 produce surviving public quality policies. Then run only 1-3 final scheduler configurations for quality-vs-cost on the target RX 5700 XT.
+
+### Revised architect gate
+
+Do not create `agent/vnext-integrator` until all are satisfied:
+
+1. A1 MOT17 held-out fusion decision;
+2. A1 CrowdHuman dense-safety result;
+3. A1 NightOwls result;
+4. A2 MOT17 decision;
+5. A2 DanceTrack association result;
+6. A3 enhancement ON/OFF decision;
+7. A3 NightOwls validation;
+8. A4 final target-PC quality/cost evidence;
+9. A5 unified public evidence bundle;
+10. reduced human-confirmed private `cctv-golden-r1` sanity pack;
+11. surviving public pipeline passes that private domain sanity check.
