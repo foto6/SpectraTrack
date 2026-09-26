@@ -2364,3 +2364,26 @@ A5 has already locked the deterministic 5000-frame held-out slice before any Nig
 - `tracking_supported=false`
 
 Decision: preserve the active download. No import, freeze, A3 run, or duplicate download until the ZIP completes and passes size/hash/testzip verification.
+
+
+## 2026-09-27 — NightOwls archive download complete; intake can proceed
+
+Target-PC verification:
+- archive: `E:\SpectraTrack-data\public\NightOwls\nightowls_validation.zip`
+- exact bytes: `57,481,286,834` (matches previously verified official expected size)
+- active download process: absent
+- ZIP central directory readable
+- entries: `51,849`
+- summed compressed bytes: `57,469,823,834`
+- summed uncompressed bytes: `57,595,824,667`
+- unsafe absolute / `..` entries: `0`
+- first entry: `nightowls_validation/`
+- last entry: `nightowls_validation/58c58374bc26013700163dfc.png`
+- E: free space after download: ~152.1 GB
+
+No NightOwls import/freeze artifact exists yet and no A3 NightOwls result exists yet.
+
+Decision:
+- download phase is DONE;
+- A5 may now perform full hash/testzip, isolated extraction, deterministic slice import, validation, and freeze as the pre-locked `nightowls-public-slice5000-r1`;
+- A3 remains blocked until the exact frozen corpus SHA/manifest is published.
