@@ -589,11 +589,29 @@ def _new_accumulator() -> dict[str, Any]:
         "enhanced_detector_ms": 0.0,
         "enhanced_inference_ms": 0.0,
         "enhanced_calls": 0,
+        "budget_skipped": 0,
+        "enhanced_by_frame": {},
         "raw_fp": 0,
         "candidate_fp": 0,
         "raw_matches": {},
         "candidate_matches": {},
     }
+
+
+def _claim_enhancement_slot(
+    data: dict[str, Any],
+    record: RoiRecord,
+    max_per_frame: int,
+) -> bool:
+    if max_per_frame <= 0:
+        return True
+    key = (record.video, record.frame)
+    used = int(data["enhanced_by_frame"].get(key, 0))
+    if used >= max_per_frame:
+        data["budget_skipped"] += 1
+        return False
+    data["enhanced_by_frame"][key] = used + 1
+    return True
 
 
 def _truth_index(
@@ -638,6 +656,7 @@ def _summarize_operation(
             "selective_gate_frequency": data["selective"] / roi_count,
             "affected_rois": data["affected"],
             "affected_frequency": data["affected"] / roi_count,
+            "budget_skipped_rois": data["budget_skipped"],
         },
         "cost": {
             "quality_assessment_ms_attributed": quality_ms,
@@ -710,6 +729,7 @@ def run_profile(args: argparse.Namespace) -> dict[str, Any]:
     detector._reset_policy_metrics()
     probe = DetectorProbe(detector)
     accumulators = {operation: _new_accumulator() for operation in args.operations}
+    max_enhanced_rois_per_frame = int(getattr(args, "max_enhanced_rois_per_frame", 0))
 
     quality_ms = 0.0
     quality_stage_ms: dict[str, float] = defaultdict(float)
@@ -752,7 +772,12 @@ def run_profile(args: argparse.Namespace) -> dict[str, Any]:
             data["selective"] += int(selected)
 
             enhanced_accepted: list[Detection] = []
-            if eligible and selected:
+            budget_allows = (
+                eligible
+                and selected
+                and _claim_enhancement_slot(data, record, max_enhanced_rois_per_frame)
+            )
+            if budget_allows:
                 data["affected"] += 1
                 enhanced_roi, operation_ms = apply_operation(operation, roi, quality)
                 data["preprocess_ms"] += operation_ms
@@ -822,6 +847,7 @@ def run_profile(args: argparse.Namespace) -> dict[str, Any]:
             "match_iou": args.match_iou,
             "corroboration_iou": args.corroboration_iou,
             "selective_gate": args.selective_gate,
+            "max_enhanced_rois_per_frame": max_enhanced_rois_per_frame,
             "operations": list(args.operations),
             "provider_preference": "CPU" if args.cpu else "DirectML-then-CPU",
             "tile_geometry_owned_by_a3": False,
@@ -1008,6 +1034,12 @@ def _build_parser() -> argparse.ArgumentParser:
     profile.add_argument("--cpu", action="store_true")
     profile.add_argument("--operations", nargs="+", choices=OPERATIONS, default=list(OPERATIONS))
     profile.add_argument("--selective-gate", choices=SELECTIVE_GATES, default="quality")
+    profile.add_argument(
+        "--max-enhanced-rois-per-frame",
+        type=int,
+        default=0,
+        help="Research budget per operation/frame; 0 keeps the existing unlimited behavior.",
+    )
     return parser
 
 
@@ -1028,6 +1060,8 @@ def main() -> int:
         parser.error("--corroboration-iou must be in [0, 1]")
     if not 0.0 < args.match_iou <= 1.0:
         parser.error("--match-iou must be in (0, 1]")
+    if args.max_enhanced_rois_per_frame < 0:
+        parser.error("--max-enhanced-rois-per-frame must be >= 0")
     if args.ground_truth and not args.corpus_revision:
         parser.error("--corpus-revision is required when --ground-truth is supplied")
 
