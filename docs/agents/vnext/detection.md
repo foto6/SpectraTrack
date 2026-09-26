@@ -1339,3 +1339,45 @@ Verified compute summary: frame size `1920x1080`; policy runs `750`; represented
 Held-out interpretation only: evidence-aware has the best F1/precision and strongest stability/temporal IoU on MOT17-13 while reducing fusion mistakes vs hard NMS; its recall is lower than hard NMS. Conservative NMM has the highest recall but larger FP cost. No threshold/config retuning occurred.
 
 Decision: **VALID HELD-OUT EVIDENCE / ALL SIX PREFUSION SEQUENCES COMPLETE; NEEDS VERIFIED FINAL AGGREGATE + MARKER/REPLAYS.**
+
+## Round 2 MOT17 held-out final handoff
+
+Status: **DONE — HELD-OUT DECISION FROZEN; NO HELD-OUT RETUNING**
+
+Final result: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json`; size `46022` bytes; modified UTC `2026-09-26T17:42:06.2680236Z`; SHA-256 `94a208a44ff2e29f69575ed5c58c4f5a1720605aedaf5e713f7798234d065fa4`. Completion marker SHA-256: `fc26bc4c4431da262c35a3663af47edfb5ba62c2d37579aad816f0350f9be776`.
+
+Frozen provenance: corpus `mot17-public-r1`; DEV `MOT17-04`; HELD OUT `MOT17-02/05/09/10/11/13`; source commit `e2dad933119e0639413200466ffbda0baeba6b2e`; GT SHA-256 `28dcb9d197e0a098a1efb097f1589177350192a8f5f1be3e2ab5cd18d8f205c7`; model SHA-256 `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`; providers `DmlExecutionProvider,CPUExecutionProvider`; 4266 frames; 32535 actual ONNX calls; represented detector wall `3784.394112100126 s`; end-to-end benchmark wall `4043.225418200018 s`.
+
+| policy | decision | precision | recall | F1 | FP | TP | bbox IoU | center jitter px | temporal IoU | fusion mistakes |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| hard-nms | **RETAIN CONTROL** | 0.418094 | 0.675549 | 0.516517 | 60868 | 43733 | 0.755325 | 5.436632 | 0.875081 | 1016 |
+| conservative-nmm | **REJECT / NOT RETAINED** | 0.371183 | 0.701438 | 0.485468 | 76927 | 45409 | 0.779633 | 3.756440 | 0.887958 | 540 |
+| weighted | **REJECT / NOT RETAINED** | 0.368963 | 0.697654 | 0.482663 | 77244 | 45164 | 0.773226 | 3.785148 | 0.889162 | 540 |
+| evidence-aware | **PASS / RETAIN CHALLENGER** | 0.431776 | 0.677588 | 0.527449 | 57727 | 43865 | 0.776246 | 3.700660 | 0.892984 | 540 |
+
+Evidence-aware vs hard-NMS: F1 +0.010931, precision +0.013683, recall +0.002039, TP +132, FP -3141, bbox IoU +0.020921, center jitter -1.735972 px, temporal IoU +0.017902, fusion mistakes -476. It clears the MOT17 held-out gate as the sole challenger.
+
+Conservative NMM and weighted improve recall/stability but fail the aggregate trade-off: each loses >0.031 F1 and >0.046 precision versus hard-NMS while adding >16000 FP. They are not retained for Round-2 downstream gates.
+
+Thresholds/config remain exactly frozen at person floor 0.12, fusion IoU 0.55, center ratio 0.20, size ratio 1.80, evidence weak/solo/strong 0.12/0.20/0.35 and min sources 2. Held-out results were not used to retune any value. Production detector/runtime files remain unchanged.
+
+### Surviving canonical A2 replay artifacts
+
+The retained MOT17 downstream pair is hard-NMS control + evidence-aware challenger. Canonical schema remains `spectratrack-detection-replay-v1`. All hashes are bound in the final result artifact.
+
+- MOT17-02 hard/evidence: `5c16dc13a0454205078aab5e3c1e73ff011ea3b094cf40a0bd3a2fc16b7599a8` / `b9b5c674ad063e1ec589dade4c631ad0620db5e217d3bf4a90fbc0d899edd5c8`
+- MOT17-05 hard/evidence: `15bf1be018c763a68faa4e7431082876350c1f112b2393bb2d80576924ebafe2` / `194f6222351073d56b5e3608d4764271854da7a81e26851aff9a24d977ce377a`
+- MOT17-09 hard/evidence: `16f650bc90200ad94f91e3acc260ae36b999772502014c3ab428e3c617522e70` / `f6df4b2b43ffa5105d2b27c251e746f7b3634f45d3069549a5e75fa8ded6a987`
+- MOT17-10 hard/evidence: `1bb37e91ee650c8fa4f6e92be86a7f7610e65fee1ba0e68154c3980dd96a9abe` / `313cef621be976bfa5ede97d66e57c0ab97818eed704435be02dcb36133164b4`
+- MOT17-11 hard/evidence: `285486ce370e33783ad45d7a3665f46ca8ad8d0f75f2517a0e48633130a450aa` / `f2f7254b90df66d9fc250b5d09c4e9bc3221db0200364507a7d0029eb4988b57`
+- MOT17-13 hard/evidence: `e8fa5697abf508f64629fc003c502b3fdc1d1b77e5e80c2b3fea13c6ef86a428` / `1ead6450d34df74e6cd0744e6e297916d1e48200692cbfb3a0cacf1e5bcd99fa`
+
+### Remaining A1 gates / blockers
+
+- **NOT DONE — CrowdHuman dense-safety:** mandatory next gate on frozen `crowdhuman-val-fbox-r1`; compare hard-NMS control vs evidence-aware and preserve full four-policy aggregate only as supporting evidence. Required: precision/recall/F1, TP/FP/FN, fusion mistakes, bbox localization/behavior. Tracking metrics are forbidden.
+- **BLOCKED — NightOwls:** do not run A1 until A5 publishes frozen `nightowls-public-r1` or an explicitly frozen/hash-bound validation slice. No NightOwls held-out threshold tuning is allowed.
+- **NOT DONE — final A2 handoff after dense-safety:** MOT17 replay bytes already exist; evidence-aware remains provisional for downstream use until CrowdHuman confirms close-person/dense-crowd safety.
+- **DEFERRED — private CCTV sanity gate:** remains downstream of public evidence and A5 human-confirmed freeze; no private review is requested from A1 now.
+- **LOCKED — production integration:** no changes to production detector, `integration`, `main`, RC, or release are authorized from this handoff.
+
+Next step: run CrowdHuman dense-safety only after process/artifact/marker/log state is positively verified. No threshold retuning.
