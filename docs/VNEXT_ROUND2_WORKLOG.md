@@ -1122,3 +1122,19 @@ Pinned before candidate evaluation:
 - Any slice must preserve positive and negative/background evidence, use identical bytes for every candidate, and be reported as a slice rather than a full-validation result.
 
 This prevents compute-driven cherry-picking while keeping YOLO11x/960 multi-pass evaluation tractable.
+
+
+### BLOCKED — target-PC substantive relay still unavailable after public-first dispatch
+
+Target `DESKTOP-64LCMQ8` still answers ping, but a minimal substantive PowerShell probe:
+
+`Write-Output 'probe-ok'`
+
+timed out again.
+
+Safety decision unchanged:
+
+- do not restart A1 held-out inference blindly;
+- do not restart A2/A3 interrupted jobs blindly;
+- do not infer completion/failure from GPU idleness or relay timeout;
+- continue Git-side public dataset coordination only until process/artifact inspection works.
