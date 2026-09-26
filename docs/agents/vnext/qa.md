@@ -795,3 +795,22 @@ Round-2 coordination keeps public evidence and private human-reviewed CCTV evide
 The annotation command now accepts an optional `--draft <jsonl>` input. Draft rows seed frames that have not yet been saved by the human annotator, while any already-reviewed output row always takes precedence. The draft is never treated as human-confirmed ground truth by itself and the frozen-corpus confirmation gate remains unchanged.
 
 A local review pack may therefore use current-detector boxes to reduce drawing work without silently promoting machine labels into GOLDEN. Large videos, extracted frames, draft labels, and the reviewed private corpus remain local/generated artifacts rather than repository content.
+
+
+## Round 2 coordinator verification — 2026-09-26 19:30 +07
+
+### DONE — private review progress accounting
+
+Validated code/test HEAD before this documentation update:
+
+`afc6baf1cc0216ec21fa71f298be88e76519cdfa`
+
+GitHub Actions run:
+
+`36241763043` — **SUCCESS**
+
+New research-only review-progress tooling distinguishes human-saved rows from draft preannotations. Draft rows never count as reviewed. The report records reviewed/pending frame counts, pending frames with/without draft boxes, reviewed person boxes, reviewed negative frames, completion fraction, and pending frame keys. Duplicate review-batch frame keys are rejected.
+
+### NOT DONE — human confirmation
+
+The existing 46-frame private review pack remains non-GOLDEN until a human reviews/corrects it. `cctv-golden-r1` must not be frozen from AI-only draft annotations.
