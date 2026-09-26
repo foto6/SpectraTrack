@@ -979,3 +979,63 @@ Reason real freeze is not claimed: raw DanceTrack dataset bytes are intentionall
 - failure cause: five pre-existing `test_vnext_qa.py` fixtures still monkeypatched the removed local symbol `vnext_qa.inspect_qa_source` after corpus validation was intentionally routed through the new shared `inspect_qa_logical_source` helper.
 - this is a test-fixture migration failure, not a measured dataset/import correctness result.
 - fix scope: update those fixtures to patch the new logical-source seam; no production/dataset semantics changed for this failure.
+## Round 2 A5 — NightOwls importer implementation checkpoint
+
+Status at code/test HEAD before this state update:
+
+`0db6bc0473a66a56e22c5f7adaaf5ad44d201dd7`
+
+Official sources reviewed/required by the importer:
+
+- dataset/download: `https://www.nightowls-dataset.org/` and `/download/`
+- official SDK: `https://gitlab.com/vgg/nightowlsapi`
+- official validation PNG distribution + `nightowls_validation.json` only
+- terms: non-commercial research/teaching/personal experimentation; citation required; redistribution of dataset/modified versions prohibited
+- intended full frozen revision: `nightowls-public-r1`
+- Round-2 held-out split: validation
+
+Official SDK/evaluation semantics used:
+
+- Python SDK is COCO-compatible;
+- official pedestrian evaluator accumulates category id 1;
+- importer requires category id 1 to be named `pedestrian` in the real JSON;
+- official ignore flags/ignore category are preserved as canonical ignore regions;
+- bicycledriver/motorbikedriver/other categories are omitted from pedestrian scoring and never silently relabeled.
+
+Implemented:
+
+- isolated `import-nightowls` command through the existing A5 CLI;
+- official JSON image/annotation/category/pose metadata validation;
+- source-backed `occluded`, `difficult`, `pose`, `truncated`, recording id, timestamp, daytime and tracking-id preservation;
+- stable IDs namespaced as `NightOwls:<recording>:<tracking_id>` only when real imported annotations validate the tracking contract;
+- `tracking_supported=true` requires valid tracking IDs for all scored pedestrians plus at least one repeated trajectory;
+- sparse deterministic slice always forces `tracking_supported=false` because temporal continuity is broken;
+- one logical recording can now reference multiple official PNG source files while using the same canonical QA JSONL/evaluator;
+- multi-image logical source hash is deterministic and used consistently by corpus validation and QA result provenance;
+- deterministic slice selection uses only official image/annotation metadata: positive/negative, bbox-size, occlusion, difficulty, pose and daytime strata; candidate/model output is never used;
+- selected slice image IDs and deterministic selection hash are recorded in import provenance;
+- official SDK files are hashed into import provenance.
+
+Focused synthetic official-format tests added for:
+
+- pedestrian target vs rider/ignore semantics;
+- stable tracking ID enablement;
+- fail-safe tracking disablement when IDs are incomplete;
+- official attributes and night tag sourced from metadata;
+- deterministic slice reproducibility;
+- positive + negative slice inclusion;
+- multi-image logical sequence corpus validation;
+- rejection of incompatible pedestrian category contract.
+
+Validation result at this checkpoint:
+
+- code written: **YES**
+- first Round-2 CI run `36254977841`: **FAILED** only because five old test fixtures patched the superseded `inspect_qa_source` seam; Ruff passed and the failure was recorded above;
+- fixture migration fix: `836f4ba12fb4bce30c9028cc9bece485fa1547de`;
+- final CI covering the current code: **PENDING**
+- real NightOwls validation import: **NOT RUN**
+- real source artifact/hash: **NOT AVAILABLE**
+- full frozen `nightowls-public-r1`: **NOT FROZEN**
+- deterministic slice frozen revision/hash: **NOT CREATED**
+
+Reason real freeze is not claimed: official validation media is external, approximately 50GB, redistribution is prohibited, and those bytes are not present in the agent's GitHub-only execution environment. No mirror/resized substitute was used.
