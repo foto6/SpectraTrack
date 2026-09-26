@@ -56,22 +56,27 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-tracking @ d83017d52011b1c728b6bb86b2fd519041da2032`
+`agent/vnext-tracking @ 8c4c9b69f9d3f332ed2d655ff5f7bc9cb69cb6e4`
 
 Done:
 
 - current tracker remains control;
 - failure-mining tooling added;
-- focused tests passed.
+- ambiguity-scoped assignment candidate implemented;
+- first too-narrow ambiguity implementation failed CI and is documented;
+- fixed candidate passes the nearby-same-class mechanism probe with 0 ID switches;
+- selected non-ambiguous synthetic probes remain metric-identical to current;
+- GitHub CI run `36240708158`: success, 166 tests passed, build/package green.
 
 In progress / needs verification:
 
-- current-tracker failure audits on hard-NMS, conservative-NMM, and weighted replay.
+- current-tracker failure-audit artifact state on the target PC after the interrupted run;
+- real identical-replay evaluation of `current-ambiguity-guard`.
 
 Not done:
 
-- targeted ambiguity/hysteresis or occlusion candidate conclusion;
-- validation against surviving A1 Round-2 replay;
+- Round-2 gate decision on real replay (recall / IDSW / fragmentation / false tracks);
+- validation against the surviving A1 Round-2 replay;
 - final retain-current vs targeted-fix handoff.
 
 ## A3 Enhancement — issue #20
