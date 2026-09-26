@@ -499,3 +499,64 @@ If no candidate clears post-fusion quality/cost and stability gates, the require
 `ENHANCEMENT OFF`
 
 Do not tune low-light thresholds on a held-out NightOwls validation split after seeing its results.
+
+
+## Round 2 continuation — target-PC verification before restart
+
+State at continuation start:
+
+- branch: `agent/vnext-enhancement`;
+- exact starting HEAD verified: `4b13f8eaec4e9339ea3247fc759f85400e1a13b4`;
+- strict research configuration remains:
+  - selective gate = `weak-person`;
+  - max enhanced ROIs/source-frame = `1`;
+  - raw corroboration mandatory;
+  - comparison set = enhancement OFF / bilateral / current_adaptive_cached / sharpen only if competitive.
+
+Existing interrupted target-PC artifact expected from the durable coordinator worklog:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a3-round2-weak1.json`
+
+Existing strict weak-person ROI manifest:
+
+`C:\Users\foto6\SpectraTrack-data\derived\MOT17-04-first300-roi-weak1.jsonl`
+
+### BLOCKED — target-PC artifact verification
+
+A direct Remote Desktop Commander read of the expected A3 result artifact was attempted before any restart.
+
+Result:
+
+- target device relay returned `No devices available`;
+- artifact completion/corruption state remains **UNVERIFIED**;
+- no A3 benchmark process was restarted;
+- no local artifact was overwritten;
+- no completion/failure is inferred from the relay failure.
+
+This preserves the Round-2 rule: verify existing process/artifact state before restarting interrupted work.
+
+### A5 public-night gate
+
+Current observed A5 head at this checkpoint:
+
+`agent/vnext-qa @ f4f406182df54335e2c26a34091915408204789c`
+
+The branch contains the NightOwls/DanceTrack import assignment and constrained semantics, but no frozen `nightowls-public-r1` artifact/revision is yet published.
+
+Therefore:
+
+- NightOwls candidate evaluation is **NOT STARTED**;
+- no held-out NightOwls result has been observed;
+- no gates/thresholds are retuned from held-out evidence;
+- LLVIP IR/thermal is not used.
+
+### Safe next work while target PC is disconnected
+
+Only Git-side research/tooling review is allowed:
+
+1. verify the strict profiler can express OFF/bilateral/current_adaptive_cached and the one-ROI budget;
+2. close any measurement gap for required post-fusion quality metrics without duplicating A1 fusion policy;
+3. wait for reliable target-PC artifact inspection before resuming a missing local run;
+4. wait for A5 `nightowls-public-r1` freeze before primary night evaluation.
+
+Production enhancement remains non-candidate unless strict evidence clears the Round-2 quality/cost gates.
