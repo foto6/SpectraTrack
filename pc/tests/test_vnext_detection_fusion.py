@@ -36,6 +36,7 @@ def test_synthetic_stress_set_exposes_hard_nms_crowd_failure_and_jitter():
     assert nmm["center_jitter_px"] < hard["center_jitter_px"]
     assert weighted["center_jitter_px"] < hard["center_jitter_px"]
     assert weighted["temporal_iou"] > hard["temporal_iou"]
+    assert hard["f1"] == pytest.approx(2 * hard["precision"] * hard["recall"] / (hard["precision"] + hard["recall"]))
 
 
 def test_conservative_candidates_do_not_merge_high_overlap_distinct_people():
