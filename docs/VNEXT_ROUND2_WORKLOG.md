@@ -838,3 +838,18 @@ Frozen policy:
 - CrowdHuman validation remains separate dense-safety evidence.
 
 The A1 README now contains the exact resumable held-out command. Held-out metrics may not be used to silently retune Round-2 thresholds. Actual target-PC inference remains NOT DONE while the command relay is timing out.
+
+
+### IN PROGRESS — make A1 held-out runner emit canonical A2 replays
+
+The resumable A1 corpus runner currently records metrics and per-video prefusion artifacts, but the Round-2 handoff requires surviving policies to be passed to A2 as canonical replay bytes.
+
+Safe research-only change:
+
+- add optional `--replay-dir`;
+- require `--prefusion-dir` when replay export is requested;
+- after evaluation, convert each selected per-video prefusion artifact into canonical `spectratrack-detection-replay-v1` for every requested fusion method;
+- record generated replay paths in the corpus report;
+- add deterministic tests;
+- do not rerun detector inference for replay conversion;
+- do not change production detector behavior.
