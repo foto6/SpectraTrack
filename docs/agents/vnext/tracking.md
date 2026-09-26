@@ -767,3 +767,38 @@ The candidate now passes the targeted mechanism test and preserves selected non-
 - no material false-track increase.
 
 Do not integrate into production until those replay results exist and A5 stamps the surviving evidence.
+
+
+## Round 2 public-first tracking assignment — 2026-09-26
+
+Status: **IN PROGRESS / WAITING ON A5 DANCETRACK FREEZE**
+
+Current tracker remains CONTROL. The only targeted candidate for this round remains:
+
+`current-ambiguity-guard`
+
+Do not return to wholesale global/Byte/BoT/OC replacements.
+
+### MOT17
+
+Finish current vs ambiguity-guard on byte-identical A1 canonical replays with the existing gates:
+
+- tracking recall loss <= 0.25 percentage points;
+- ID-switch improvement target >= 10%;
+- fragmentation increase <= 5%;
+- no material false-track increase.
+
+### DanceTrack — association-only first
+
+After A5 publishes `dancetrack-public-r1`:
+
+1. derive tracker observations directly from official GT geometry/identity under a documented deterministic detection-emulation policy;
+2. feed the exact same observation bytes to current and `current-ambiguity-guard`;
+3. measure ID switches, fragmentation, uninterrupted length, recovery, wrong/same-ID recovery, false track creation where meaningful;
+4. use no YOLO inference in this first phase.
+
+Purpose: isolate association/crossing behavior from detector misses and bbox noise.
+
+Only if ambiguity-guard survives this association-only gate should A2 consume a detector-generated DanceTrack replay in a second phase.
+
+Do not modify production `tracker.py` before final integrator review.
