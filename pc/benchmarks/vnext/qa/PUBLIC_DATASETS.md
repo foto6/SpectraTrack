@@ -108,6 +108,7 @@ Canonical scoring target:
 - canonical evaluator frame -> source frame minus 1;
 - source sequence/FPS are preserved;
 - official full-body bbox is converted from 1-based xywh to 0-based xyxy **without clipping**;
+- target-like boxes may extend beyond the image, but boxes with no image intersection are omitted because they cannot be observed or matched by the canonical evaluator;
 - visibility is preserved numerically and only converted into explicitly named numeric
   visibility bins;
 - semantic scene tags are added only where the official MOT17 sequence description supports them.

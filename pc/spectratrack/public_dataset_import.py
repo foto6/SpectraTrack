@@ -178,6 +178,11 @@ def _mot_bbox_to_canonical(x: float, y: float, width: float, height: float) -> l
     return [x - 1.0, y - 1.0, x - 1.0 + width, y - 1.0 + height]
 
 
+def _bbox_intersects_image(bbox: list[float], width: int, height: int) -> bool:
+    x1, y1, x2, y2 = bbox
+    return x2 > 0.0 and y2 > 0.0 and x1 < float(width) and y1 < float(height)
+
+
 def _read_seqinfo(path: Path) -> dict[str, Any]:
     parser = configparser.ConfigParser()
     with path.open("r", encoding="utf-8-sig") as handle:
@@ -284,6 +289,7 @@ def import_mot17(
         "scored_pedestrians": 0,
         "ignored_target_like": 0,
         "zero_marked_pedestrians_omitted": 0,
+        "non_intersecting_target_like_omitted": 0,
         "other_classes_omitted": 0,
     }
 
@@ -333,6 +339,9 @@ def import_mot17(
                     if valid <= 0.0:
                         counts["zero_marked_pedestrians_omitted"] += 1
                         continue
+                    if not _bbox_intersects_image(annotation["bbox"], info["width"], info["height"]):
+                        counts["non_intersecting_target_like_omitted"] += 1
+                        continue
                     counts["scored_pedestrians"] += 1
                     objects.append(
                         {
@@ -345,6 +354,9 @@ def import_mot17(
                     )
                 elif class_id in MOT17_IGNORE_CLASSES:
                     if valid <= 0.0:
+                        continue
+                    if not _bbox_intersects_image(annotation["bbox"], info["width"], info["height"]):
+                        counts["non_intersecting_target_like_omitted"] += 1
                         continue
                     counts["ignored_target_like"] += 1
                     objects.append(
@@ -423,6 +435,7 @@ def import_mot17(
             "scored_classes": [MOT17_TARGET_CLASS],
             "ignored_target_like_classes": sorted(MOT17_IGNORE_CLASSES),
             "zero_marked_pedestrians": "omitted",
+            "non_intersecting_target_like_boxes": "omitted",
             "other_classes": "omitted",
             "visibility_attributes": [0.25, 0.50, 0.75],
             "semantic_tags": "only official sequence metadata descriptions",

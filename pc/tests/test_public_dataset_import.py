@@ -50,6 +50,7 @@ def _mot17_fixture(root: Path):
                 "1,9,40,1,10,20,1,3,1.00",
                 "2,1,2,1,10,20,1,1,0.60",
                 "2,2,60,1,10,20,0,1,1.00",
+                "2,3,-20,1,10,20,1,1,0.05",
             ]
         )
         + "\n",
@@ -85,8 +86,9 @@ def test_import_mot17_preserves_identity_ignore_and_source_provenance(tmp_path: 
     ignored = [obj for obj in rows[0]["objects"] if obj.get("ignore", False)]
     assert [obj["id"] for obj in scored] == ["MOT17-10:1"]
     assert [obj["id"] for obj in ignored] == ["ignore:MOT17-10:7:7"]
-    assert rows[1]["objects"][0]["id"] == "MOT17-10:1"
+    assert [obj["id"] for obj in rows[1]["objects"]] == ["MOT17-10:1"]
     assert manifest["stats"]["zero_marked_pedestrians_omitted"] == 1
+    assert manifest["stats"]["non_intersecting_target_like_omitted"] == 1
     assert manifest["stats"]["other_classes_omitted"] == 1
     assert manifest["importer_source_commit"] == "a" * 40
     assert manifest["dataset"]["split"] == "train"

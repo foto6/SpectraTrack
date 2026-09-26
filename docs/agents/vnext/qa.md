@@ -628,7 +628,7 @@ Scoring conversion:
 - zero-marked pedestrians -> omitted;
 - unrelated classes -> omitted;
 - 1-based MOT xywh -> 0-based xyxy without clipping;
-- full-body boxes may extend outside image but must still intersect it.
+- full-body boxes may extend outside image; target-like boxes with no image intersection are omitted because canonical QA cannot observe or match them.
 
 Visibility is preserved as numeric source metadata + numeric visibility-bin attributes. A5 does not invent partial/heavy-occlusion semantic labels from visibility.
 
