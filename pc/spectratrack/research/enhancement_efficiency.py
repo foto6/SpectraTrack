@@ -51,6 +51,8 @@ class RoiRecord:
     roi_id: str
     bbox: tuple[int, int, int, int]
     signals: dict[str, bool]
+    source_kind: str | None = None
+    source_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -363,6 +365,8 @@ def load_roi_manifest(path: str | Path) -> tuple[dict[str, Any], list[RoiRecord]
             roi_id = item.get("roi_id")
             bbox = item.get("bbox")
             signals = item.get("signals", {})
+            source_kind = item.get("source_kind")
+            source_id = item.get("source_id")
             if not isinstance(video, str) or not video:
                 raise ValueError(f"line {line_number}: video must be a non-empty string")
             if isinstance(frame, bool) or not isinstance(frame, int) or frame < 0:
@@ -382,8 +386,31 @@ def load_roi_manifest(path: str | Path) -> tuple[dict[str, Any], list[RoiRecord]
                 raise ValueError(f"line {line_number}: bbox must have positive non-negative area")
             if not isinstance(signals, dict) or any(not isinstance(value, bool) for value in signals.values()):
                 raise ValueError(f"line {line_number}: signals must map names to booleans")
+            if (source_kind is None) != (source_id is None):
+                raise ValueError(
+                    f"line {line_number}: source_kind and source_id must be supplied together"
+                )
+            if source_kind is not None and (
+                not isinstance(source_kind, str)
+                or not source_kind
+                or not isinstance(source_id, str)
+                or not source_id
+            ):
+                raise ValueError(
+                    f"line {line_number}: source_kind/source_id must be non-empty strings"
+                )
             seen_ids.add(roi_id)
-            records.append(RoiRecord(video, frame, roi_id, (x1, y1, x2, y2), dict(signals)))
+            records.append(
+                RoiRecord(
+                    video,
+                    frame,
+                    roi_id,
+                    (x1, y1, x2, y2),
+                    dict(signals),
+                    source_kind,
+                    source_id,
+                )
+            )
 
     if not metadata:
         raise ValueError("ROI manifest is missing metadata")
