@@ -1282,3 +1282,46 @@ Official upstream availability from the target PC was checked without downloadin
 NightOwls status: **READY FOR OFFICIAL DOWNLOAD / INTAKE NOT STARTED**.
 
 It is not blocked by upstream availability, but import/freeze cannot start until the official ~57.5 GB validation image archive, official JSON and official SDK are intentionally placed under the isolated target-PC data root. No mirror, resized substitute or third-party conversion was used.
+
+
+## Round 2 NightOwls held-out slice lock — 2026-09-27
+
+Status: **LOCKED BEFORE ANY NIGHTOWLS CANDIDATE RESULT**
+
+The official full NightOwls validation download remains in progress on the target PC under the isolated data root. A5 does not extract or import from the partial archive.
+
+To keep the YOLO11x/960 held-out gate bounded without introducing post-result sampling bias, the existing deterministic A5 slice mechanism is selected **before any OFF/bilateral/current_adaptive_cached NightOwls result exists**.
+
+Frozen selection contract:
+
+- official validation distribution only;
+- slice frames: `5000`;
+- slice seed: `spectratrack-round2-nightowls-v1`;
+- logical prefix: `golden/public/nightowls-val-slice`;
+- planned revision: `nightowls-public-slice5000-r1`;
+- importer source code basis: `6760ac740b9875f2d0754e3cf5870a41b2f52a0e`;
+- official SDK exact commit: `ad0f18fc95e093e86036f055ab210a3de46021b7`.
+
+The selected IDs are determined only from official image/annotation metadata and their deterministic hash must be recorded in the import manifest. No detector/fusion/enhancement output may influence the slice.
+
+Because sparse slicing breaks temporal continuity:
+
+- `tracking_supported=false`;
+- this corpus is for A3 night detection/enhancement quality/cost evidence;
+- it must never be described as full `nightowls-public-r1`.
+
+Required intake order after the ZIP is complete:
+
+1. exact ZIP byte-size check;
+2. local SHA-256 + archive integrity/testzip;
+3. official JSON size/hash/parse check;
+4. exact SDK HEAD check;
+5. uncompressed-size + free-space preflight;
+6. isolated extraction;
+7. deterministic 5000-frame import using the locked seed/prefix;
+8. canonical validation;
+9. freeze as `nightowls-public-slice5000-r1`;
+10. load/reverify frozen manifest and selected-image hash;
+11. only then release the exact frozen bytes/hash to A3.
+
+No AI annotation is involved in this public-GT freeze.
