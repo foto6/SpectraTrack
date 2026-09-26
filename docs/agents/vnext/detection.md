@@ -1231,3 +1231,61 @@ No threshold/config retuning occurred.
 Decision:
 
 **VALID HELD-OUT EVIDENCE / NEEDS REMAINING SEQUENCES AND AGGREGATE.**
+
+
+## Round 2 MOT17 held-out checkpoint — MOT17-10 complete
+
+Status:
+
+**DONE — PREFUSION VERIFIED + PER-SEQUENCE METRICS COMPUTED, ZERO NEW ONNX CALLS FOR FUSION EVAL**
+
+Verified prefusion artifact:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-mot17\golden_public_mot17_MOT17-10.jsonl`
+
+Artifact provenance:
+
+- size: `9238134` bytes;
+- modified UTC: `2026-09-26T17:09:04.571Z`;
+- SHA-256: `360c2068084e066cdf5b21464f36ae1768b7ca8cb3befc6319fbc3ff3c2baebf`.
+
+Verified compute summary:
+
+- frame size: `1920x1080`;
+- policy runs: `654`;
+- actual ONNX calls represented: `5886`;
+- detector wall time: `689.2355315999594 s`;
+- preprocess: `51066.86669762712 ms`;
+- inference: `585967.2606033273 ms`;
+- postprocess: `36147.17189595103 ms`.
+
+Per-sequence held-out metrics:
+
+| metric | hard-nms | conservative-nmm | weighted | evidence-aware |
+| --- | ---: | ---: | ---: | ---: |
+| TP | 9311 | 9565 | 9494 | 9212 |
+| FP | 10353 | 12052 | 12126 | 8246 |
+| FN | 3525 | 3271 | 3342 | 3624 |
+| precision | 0.473505 | 0.442476 | 0.439130 | 0.527666 |
+| recall | 0.725382 | 0.745170 | 0.739639 | 0.717669 |
+| F1 | 0.572985 | 0.555249 | 0.551080 | 0.608173 |
+| bbox localization IoU | 0.743739 | 0.756773 | 0.750872 | 0.753961 |
+| center jitter px | 4.628579 | 3.638982 | 3.644249 | 3.592393 |
+| width jitter px | 3.295475 | 3.054630 | 2.881973 | 2.831969 |
+| height jitter px | 5.797963 | 3.145798 | 3.600189 | 3.460468 |
+| area jitter ratio | 0.087744 | 0.075028 | 0.073263 | 0.068003 |
+| temporal IoU | 0.845826 | 0.858795 | 0.858279 | 0.863390 |
+| duplicates before fusion | 12134 | 12134 | 12134 | 12134 |
+| fusion mistakes | 92 | 64 | 64 | 64 |
+
+Held-out interpretation only:
+
+- evidence-aware improves precision, F1, center/width/area stability, temporal IoU and fusion mistakes relative to hard NMS;
+- evidence-aware recall is lower than hard NMS on this sequence;
+- conservative NMM has the highest recall but lower precision/F1;
+- weighted does not recover precision versus NMM;
+- no policy/config retuning occurred.
+
+Decision:
+
+**VALID HELD-OUT EVIDENCE / NEEDS MOT17-11, MOT17-13 AND AGGREGATE.**
