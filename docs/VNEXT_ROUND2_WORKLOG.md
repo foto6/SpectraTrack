@@ -819,3 +819,22 @@ Split policy:
 - CrowdHuman validation remains a separate dense detection-safety corpus and is not used for MOT17 tuning.
 
 No held-out result may be used to retune the policy in this Round-2 cycle.
+
+
+### DONE — A1 fixed held-out split committed before validation
+
+A1 branch head:
+
+`002b698b06c439694906c9c5b3e765e543bd0029`
+
+Added:
+
+`pc/benchmarks/vnext/detection/round2_mot17_split.json`
+
+Frozen policy:
+
+- development: MOT17-04 only;
+- held-out: MOT17-02/05/09/10/11/13;
+- CrowdHuman validation remains separate dense-safety evidence.
+
+The A1 README now contains the exact resumable held-out command. Held-out metrics may not be used to silently retune Round-2 thresholds. Actual target-PC inference remains NOT DONE while the command relay is timing out.
