@@ -2333,3 +2333,15 @@ A5 branch advanced by documentation-only commit:
 `agent/vnext-qa @ 522e50c45bc3afffa5f03479880c4b9f9d0a676e`
 
 Changed only the A5 role handoff to record the pre-result NightOwls 5000-frame slice contract. Issue #22 carries the same lock. No importer/runtime code changed and no candidate result was observed.
+
+
+### FAILED ATTEMPT — NightOwls live-status one-liner quoting
+
+A read-only nested PowerShell command intended to report current ZIP/part/process/free-space state failed during shell parsing because outer command expansion stripped inner `$...` variables.
+
+Safety/result:
+
+- downloader PID 15200 was not touched;
+- ZIP/parts were not modified;
+- no additional downloader was started;
+- retry via a temporary read-only `.ps1` script.
