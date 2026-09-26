@@ -43,8 +43,15 @@ def test_inspect_split_accepts_complete_golden_coverage(monkeypatch, tmp_path: P
     )
     monkeypatch.setattr(
         vnext_qa,
-        "_video_metadata",
-        lambda _path: {"width": 100, "height": 80, "fps": 25.0, "frame_count": 2},
+        "inspect_qa_source",
+        lambda _path, fps_override=None: {
+            "kind": "video",
+            "width": 100,
+            "height": 80,
+            "fps": 25.0,
+            "frame_count": 2,
+            "sha256": "a" * 64,
+        },
     )
     monkeypatch.setattr(vnext_qa, "sha256_file", lambda _path: "a" * 64)
 
@@ -77,8 +84,15 @@ def test_inspect_split_rejects_invalid_label_and_out_of_bounds(monkeypatch, tmp_
     )
     monkeypatch.setattr(
         vnext_qa,
-        "_video_metadata",
-        lambda _path: {"width": 100, "height": 80, "fps": 25.0, "frame_count": 2},
+        "inspect_qa_source",
+        lambda _path, fps_override=None: {
+            "kind": "video",
+            "width": 100,
+            "height": 80,
+            "fps": 25.0,
+            "frame_count": 2,
+            "sha256": "a" * 64,
+        },
     )
     monkeypatch.setattr(vnext_qa, "sha256_file", lambda _path: "a" * 64)
 
@@ -122,8 +136,15 @@ def test_inspect_corpus_rejects_train_golden_sha_leakage(monkeypatch, tmp_path: 
     )
     monkeypatch.setattr(
         vnext_qa,
-        "_video_metadata",
-        lambda _path: {"width": 100, "height": 80, "fps": 25.0, "frame_count": 2},
+        "inspect_qa_source",
+        lambda _path, fps_override=None: {
+            "kind": "video",
+            "width": 100,
+            "height": 80,
+            "fps": 25.0,
+            "frame_count": 2,
+            "sha256": "a" * 64,
+        },
     )
     monkeypatch.setattr(vnext_qa, "sha256_file", lambda _path: "f" * 64)
 
@@ -443,8 +464,15 @@ def test_ignored_person_does_not_satisfy_negative_coverage(monkeypatch, tmp_path
     )
     monkeypatch.setattr(
         vnext_qa,
-        "_video_metadata",
-        lambda _path: {"width": 100, "height": 80, "fps": 25.0, "frame_count": 1},
+        "inspect_qa_source",
+        lambda _path, fps_override=None: {
+            "kind": "video",
+            "width": 100,
+            "height": 80,
+            "fps": 25.0,
+            "frame_count": 1,
+            "sha256": "a" * 64,
+        },
     )
     monkeypatch.setattr(vnext_qa, "sha256_file", lambda _path: "a" * 64)
 
@@ -635,8 +663,15 @@ def test_person_specific_coverage_cannot_be_satisfied_by_empty_tagged_frame(
     )
     monkeypatch.setattr(
         vnext_qa,
-        "_video_metadata",
-        lambda _path: {"width": 100, "height": 80, "fps": 25.0, "frame_count": 1},
+        "inspect_qa_source",
+        lambda _path, fps_override=None: {
+            "kind": "video",
+            "width": 100,
+            "height": 80,
+            "fps": 25.0,
+            "frame_count": 1,
+            "sha256": "a" * 64,
+        },
     )
     monkeypatch.setattr(vnext_qa, "sha256_file", lambda _path: "a" * 64)
 
