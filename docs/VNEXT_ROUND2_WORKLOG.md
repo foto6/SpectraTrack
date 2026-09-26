@@ -2159,3 +2159,75 @@ Safety/result:
 - no benchmark was started;
 - no metric/provenance conclusion is drawn from this failed parse;
 - retry with `utf-8-sig` BOM-aware decoding.
+
+
+### DONE — A4 existing artifact audit; no new scheduler inference started
+
+Existing target-PC artifacts were inventoried and parsed with BOM-aware decoding.
+
+#### Canonical previously documented A4 cost evidence remains unchanged
+
+The Git-recorded RX 5700 XT / DirectML frontier on the real 1080p `12345.mp4` clip remains the durable model/source-commit-bound cost evidence from A4.
+
+No new large scheduler search was started.
+
+#### Supporting local scheduler sweep discovered
+
+Artifact:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a4-real-scheduler-sweep.json`
+
+- SHA-256: `e1c08a72a7e9cada7a619d112bef3e6674f52e56496cb16e6d17441e268c80cc`
+- size: `5689` bytes
+- schema: `spectratrack-local-a4-real-scheduler-sweep-v1`
+- video: `C:\Users\foto6\SpectraTrack-data\derived\MOT17-04-first300.mp4`
+- video SHA-256: `13a4760ab8c9b54b9ce998a46179e8483609019f41fd521f4e199eb156d32642`
+- model: `E:\SpectraTrack\yolo11x.onnx`
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`
+- providers: `DmlExecutionProvider, CPUExecutionProvider`
+- input: 960
+- 300 frames / 30 FPS / 10 source seconds
+
+Measured execution-only points:
+
+- full every frame: 30.0 calls/source-s, 3.9303 processing s/source-s
+- detect_every 2 / max_calls 1 / global 15: 15.0 calls/source-s, 1.7720 processing s/source-s, 1.0 s global bound
+- 3 / 1 / 10: 10.0 calls/source-s, 1.1850 processing s/source-s, 1.0 s bound
+- 4 / 1 / 7: 7.5 calls/source-s, 0.8949 processing s/source-s, 0.933 s bound
+- 5 / 1 / 6: 6.0 calls/source-s, 0.7198 processing s/source-s, 1.0 s bound
+- 3 / 2 / 10: 20.0 calls/source-s, 2.3350 processing s/source-s, 1.0 s bound
+
+Important provenance limitation:
+
+The local sweep artifact binds video/model/provider hashes but does **not** record the exact source commit. Its generating coordinator script imports detector code from the A1 target worktree and explicitly labels its rotating ROI locations as deterministic proxies. Therefore this artifact is supporting execution-cost evidence only, not the canonical final A4 quality/cost artifact and not scheduler quality evidence.
+
+#### Existing DirectML batch probe discovered
+
+Artifact:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a4-yolo11x-batch-probe.json`
+
+- SHA-256: `576e78b35529a0c9acafe601f24db005de74657ff6c111e6b149d98062663900`
+- fixed input shape: `[1,3,960,960]`
+- providers: DirectML + CPU fallback
+- batch 1: supported; median `84.3342 ms`, `11.8576 items/s`
+- batch 2: unsupported — fixed batch dimension 1
+- batch 4: unsupported — fixed batch dimension 1
+- multi-batch support: false
+- VRAM: intentionally not measured by this probe
+
+Provenance limitation:
+
+This batch artifact does not itself bind a model path/hash/source commit, so it is retained as a diagnostic of the probed session/input contract, not as sufficient standalone model-provenance evidence. No batching implementation is authorized from it.
+
+### DECISION — A4 remains PARKED pending A3 NightOwls final decision
+
+A1 is now hard-NMS-only and A2 retains the current tracker, but A3 still has two enhancement finalists plus OFF. Per the pre-existing A4 strategy, do not launch the final quality scheduler evaluation until A3 resolves that gate.
+
+The eventual A4 final run remains restricted to only 1–3 configurations. Existing cost evidence is sufficient to avoid another broad sweep.
+
+### NEXT
+
+- continue A5 NightOwls intake untouched;
+- after A3 resolves OFF/bilateral/current_adaptive_cached, select 1–3 scheduler configs from the existing cost envelope and run only the missing quality/discovery-latency validation;
+- do not select the fastest cadence from cost alone.
