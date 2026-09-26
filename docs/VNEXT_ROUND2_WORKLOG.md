@@ -1795,3 +1795,41 @@ Safety/result:
 - no process-ownership conclusion is drawn from this failed probe.
 
 Recovery: rerun the same read-only inspection from a temporary local `.ps1` file to avoid nested-shell quoting.
+
+
+### DONE — duplicate-writer hazard no longer active; A1 result now awaits integrity validation
+
+The corrected read-only process/artifact probe was rerun from a temporary local PowerShell script to avoid nested-shell quoting.
+
+At `2026-09-27T02:29:43+07:00`:
+
+- neither CrowdHuman PID `19944` nor PID `28260` was still present;
+- neither process was terminated by the coordinator;
+- `a1-round2-prefusion-crowdhuman` contained exactly `4370` persisted prefusion files;
+- final result exists:
+  `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-crowdhuman.json`
+  - size: `4,772,059` bytes
+  - mtime: `2026-09-27T02:28:47.7573450+07:00`
+- completion marker exists:
+  `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-crowdhuman.json.complete.json`
+  - size: `604` bytes
+  - mtime: `2026-09-27T02:28:47.7766821+07:00`
+
+Interpretation:
+
+- the active concurrent-writer hazard has cleared because both workers exited on their own;
+- no CrowdHuman restart is permitted;
+- the newly completed result is **not yet accepted** until JSON/marker/hash/provenance/aggregate metrics are verified.
+
+The same probe reconfirmed existing A2 audit artifacts and A3 strict-profile artifact are present; they were not modified.
+
+NightOwls continued untouched:
+
+- downloader PID `15200` alive;
+- observed ZIP size: `13,480,124,416` bytes;
+- official JSON remains exact size `10,696,948` bytes;
+- no second downloader was started.
+
+### NEXT
+
+Validate the completed A1 CrowdHuman JSON and completion marker, compute hashes, confirm all 4370 images are represented under the frozen no-retune policy, then record the dense-safety decision before touching A3/A4.
