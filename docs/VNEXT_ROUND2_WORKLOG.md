@@ -1620,3 +1620,88 @@ ZIP validation after download:
 This clears the external DanceTrack download blocker. A5 may now extract/import/validate/freeze `dancetrack-public-r1` using its already CI-green importer and provenance contract.
 
 NightOwls bytes remain absent and are still a blocker for the A1/A3 night gate.
+
+
+## 2026-09-27 — all-agent recheck after specialist handoffs
+
+### A1 — IN PROGRESS on CrowdHuman dense-safety
+
+Current branch:
+`agent/vnext-detection @ 043931fb0bda2a10716ca19d2381adbd56c8d59b`
+
+Current CI: SUCCESS.
+
+MOT17 held-out final handoff is frozen:
+- evidence-aware = PASS / retained challenger
+- hard-NMS = retained control
+- conservative NMM / weighted = rejected
+
+A1 has started the mandatory CrowdHuman dense-safety run under the frozen no-retune rule.
+
+Target-PC worker:
+- PID `19944`
+- process alive
+- CPU increased during coordinator probe
+- prefusion file count increased from 883 to 887 over four seconds
+- total validation images: 4370
+- therefore approximately 20.3% of image-level prefusion artifacts are currently persisted
+
+Final CrowdHuman result / completion marker are not present yet. Duplicate restart is forbidden.
+
+### A2 — DONE
+
+`agent/vnext-tracking @ d1470454129024d3767b6cb91a7d6ba66102d52d`
+
+Decision remains:
+`RETAIN CURRENT TRACKER`
+
+The rejected ambiguity-guard is not eligible for DanceTrack promotion without explicit architect override.
+
+### A3 — WAITING
+
+`agent/vnext-enhancement @ 21e7b06dc470a346dd01e86b45e3e581e4f0d59d`
+
+Strict candidate lock remains OFF / bilateral / current_adaptive_cached.
+NightOwls held-out cannot start before A5 freezes a real official corpus/slice.
+
+### A4 — PARKED
+
+`agent/vnext-performance @ 45bd0bc85f7e677cd602b435108b2095ab0ee78b`
+
+No new scheduler search authorized until public quality finalists are ready.
+
+### A5 — DanceTrack DONE; CI green
+
+Current branch:
+`agent/vnext-qa @ 6760ac740b9875f2d0754e3cf5870a41b2f52a0e`
+
+Current GitHub Actions PC CI: SUCCESS.
+
+Frozen DanceTrack corpus:
+- revision: `dancetrack-public-r1`
+- exact corpus SHA-256: `df240532ad3f2099947f318b682737ccdb3e6345dc9da1e380ff4cab8d6c6b5c`
+- canonical frames: 25,508
+- scored people: 225,148
+- 25 sequences
+- raw-to-canonical bbox mismatches: 0
+- missing raw rows: 0
+- MOT17 semantic leakage: 0
+- validate-corpus: valid=true, 0 errors, 0 warnings
+
+### NightOwls — READY UPSTREAM, LOCAL STORAGE BLOCKER DISCOVERED
+
+A5 verified official upstream is reachable:
+- validation ZIP: 57,481,286,834 bytes
+- official JSON: 10,696,948 bytes
+- official SDK reachable
+
+Target-PC free space at coordinator check:
+- C: 58,150,100,992 bytes free (~58.2 GB)
+- E: 78,731,448,320 bytes free (~78.7 GB)
+
+The NightOwls validation ZIP alone is ~57.5 GB. Retaining both the archive and extracted official PNG set is not safely possible on either currently-free volume, and C: has essentially no headroom even for the archive alone.
+
+Decision:
+- do not start a blind 57.5 GB download yet;
+- NightOwls is now **BLOCKED ON SAFE LOCAL STORAGE PLAN**, not upstream availability;
+- first free/move sufficient space or establish a verified extraction/storage approach that preserves provenance without risking disk exhaustion.
