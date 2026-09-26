@@ -16,6 +16,11 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 ## Global gates
 
+- **DONE** — A2 Round-2 decision: RETAIN CURRENT TRACKER; ambiguity-guard rejected by real identical-replay ID-switch gate.
+- **IN PROGRESS** — A1 real MOT17 held-out retry is active on target PC; first MOT17-02 prefusion artifact is present.
+- **IN PROGRESS** — official DanceTrack validation download is active on target PC; freeze waits for verified per-sequence GT.
+- **BLOCKED** — NightOwls local official bytes/frozen revision are not yet available; A1/A3 night gates cannot start.
+
 - **DONE** — hourly coordinator condition watch enabled for branch/CI/target-PC recovery and Git-persistent continuation.
 
 - **DONE** — unified public evidence contract committed in `docs/VNEXT_ROUND2_PUBLIC_EVIDENCE.md`.
@@ -48,7 +53,7 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 Current known Round-2 head:
 
-`agent/vnext-detection @ bccf087df01b74bc463dcc3525e5665110ff8225`
+`agent/vnext-detection @ c4e20eed58dd11fa03a8b619b6af6bc34a3b1d0a`
 
 Done:
 
@@ -73,7 +78,7 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-tracking @ 372c96e71e504a54ea2ac027ab988dfba2bd1918`
+`agent/vnext-tracking @ d1470454129024d3767b6cb91a7d6ba66102d52d`
 
 Done:
 
@@ -100,7 +105,7 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-enhancement @ 4b13f8eaec4e9339ea3247fc759f85400e1a13b4`
+`agent/vnext-enhancement @ 21e7b06dc470a346dd01e86b45e3e581e4f0d59d`
 
 Done:
 
@@ -143,7 +148,7 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-qa @ f4f406182df54335e2c26a34091915408204789c`
+`agent/vnext-qa @ bf63820f81cd13fdfae8680a200e25f030d314fc`
 
 Done:
 
