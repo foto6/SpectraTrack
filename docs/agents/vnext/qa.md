@@ -1144,3 +1144,21 @@ Current instruction remains:
 - actual DanceTrack held-out gate: **BLOCKED only on external dataset import/freeze**
 - actual NightOwls held-out gate: **BLOCKED only on external dataset import/freeze**
 - common Round-2 candidate comparison should not begin on these two gates until their exact frozen manifest/hash is produced locally and distributed unchanged to the relevant agents.
+### Final Round-2 branch CI confirmation
+
+Final fully-tested branch state before this state-only documentation commit:
+
+`55502f009f246e6437f12c8cff43f8b45edd343d`
+
+GitHub Actions run `36255432085`: **SUCCESS**
+
+- Ruff: PASS — `All checks passed!`
+- compileall + pytest: **174 passed in 1.97s**
+- synthetic tracker benchmark: PASS — 500 frames / 24 targets / 11970 observations / 1399.1 tracker_fps
+- diagnostics: PASS
+- self-check: PASS
+- PyInstaller standalone build: PASS
+- standalone app help + batch help: PASS
+- source + Windows packaging/upload: PASS
+
+This documentation-only commit does not change importer, evaluator, source abstraction, frozen corpus, or test code.
