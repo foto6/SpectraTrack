@@ -6,6 +6,7 @@ from spectratrack.qa_benchmark import GroundTruthFrame, GroundTruthObject
 from spectratrack.research.vnext_detection_corpus import (
     attach_ground_truth,
     collect_corpus_video_frames,
+    _per_video_performance,
     evaluate_methods,
     export_canonical_replays,
 )
@@ -104,6 +105,31 @@ def test_collect_corpus_video_frames_resolves_direct_crowdhuman_image(tmp_path):
 
     assert len(frames) == 1
     assert summary["source_modes"] == ["image"]
+
+
+def test_per_video_performance_distinguishes_new_and_reused_prefusion():
+    summary = {
+        "policy_runs": 3,
+        "inference_calls": 27,
+        "wall_time_s": 4.5,
+        "stage_ms": {"inference": 4000.0},
+        "source_modes": ["image_sequence"],
+    }
+
+    fresh = _per_video_performance(summary, reused=False)
+    cached = _per_video_performance(summary, reused=True)
+
+    assert fresh["inference_calls"] == 27
+    assert fresh["new_inference_calls"] == 27
+    assert fresh["reused_inference_calls"] == 0
+    assert fresh["new_detector_wall_s"] == 4.5
+    assert fresh["evidence_source"] == "new_inference"
+
+    assert cached["inference_calls"] == 27
+    assert cached["new_inference_calls"] == 0
+    assert cached["reused_inference_calls"] == 27
+    assert cached["reused_detector_wall_s"] == 4.5
+    assert cached["evidence_source"] == "reused_prefusion"
 
 
 def test_attach_ground_truth_rehydrates_cached_prefusion_frames():
