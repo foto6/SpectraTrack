@@ -883,3 +883,45 @@ LLVIP official source:
 KAIST multispectral pedestrian benchmark remains fallback only. If later used, SpectraTrack evaluation consumes visible/RGB only; thermal/LWIR is not production detector input.
 
 Do not create a second QA format.
+
+
+### DanceTrack importer architecture constraint
+
+The existing A5 importer already contains reusable MOT primitives:
+
+- `_read_seqinfo()`;
+- `_parse_mot_gt()`;
+- `_mot_bbox_to_canonical()`;
+- source-file hashing / import-manifest hashing.
+
+Do not create a second MOT parser for DanceTrack.
+
+Preferred implementation:
+
+- factor/reuse generic MOT-sequence parsing and provenance helpers;
+- keep **dataset-specific annotation semantics separate**.
+
+Important: DanceTrack rows follow MOT geometry/layout, but must **not** inherit MOT17-specific class IDs, distractor classes, visibility bins, or sequence semantic tags. Official DanceTrack rows are target track boxes with stable IDs and constant trailing fields; map only what the official DanceTrack format supports.
+
+Validation requirements before freeze:
+
+- every sequence's `seqinfo.ini` dimensions/frame count match images;
+- imported frame count and GT row count are cross-checked;
+- stable canonical IDs are namespaced by DanceTrack sequence;
+- imported bbox geometry matches source GT after 1-based MOT -> 0-based canonical conversion;
+- source image, `seqinfo.ini`, and `gt.txt` hashes are included;
+- train/validation provenance remains explicit;
+- no test-set GT is fabricated.
+
+### NightOwls importer safety constraint
+
+Use the official PNG/JSON/SDK semantics, not third-party resized/mirrored conversions.
+
+Official documentation says pedestrian, bicycledriver, motorbikedriver, and ignore are distinct annotation classes. For SpectraTrack person evaluation:
+
+- score official pedestrian targets;
+- preserve official ignore regions as canonical ignore;
+- do not silently relabel cyclist/motorbike-driver classes as ordinary pedestrians;
+- decide whether non-pedestrian person-like classes should become ignore regions only after checking official evaluation semantics/SDK;
+- preserve official occlusion/difficulty/pose/truncation metadata as source-backed attributes;
+- set `tracking_supported=true` only after the official identity field/SDK behavior is validated in real annotations.
