@@ -659,3 +659,29 @@ Therefore **no restart is authorized yet**. When the target PC is reachable agai
 Decision at this checkpoint:
 
 **NEEDS MORE EVIDENCE** — no A1 policy can be accepted/rejected from held-out until target-PC artifact state is recovered and the frozen runs complete.
+
+
+## Round 2 metric-completeness fix before held-out execution
+
+Research-code HEAD after this step:
+
+`d8253ad449f0af39bd3d13e048255fcdd28d54b3`
+
+Reason:
+
+The frozen held-out contract requires F1 and per-sequence compute provenance. The resumable corpus runner already produced TP/FP/FN/precision/recall and aggregate compute, but F1 was not explicit and represented detector wall/call provenance was not broken out per sequence. A target-PC inference run must not be repeated merely because the report schema omitted required fields.
+
+Changes are research-only:
+
+- fusion evaluation now reports explicit `f1`;
+- per-sequence detector provenance now records policy runs, represented inference calls, new vs reused inference calls, represented detector wall time, new vs reused detector wall time, stage timings, source modes, and whether evidence came from fresh inference or reused prefusion;
+- top-level performance sums represented/new/reused detector wall time in addition to current benchmark wall time;
+- tests cover F1 and fresh-vs-reused per-sequence cost provenance.
+
+No production detector/runtime file changed. No fusion thresholds/policy values changed. Held-out remains evaluation-only with no retuning.
+
+Status:
+
+**IN PROGRESS / CI VERIFICATION REQUIRED**
+
+Target-PC execution remains **NEEDS VERIFICATION** because the device is still offline; no restart has been issued.
