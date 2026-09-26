@@ -513,12 +513,11 @@ def evaluate_frames(
         if tracks_by_frame is None:
             continue
         tracks = [item for item in tracks_by_frame.get(key, []) if item.label == label and item.track_id is not None]
-        track_matches, _ = _match_objects(truth, tracks, iou_threshold)
+        trackable_truth = [(index, obj) for index, obj in valid_truth if obj.object_id is not None]
+        track_matches, _ = _match_objects(trackable_truth, tracks, iou_threshold)
         track_tp += len(track_matches)
-        track_fn += len(valid_truth) - len(track_matches)
-        for truth_index, obj in valid_truth:
-            if obj.object_id is None:
-                continue
+        track_fn += len(trackable_truth) - len(track_matches)
+        for truth_index, obj in trackable_truth:
             state_key = (frame.video, obj.object_id)
             state = identity_state.setdefault(
                 state_key,
