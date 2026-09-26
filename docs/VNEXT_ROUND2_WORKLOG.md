@@ -853,3 +853,19 @@ Safe research-only change:
 - add deterministic tests;
 - do not rerun detector inference for replay conversion;
 - do not change production detector behavior.
+
+
+### FAILED then FIXED — A1 canonical replay export CI lint
+
+GitHub Actions run `36241720488` failed at lint before tests because the new replay-export test used `json.loads` without importing `json`.
+
+Observed failure:
+
+- `F821 Undefined name json`
+- file: `pc/tests/test_vnext_detection_corpus.py`
+
+Fix commit on A1:
+
+`704c9a645d276ceb1d2acd26f0dc44ad296196ce`
+
+The failure is retained here rather than hidden. Awaiting the replacement CI run before marking replay-export tooling validated.
