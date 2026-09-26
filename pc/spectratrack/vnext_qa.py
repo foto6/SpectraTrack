@@ -162,9 +162,7 @@ def inspect_split(
         grouped[frame.video].append(frame)
         expected_prefix = f"{split}/"
         if not frame.video.replace("\\", "/").startswith(expected_prefix):
-            errors.append(
-                f"{frame.video}#{frame.frame}: {split} GT must reference videos under {expected_prefix}"
-            )
+            errors.append(f"{frame.video}#{frame.frame}: {split} GT must reference videos under {expected_prefix}")
         for obj in frame.objects:
             if obj.label not in allowed:
                 errors.append(f"{frame.video}#{frame.frame}: invalid label {obj.label!r}")
@@ -202,9 +200,7 @@ def inspect_split(
         max_annotated_frame = max(frame.frame for frame in video_frames)
         frame_count = meta.get("frame_count")
         if frame_count is not None and max_annotated_frame >= int(frame_count):
-            errors.append(
-                f"{video}: annotated frame {max_annotated_frame} is outside frame_count={frame_count}"
-            )
+            errors.append(f"{video}: annotated frame {max_annotated_frame} is outside frame_count={frame_count}")
 
         valid_people = 0
         for frame in video_frames:
@@ -212,15 +208,9 @@ def inspect_split(
                 x1, y1, x2, y2 = obj.bbox
                 outside = x1 < 0.0 or y1 < 0.0 or x2 > width or y2 > height
                 if outside and not frame.allow_out_of_bounds:
-                    errors.append(
-                        f"{video}#{frame.frame}: bbox {obj.bbox} outside {width}x{height}"
-                    )
-                if frame.allow_out_of_bounds and (
-                    x2 <= 0.0 or y2 <= 0.0 or x1 >= width or y1 >= height
-                ):
-                    errors.append(
-                        f"{video}#{frame.frame}: bbox {obj.bbox} does not intersect {width}x{height}"
-                    )
+                    errors.append(f"{video}#{frame.frame}: bbox {obj.bbox} outside {width}x{height}")
+                if frame.allow_out_of_bounds and (x2 <= 0.0 or y2 <= 0.0 or x1 >= width or y1 >= height):
+                    errors.append(f"{video}#{frame.frame}: bbox {obj.bbox} does not intersect {width}x{height}")
                 if obj.label == "person" and not obj.ignore:
                     valid_people += 1
 
@@ -277,9 +267,7 @@ def _validate_dataset_import_manifests(
         manifest = load_import_manifest(path)
         output_sha = manifest.get("output", {}).get("ground_truth_sha256")
         if output_sha not in {golden_ground_truth_sha256, train_ground_truth_sha256}:
-            raise ValueError(
-                f"{path}: imported ground-truth SHA does not match current TRAIN/GOLDEN JSONL"
-            )
+            raise ValueError(f"{path}: imported ground-truth SHA does not match current TRAIN/GOLDEN JSONL")
         if not manifest.get("terms_acknowledged"):
             raise ValueError(f"{path}: public dataset terms were not acknowledged at import time")
         for source_file in manifest.get("source_files", []):
@@ -297,8 +285,7 @@ def _validate_dataset_import_manifests(
             actual_sha = sha256_file(source_path)
             if actual_sha != expected_sha:
                 raise ValueError(
-                    f"{path}: source file hash mismatch for {relative}: "
-                    f"recorded={expected_sha} actual={actual_sha}"
+                    f"{path}: source file hash mismatch for {relative}: recorded={expected_sha} actual={actual_sha}"
                 )
         validated.append(manifest)
     return validated
@@ -344,9 +331,7 @@ def inspect_corpus(
         for item in golden["videos"]:
             duplicate = train_by_sha.get(item["sha256"])
             if duplicate is not None:
-                errors.append(
-                    f"train/golden leakage: {duplicate!r} and {item['video']!r} have identical SHA-256"
-                )
+                errors.append(f"train/golden leakage: {duplicate!r} and {item['video']!r} have identical SHA-256")
 
     return {
         "schema": CORPUS_SCHEMA,
@@ -538,11 +523,24 @@ def _write_jsonl_rows(path: Path, rows: Iterable[dict[str, Any]]) -> None:
     )
 
 
+def _annotation_seed_rows(
+    output_ground_truth: str | Path,
+    draft_ground_truth: str | Path | None = None,
+) -> dict[tuple[Any, Any], dict[str, Any]]:
+    draft_rows = _load_jsonl_rows(Path(draft_ground_truth)) if draft_ground_truth else []
+    existing = _load_jsonl_rows(Path(output_ground_truth))
+    row_map = {(row.get("video"), row.get("frame")): row for row in draft_rows}
+    # Human-reviewed/saved output always wins over machine draft rows.
+    row_map.update({(row.get("video"), row.get("frame")): row for row in existing})
+    return row_map
+
+
 def annotate_frame_batch(
     batch_path: str | Path,
     *,
     output_ground_truth: str | Path,
     tags: Iterable[str] = (),
+    draft_ground_truth: str | Path | None = None,
 ) -> None:
     import cv2
 
@@ -551,8 +549,7 @@ def annotate_frame_batch(
     if batch.get("schema") != FRAME_BATCH_SCHEMA:
         raise ValueError(f"Unsupported frame batch schema in {batch_file}")
     output = Path(output_ground_truth)
-    existing = _load_jsonl_rows(output)
-    row_map = {(row.get("video"), row.get("frame")): row for row in existing}
+    row_map = _annotation_seed_rows(output, draft_ground_truth)
     video = batch["video"]
     base_tags = sorted({_normalize_token(tag) for tag in tags if tag.strip()})
     active_id = "p1"
@@ -580,11 +577,7 @@ def annotate_frame_batch(
         else:
             active_attributes = tuple(
                 sorted(
-                    {
-                        _normalize_token(str(item))
-                        for item in existing_active.get("attributes", [])
-                        if str(item).strip()
-                    }
+                    {_normalize_token(str(item)) for item in existing_active.get("attributes", []) if str(item).strip()}
                 )
             )
             active_ignore = bool(existing_active.get("ignore", False))
@@ -691,17 +684,9 @@ def annotate_frame_batch(
                         )
                         active_ignore = bool(existing_active.get("ignore", False))
             elif pressed == ord("a"):
-                raw_attributes = input(
-                    "Comma-separated attributes for the active person (blank clears): "
-                ).strip()
+                raw_attributes = input("Comma-separated attributes for the active person (blank clears): ").strip()
                 active_attributes = tuple(
-                    sorted(
-                        {
-                            _normalize_token(item)
-                            for item in raw_attributes.split(",")
-                            if item.strip()
-                        }
-                    )
+                    sorted({_normalize_token(item) for item in raw_attributes.split(",") if item.strip()})
                 )
             elif pressed == ord("g"):
                 active_ignore = not active_ignore
@@ -819,9 +804,7 @@ def validate_detection_replay(path: str | Path) -> dict[str, Any]:
                 elif isinstance(appearance, list):
                     appearance_schema = metadata["config"].get("appearance_schema")
                     if not isinstance(appearance_schema, str) or not appearance_schema:
-                        raise ValueError(
-                            f"{where}: appearance vector requires config.appearance_schema"
-                        )
+                        raise ValueError(f"{where}: appearance vector requires config.appearance_schema")
                     if not appearance or any(
                         isinstance(value, bool)
                         or not isinstance(value, (int, float))
@@ -895,7 +878,11 @@ def stamp_qa_result(
     if not _is_hex(model.get("sha256"), 64):
         raise ValueError("QA result model SHA-256 is required")
     providers = model.get("providers")
-    if not isinstance(providers, list) or not providers or not all(isinstance(item, str) and item for item in providers):
+    if (
+        not isinstance(providers, list)
+        or not providers
+        or not all(isinstance(item, str) and item for item in providers)
+    ):
         raise ValueError("QA result provider list is required")
     if not role.strip() or not experiment.strip():
         raise ValueError("role and experiment must be non-empty")
@@ -925,11 +912,7 @@ def _validate_frozen_input_videos(
     if not isinstance(input_videos, list):
         raise ValueError(f"{where}: input_videos must be a list")
     expected_videos = _golden_video_map(manifest)
-    observed_videos = {
-        item.get("video"): item
-        for item in input_videos
-        if isinstance(item, dict)
-    }
+    observed_videos = {item.get("video"): item for item in input_videos if isinstance(item, dict)}
     if len(observed_videos) != len(input_videos):
         raise ValueError(f"{where}: every input video must be an object with a unique video id")
     if set(observed_videos) != set(expected_videos):
@@ -980,9 +963,7 @@ def stamp_external_evidence(
         raise FileNotFoundError(source_artifact)
     actual_source_artifact_sha = sha256_file(source_artifact)
     if source_artifact_sha != actual_source_artifact_sha:
-        raise ValueError(
-            "evidence source_artifact_sha256 does not match the supplied source artifact"
-        )
+        raise ValueError("evidence source_artifact_sha256 does not match the supplied source artifact")
     for field_name in ("config", "evaluation", "quality", "compute", "provenance"):
         if not isinstance(evidence.get(field_name), dict):
             raise ValueError(f"evidence {field_name} must be an object")
@@ -1066,9 +1047,7 @@ def _leaderboard_row(run: dict[str, Any]) -> dict[str, Any]:
         "track_recall": tracking.get("recall"),
         "id_switches": tracking.get("id_switches"),
         "fragmentations": tracking.get("fragmentations"),
-        "mean_track_length_annotated_frames": tracking.get(
-            "mean_uninterrupted_track_length_annotated_frames"
-        ),
+        "mean_track_length_annotated_frames": tracking.get("mean_uninterrupted_track_length_annotated_frames"),
         "mean_recovery_latency_frames": tracking.get("mean_recovery_latency_frames"),
         "detection_center_jitter": detection_bbox.get("normalized_center_jitter_mean"),
         "detection_temporal_iou": detection_bbox.get("temporal_iou_mean"),
@@ -1077,9 +1056,7 @@ def _leaderboard_row(run: dict[str, Any]) -> dict[str, Any]:
         "onnx_inference_calls": performance.get("onnx_inference_calls"),
         "onnx_calls_per_frame": performance.get("onnx_calls_per_frame"),
         "wall_seconds": performance.get("wall_seconds"),
-        "processing_seconds_per_source_second": performance.get(
-            "processing_seconds_per_source_second"
-        ),
+        "processing_seconds_per_source_second": performance.get("processing_seconds_per_source_second"),
         "peak_vram_mb": performance.get("peak_vram_mb"),
     }
 
@@ -1111,9 +1088,7 @@ def _external_evidence_row(run: dict[str, Any]) -> dict[str, Any]:
         "track_recall": quality.get("track_recall"),
         "id_switches": quality.get("id_switches"),
         "fragmentations": quality.get("fragmentations"),
-        "mean_track_length_annotated_frames": quality.get(
-            "mean_track_length_annotated_frames"
-        ),
+        "mean_track_length_annotated_frames": quality.get("mean_track_length_annotated_frames"),
         "mean_recovery_latency_frames": quality.get("mean_recovery_latency_frames"),
         "detection_center_jitter": quality.get("detection_center_jitter"),
         "detection_temporal_iou": quality.get("detection_temporal_iou"),
@@ -1122,9 +1097,7 @@ def _external_evidence_row(run: dict[str, Any]) -> dict[str, Any]:
         "onnx_inference_calls": compute.get("onnx_inference_calls"),
         "onnx_calls_per_frame": compute.get("onnx_calls_per_frame"),
         "wall_seconds": compute.get("wall_seconds"),
-        "processing_seconds_per_source_second": compute.get(
-            "processing_seconds_per_source_second"
-        ),
+        "processing_seconds_per_source_second": compute.get("processing_seconds_per_source_second"),
         "peak_vram_mb": compute.get("peak_vram_mb"),
     }
 
@@ -1180,10 +1153,7 @@ def build_leaderboard(
         raise ValueError("Leaderboard requires at least one stamped run")
 
     rows = [
-        _external_evidence_row(run)
-        if run.get("kind") == "external_evidence"
-        else _leaderboard_row(run)
-        for run in runs
+        _external_evidence_row(run) if run.get("kind") == "external_evidence" else _leaderboard_row(run) for run in runs
     ]
     return {
         "schema": LEADERBOARD_SCHEMA,
@@ -1262,6 +1232,10 @@ def _build_parser() -> argparse.ArgumentParser:
     annotate = sub.add_parser("annotate", help="Human-draw person boxes on an extracted frame batch")
     annotate.add_argument("--batch", required=True, help="frames.json from extract-frames")
     annotate.add_argument("--output", required=True, help="Canonical qa_benchmark JSONL ground truth")
+    annotate.add_argument(
+        "--draft",
+        help="Optional preannotation JSONL used only to seed unsaved frames; it is not human-confirmed GT",
+    )
     annotate.add_argument("--tags", default="", help="Comma-separated condition tags for this frame batch")
 
     validate = sub.add_parser("validate-corpus", help="Validate TRAIN/GOLDEN annotations and video provenance")
@@ -1364,7 +1338,12 @@ def main() -> int:
 
         if args.command == "annotate":
             tags = [item.strip() for item in args.tags.split(",") if item.strip()]
-            annotate_frame_batch(args.batch, output_ground_truth=args.output, tags=tags)
+            annotate_frame_batch(
+                args.batch,
+                output_ground_truth=args.output,
+                tags=tags,
+                draft_ground_truth=args.draft,
+            )
             return 0
 
         if args.command == "import-mot17":

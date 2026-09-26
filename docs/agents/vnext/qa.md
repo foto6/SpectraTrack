@@ -786,3 +786,12 @@ Private CCTV workflow: unchanged.
 
 Common product GO: still requires the private human-confirmed CCTV holdout in addition to public benchmark evidence.
 
+
+
+## Round 2 supplement — private CCTV review ergonomics
+
+Round-2 coordination keeps public evidence and private human-reviewed CCTV evidence separate.
+
+The annotation command now accepts an optional `--draft <jsonl>` input. Draft rows seed frames that have not yet been saved by the human annotator, while any already-reviewed output row always takes precedence. The draft is never treated as human-confirmed ground truth by itself and the frozen-corpus confirmation gate remains unchanged.
+
+A local review pack may therefore use current-detector boxes to reduce drawing work without silently promoting machine labels into GOLDEN. Large videos, extracted frames, draft labels, and the reviewed private corpus remain local/generated artifacts rather than repository content.

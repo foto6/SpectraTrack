@@ -15,6 +15,40 @@ def _all_coverage_tags():
     return [name for name in vnext_qa.REQUIRED_GOLDEN_COVERAGE if name != "negative"]
 
 
+def test_annotation_seed_rows_uses_draft_but_preserves_human_output(tmp_path: Path):
+    draft = tmp_path / "draft.jsonl"
+    output = tmp_path / "golden.jsonl"
+    _write_jsonl(
+        draft,
+        [
+            {
+                "video": "golden/clip.mp4",
+                "frame": 0,
+                "tags": [],
+                "objects": [{"id": "p1", "label": "person", "bbox": [1, 2, 10, 20]}],
+            },
+            {
+                "video": "golden/clip.mp4",
+                "frame": 1,
+                "tags": [],
+                "objects": [{"id": "p1", "label": "person", "bbox": [3, 4, 11, 22]}],
+            },
+        ],
+    )
+    _write_jsonl(
+        output,
+        [
+            {"video": "golden/clip.mp4", "frame": 0, "tags": ["negative"], "objects": []},
+        ],
+    )
+
+    rows = vnext_qa._annotation_seed_rows(output, draft)
+
+    assert rows[("golden/clip.mp4", 0)]["objects"] == []
+    assert rows[("golden/clip.mp4", 0)]["tags"] == ["negative"]
+    assert rows[("golden/clip.mp4", 1)]["objects"][0]["bbox"] == [3, 4, 11, 22]
+
+
 def test_inspect_split_accepts_complete_golden_coverage(monkeypatch, tmp_path: Path):
     video_root = tmp_path / "videos"
     video = video_root / "golden" / "clip.mp4"
@@ -75,9 +109,7 @@ def test_inspect_split_rejects_invalid_label_and_out_of_bounds(monkeypatch, tmp_
                 "video": "golden/clip.mp4",
                 "frame": 0,
                 "tags": _all_coverage_tags(),
-                "objects": [
-                    {"id": "x1", "label": "car", "bbox": [90, 10, 120, 40]}
-                ],
+                "objects": [{"id": "x1", "label": "car", "bbox": [90, 10, 120, 40]}],
             },
             {"video": "golden/clip.mp4", "frame": 1, "tags": ["negative"], "objects": []},
         ],
@@ -642,9 +674,7 @@ def test_external_evidence_rejects_hidden_corpus_video_change(tmp_path: Path):
         )
 
 
-def test_person_specific_coverage_cannot_be_satisfied_by_empty_tagged_frame(
-    monkeypatch, tmp_path: Path
-):
+def test_person_specific_coverage_cannot_be_satisfied_by_empty_tagged_frame(monkeypatch, tmp_path: Path):
     video_root = tmp_path / "videos"
     video = video_root / "golden" / "empty.mp4"
     video.parent.mkdir(parents=True)
@@ -682,4 +712,3 @@ def test_person_specific_coverage_cannot_be_satisfied_by_empty_tagged_frame(
     assert report["coverage"]["tiny_person"] == 0
     assert report["coverage"]["crossing_people"] == 0
     assert any("tiny_person" in error for error in report["errors"])
-
