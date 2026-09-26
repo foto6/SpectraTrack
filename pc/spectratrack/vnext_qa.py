@@ -698,6 +698,74 @@ def annotate_frame_batch(
     cv2.destroyAllWindows()
 
 
+
+def review_progress(
+    batch_paths: Iterable[str | Path],
+    *,
+    output_ground_truth: str | Path,
+    draft_ground_truth: str | Path | None = None,
+) -> dict[str, Any]:
+    """Summarize human-review progress without treating draft rows as reviewed GT."""
+    batches = [_json_load(path) for path in batch_paths]
+    output_rows = _load_jsonl_rows(Path(output_ground_truth))
+    draft_rows = _load_jsonl_rows(Path(draft_ground_truth)) if draft_ground_truth else []
+
+    output_keys = {(row.get("video"), row.get("frame")) for row in output_rows}
+    draft_by_key = {(row.get("video"), row.get("frame")): row for row in draft_rows}
+    expected: list[tuple[str, int]] = []
+    duplicate_expected: set[tuple[str, int]] = set()
+
+    for batch in batches:
+        if batch.get("schema") != FRAME_BATCH_SCHEMA:
+            raise ValueError("Unsupported frame batch schema in review-progress input")
+        video = str(batch["video"])
+        for item in batch.get("frames", []):
+            key = (video, int(item["frame"]))
+            if key in expected:
+                duplicate_expected.add(key)
+            expected.append(key)
+
+    if duplicate_expected:
+        rendered = ", ".join(f"{video}#{frame}" for video, frame in sorted(duplicate_expected))
+        raise ValueError(f"review batches contain duplicate frame keys: {rendered}")
+
+    reviewed = [key for key in expected if key in output_keys]
+    pending = [key for key in expected if key not in output_keys]
+    pending_with_draft = [key for key in pending if key in draft_by_key]
+    pending_without_draft = [key for key in pending if key not in draft_by_key]
+
+    reviewed_rows = {
+        (row.get("video"), row.get("frame")): row
+        for row in output_rows
+        if (row.get("video"), row.get("frame")) in set(expected)
+    }
+    reviewed_person_boxes = sum(
+        1
+        for row in reviewed_rows.values()
+        for obj in row.get("objects", [])
+        if obj.get("label") == "person"
+    )
+    reviewed_negative_frames = sum(
+        1
+        for row in reviewed_rows.values()
+        if not any(obj.get("label") == "person" and not obj.get("ignore") for obj in row.get("objects", []))
+    )
+
+    total = len(expected)
+    return {
+        "schema": "spectratrack-cctv-review-progress-v1",
+        "review_required": total,
+        "reviewed_frames": len(reviewed),
+        "pending_frames": len(pending),
+        "pending_with_draft": len(pending_with_draft),
+        "pending_without_draft": len(pending_without_draft),
+        "completion_fraction": (len(reviewed) / total) if total else 1.0,
+        "reviewed_person_boxes": reviewed_person_boxes,
+        "reviewed_negative_frames": reviewed_negative_frames,
+        "pending_keys": [{"video": video, "frame": frame} for video, frame in pending],
+        "note": "Only rows already saved to output_ground_truth count as human-reviewed; draft rows never count as reviewed.",
+    }
+
 def _validate_bbox(value: Any, width: int, height: int, where: str) -> tuple[float, float, float, float]:
     if not isinstance(value, list) or len(value) != 4:
         raise ValueError(f"{where}: bbox must be [x1,y1,x2,y2]")
@@ -1238,6 +1306,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     annotate.add_argument("--tags", default="", help="Comma-separated condition tags for this frame batch")
 
+    review = sub.add_parser("review-progress", help="Report human-review completion for extracted frame batches")
+    review.add_argument("--batch", action="append", required=True, dest="batches")
+    review.add_argument("--output-ground-truth", required=True)
+    review.add_argument("--draft")
+    review.add_argument("--output")
+
     validate = sub.add_parser("validate-corpus", help="Validate TRAIN/GOLDEN annotations and video provenance")
     validate.add_argument("--video-root", required=True)
     validate.add_argument("--golden-ground-truth", required=True)
@@ -1344,6 +1418,17 @@ def main() -> int:
                 tags=tags,
                 draft_ground_truth=args.draft,
             )
+            return 0
+
+        if args.command == "review-progress":
+            report = review_progress(
+                args.batches,
+                output_ground_truth=args.output_ground_truth,
+                draft_ground_truth=args.draft,
+            )
+            if args.output:
+                _json_dump(args.output, report)
+            print(json.dumps(report, indent=2))
             return 0
 
         if args.command == "import-mot17":
