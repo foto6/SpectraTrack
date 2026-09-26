@@ -1071,3 +1071,47 @@ The final held-out result/marker are not expected until all six held-out sequenc
 Decision:
 
 **VALID PARTIAL EVIDENCE / HELD-OUT RUN CONTINUES.**
+
+
+## Round 2 MOT17 held-out checkpoint — MOT17-02 fusion metrics
+
+Status:
+
+**DONE — PER-SEQUENCE METRICS COMPUTED FROM VERIFIED PREFUSION, ZERO NEW ONNX CALLS**
+
+The four frozen policies were evaluated from the verified MOT17-02 prefusion artifact only. No detector inference was repeated and no held-out thresholds were changed.
+
+| metric | hard-nms | conservative-nmm | weighted | evidence-aware |
+| --- | ---: | ---: | ---: | ---: |
+| TP | 10027 | 10537 | 10453 | 9943 |
+| FP | 10717 | 13822 | 13938 | 9658 |
+| FN | 8554 | 8044 | 8128 | 8638 |
+| precision | 0.483369 | 0.432571 | 0.428560 | 0.507270 |
+| recall | 0.539637 | 0.567085 | 0.562564 | 0.535117 |
+| F1 | 0.509955 | 0.490778 | 0.486503 | 0.520821 |
+| bbox localization IoU | 0.770657 | 0.780299 | 0.776506 | 0.781918 |
+| center jitter px | 4.083129 | 3.252418 | 3.100992 | 2.974692 |
+| width jitter px | 3.916002 | 4.221506 | 3.706967 | 3.630977 |
+| height jitter px | 5.417835 | 3.510400 | 3.887722 | 3.662282 |
+| area jitter ratio | 0.080419 | 0.075273 | 0.067962 | 0.062632 |
+| temporal IoU | 0.893901 | 0.901516 | 0.906383 | 0.912444 |
+| duplicates before fusion | 20715 | 20715 | 20715 | 20715 |
+| fusion mistakes | 557 | 322 | 322 | 322 |
+
+Sequence interpretation only:
+
+- evidence-aware has the strongest F1, precision, localization IoU, center/area jitter and temporal IoU on MOT17-02;
+- evidence-aware recall is slightly below hard NMS and below NMM/weighted on this sequence;
+- conservative NMM has the highest recall but materially worse precision/F1;
+- no held-out decision is made from one sequence and no policy retuning is allowed.
+
+Compute provenance is the verified prefusion checkpoint already recorded above:
+
+- 600 policy runs;
+- 5400 actual ONNX calls represented;
+- detector wall time 628.8552067000419 s;
+- zero new ONNX calls for this fusion-only evaluation.
+
+Decision:
+
+**NEEDS REMAINING HELD-OUT SEQUENCES — no ACCEPT/REJECT yet.**
