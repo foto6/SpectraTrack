@@ -869,3 +869,26 @@ Fix commit on A1:
 `704c9a645d276ceb1d2acd26f0dc44ad296196ce`
 
 The failure is retained here rather than hidden. Awaiting the replacement CI run before marking replay-export tooling validated.
+
+
+## 2026-09-26 19:20 +07 — parallel specialist dispatch
+
+### DONE — dispatch A1-A5 Round-2 roles in parallel
+
+Posted explicit START instructions to GitHub issues:
+
+- #18 A1 — held-out MOT17 + CrowdHuman evidence-aware fusion validation;
+- #19 A2 — real identical-replay ambiguity-guard vs current tracker evaluation;
+- #20 A3 — strict weak-evidence enhancement profile and enhancement-off decision;
+- #21 A4 — scheduler quality/cadence validation with miss/discovery latency;
+- #22 A5 — finish review-progress tooling/tests/docs and keep private review pack ready.
+
+All roles retain the mandatory Git-persistent logging rule and the no-integration/main/RC boundary.
+
+### BLOCKED / UNVERIFIED — actual local Codex worker launch
+
+Attempted to query the target PC with `codex --version` before starting local autonomous workers.
+
+Remote Desktop Commander timed out again, so actual Codex worker availability/limits are currently unverified.
+
+No claim is made that Codex processes were launched. Git tasks are dispatched; local worker launch will be attempted only after the control channel responds.
