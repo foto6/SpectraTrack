@@ -1178,3 +1178,26 @@ Each cycle is instructed to:
 - notify the project owner only when human action is required, a blocker has no autonomous workaround, or the architect gate is complete.
 
 This provides restart-safe ongoing coordination without treating chat memory as project state.
+
+
+## 2026-09-26 — manual specialist chat launch confirmed
+
+### DONE — owner launched A1/A2/A3/A5 chats manually
+
+The project owner confirmed the current Round-2 prompts were sent to the A1, A2, A3 and A5 agent chats after Codex limits prevented assuming autonomous worker startup.
+
+At this checkpoint, Git verification showed no new specialist commits yet:
+
+- A1 `bccf087df01b74bc463dcc3525e5665110ff8225`
+- A2 `372c96e71e504a54ea2ac027ab988dfba2bd1918`
+- A3 `4b13f8eaec4e9339ea3247fc759f85400e1a13b4`
+- A5 `f4f406182df54335e2c26a34091915408204789c`
+
+All four current heads are CI-green.
+
+Production refs re-verified unchanged:
+
+- `integration @ 3ebc4d50213593cac62b97399447fccf6bbc1755`
+- `main @ 2012eaae2f4ffe820a66d12e40346d911616cd03`
+
+Next architect action is to inspect every new specialist head as it appears: ownership/diff -> CI/tests -> artifact/provenance -> metrics/gates -> role/status/worklog update. No specialist feature coding is delegated to the architect unless a coordination-only fix is required.
