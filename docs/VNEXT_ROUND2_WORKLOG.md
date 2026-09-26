@@ -892,3 +892,86 @@ Attempted to query the target PC with `codex --version` before starting local au
 Remote Desktop Commander timed out again, so actual Codex worker availability/limits are currently unverified.
 
 No claim is made that Codex processes were launched. Git tasks are dispatched; local worker launch will be attempted only after the control channel responds.
+
+
+## 2026-09-26 19:30 +07 — coordinator recovery and verification
+
+### DONE — re-verify immutable production refs and specialist heads
+
+After re-reading the Round-2 coordination source of truth, verified GitHub branch state:
+
+- `integration @ 3ebc4d50213593cac62b97399447fccf6bbc1755` — unchanged;
+- `main @ 2012eaae2f4ffe820a66d12e40346d911616cd03` — unchanged;
+- A1 code HEAD `704c9a645d276ceb1d2acd26f0dc44ad296196ce` matched the expected branch state before the coordinator documentation commit;
+- A2 `8c4c9b69f9d3f332ed2d655ff5f7bc9cb69cb6e4` — exact match;
+- A3 `a5481b1f4bbcc67e77b5eecefb3e8daea783ba5c` — exact match;
+- A4 `b3afa9d3843faa2f74b101cf2e40beea27caf6a9` — exact match;
+- A5 had advanced two research commits beyond the previously recorded `b62509b...` and was recovered at code/test HEAD `afc6baf1cc0216ec21fa71f298be88e76519cdfa`.
+
+No production branch was changed.
+
+### DONE — A1 replacement CI after replay-export lint fix
+
+A1 commit:
+
+`704c9a645d276ceb1d2acd26f0dc44ad296196ce`
+
+GitHub Actions:
+
+`36241884895` — **SUCCESS**
+
+The earlier `F821 Undefined name json` failure remains recorded. The fixed replay-export tooling is now CI-validated. Held-out MOT17/CrowdHuman evidence remains **NOT DONE** and must not be retuned on held-out data.
+
+A1 role documentation was updated in commit:
+
+`32ae82052b6de37ae938e2e2cded27c9787118d5`
+
+A docs-only CI run `36242653285` started for that head and was still in progress at this checkpoint.
+
+### DONE — recover A5 private-review progress work
+
+Recovered A5 research code/test HEAD:
+
+`afc6baf1cc0216ec21fa71f298be88e76519cdfa`
+
+GitHub Actions:
+
+`36241763043` — **SUCCESS**
+
+Verified behavior:
+
+- human-review progress is based only on rows saved to the human output GT;
+- draft preannotations never count as reviewed;
+- pending frames are separated into with-draft vs without-draft;
+- duplicate review-batch frame keys are rejected;
+- `cctv-golden-r1` remains **NOT DONE** until explicit human confirmation.
+
+A5 role documentation was updated in commit:
+
+`8faf6c9180c5d84555589e2ed7600832b036ac78`
+
+A docs-only CI run `36242654534` started for that head and was still in progress at this checkpoint.
+
+### FAILED / BLOCKED — target-PC substantive control remains unavailable
+
+The target PC still answered a direct ping, but substantive Remote Desktop Commander calls timed out again, including:
+
+- `git fetch origin --prune` / repository status command;
+- process/session enumeration attempt;
+- direct file metadata query for `C:\\Users\\foto6\\SpectraTrack-data\\runs\\a3-round2-weak1.json`.
+
+Interpretation:
+
+- this is a control-channel failure, not benchmark evidence;
+- A2/A3 completion state remains **NEEDS VERIFICATION**;
+- A1 held-out run is not started blindly because existing local process/artifact state cannot be positively checked;
+- no local artifact was overwritten or duplicated.
+
+### NEXT
+
+1. wait for/verify the docs-only A1/A5 CI runs;
+2. retry a minimal target-PC process/artifact probe on a later control cycle;
+3. if control recovers, verify process/artifact/marker/timestamp before any restart;
+4. then run A1 held-out without retune and evaluate A2/A3 from existing or resumed artifacts;
+5. A4 remains parked until surviving quality policies exist;
+6. stop for the project owner only when the compact private CCTV pack is ready for human review or a non-recoverable blocker remains.
