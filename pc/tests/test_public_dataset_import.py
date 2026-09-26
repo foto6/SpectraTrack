@@ -76,7 +76,7 @@ def test_import_mot17_preserves_identity_ignore_and_source_provenance(tmp_path: 
     assert len(rows) == 2
     assert rows[0]["frame"] == 0
     assert rows[0]["source_frame"] == 1
-    assert rows[0]["source_sequence"] == "MOT17-10"
+    assert rows[0]["source_sequence"] == "MOT17-10-FRCNN"
     assert rows[0]["source"] == "train/MOT17-10-FRCNN/img1"
     assert set(rows[0]["tags"]) == {"night_dark", "camera_motion"}
     assert rows[0]["allow_out_of_bounds"] is True
@@ -94,7 +94,7 @@ def test_import_mot17_preserves_identity_ignore_and_source_provenance(tmp_path: 
 
     parsed = load_ground_truth(gt)
     assert parsed[0].source_frame == 1
-    assert parsed[0].source_sequence == "MOT17-10"
+    assert parsed[0].source_sequence == "MOT17-10-FRCNN"
     assert parsed[0].source_fps == pytest.approx(30.0)
 
 
