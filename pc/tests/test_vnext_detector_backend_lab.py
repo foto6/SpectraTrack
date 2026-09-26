@@ -1,5 +1,7 @@
+import json
 from types import SimpleNamespace
 
+import cv2
 import numpy as np
 import pytest
 
@@ -7,6 +9,8 @@ from spectratrack.research.vnext_detector_backend_lab import (
     BACKEND_SPECS,
     RtDetrv2OnnxAdapter,
     _half_pixel_resize_rgb,
+    _image_sequence_path,
+    _load_benchmark_source_records,
     _rf_preprocess,
     decode_rfdetr_person,
 )
@@ -110,3 +114,23 @@ def test_rtdetrv2_adapter_feeds_original_size_and_filters_person():
     assert adapter.session.feed["images"].shape == (1, 3, 64, 64)
     assert adapter.session.feed["orig_target_sizes"].tolist() == [[100, 50]]
     assert result.inference_calls == 1
+
+
+def test_image_sequence_source_record_resolves_exact_a5_frame(tmp_path):
+    image_dir = tmp_path / "train" / "MOT17-04-FRCNN" / "img1"
+    image_dir.mkdir(parents=True)
+    image_path = image_dir / "000007.jpg"
+    assert cv2.imwrite(str(image_path), np.zeros((8, 10, 3), dtype=np.uint8))
+    gt = tmp_path / "gt.jsonl"
+    row = {
+        "video": "golden/public/mot17/MOT17-04",
+        "frame": 6,
+        "source": "train/MOT17-04-FRCNN/img1",
+        "source_frame": 7,
+        "objects": [],
+    }
+    gt.write_text(json.dumps(row) + "\n", encoding="utf-8")
+
+    records = _load_benchmark_source_records(gt)
+    record = records[("golden/public/mot17/MOT17-04", 6)]
+    assert _image_sequence_path(tmp_path, record) == image_path

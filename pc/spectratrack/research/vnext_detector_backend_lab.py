@@ -449,8 +449,46 @@ def _matched_localization_iou(frame, predictions: list[PredictedObject], match_i
     return result
 
 
+def _load_benchmark_source_records(path: str | Path) -> dict[tuple[str, int], dict[str, Any]]:
+    records: dict[tuple[str, int], dict[str, Any]] = {}
+    with Path(path).open("r", encoding="utf-8-sig") as handle:
+        for line_number, raw in enumerate(handle, start=1):
+            raw = raw.strip()
+            if not raw:
+                continue
+            item = json.loads(raw)
+            video = item.get("video")
+            frame = item.get("frame")
+            if not isinstance(video, str) or not isinstance(frame, int):
+                raise ValueError(f"{path}:{line_number}: source record requires video/frame")
+            records[(video, frame)] = item
+    return records
+
+
+def _image_sequence_path(video_root: str | Path, record: dict[str, Any]) -> Path | None:
+    source = record.get("source")
+    source_frame = record.get("source_frame")
+    if not isinstance(source, str) or not isinstance(source_frame, int) or source_frame <= 0:
+        return None
+    directory = Path(video_root) / source
+    if not directory.is_dir():
+        return None
+    stem = f"{source_frame:06d}"
+    matches = [
+        candidate
+        for candidate in directory.glob(f"{stem}.*")
+        if candidate.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+    ]
+    if len(matches) != 1:
+        raise FileNotFoundError(
+            f"expected exactly one image for source frame {source_frame} in {directory}, found {len(matches)}"
+        )
+    return matches[0]
+
+
 def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
     ground_truth = load_ground_truth(args.ground_truth)
+    source_records = _load_benchmark_source_records(args.ground_truth)
     by_video: dict[str, list[Any]] = {}
     for frame in ground_truth:
         by_video.setdefault(frame.video, []).append(frame)
@@ -460,13 +498,47 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
     timing = {"preprocess_ms": 0.0, "inference_ms": 0.0, "postprocess_ms": 0.0, "detector_wall_ms": 0.0}
     inference_calls = 0
     localization: list[float] = []
+    source_modes: set[str] = set()
     benchmark_started = time.perf_counter()
 
+    def record_result(video: str, annotation: Any, frame_bgr: np.ndarray) -> int:
+        result = adapter.detect(frame_bgr)
+        predicted = [
+            PredictedObject(item.bbox, item.label, item.score)
+            for item in result.detections
+        ]
+        predictions[(video, annotation.frame)] = predicted
+        localization.extend(_matched_localization_iou(annotation, predicted, args.match_iou))
+        timing["preprocess_ms"] += result.preprocess_ms
+        timing["inference_ms"] += result.inference_ms
+        timing["postprocess_ms"] += result.postprocess_ms
+        timing["detector_wall_ms"] += result.wall_ms
+        return result.inference_calls
+
     for video, video_annotations in sorted(by_video.items()):
+        ordered = sorted(video_annotations, key=lambda item: item.frame)
+        first_record = source_records.get((video, ordered[0].frame), {})
+        first_image = _image_sequence_path(args.video_root, first_record)
+        if first_image is not None:
+            source_modes.add("image_sequence")
+            for annotation in ordered:
+                record = source_records.get((video, annotation.frame))
+                if record is None:
+                    raise ValueError(f"missing source record for {video}#{annotation.frame}")
+                image_path = _image_sequence_path(args.video_root, record)
+                if image_path is None:
+                    raise FileNotFoundError(f"image-sequence source missing for {video}#{annotation.frame}")
+                frame_bgr = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+                if frame_bgr is None:
+                    raise RuntimeError(f"cannot read benchmark image: {image_path}")
+                inference_calls += record_result(video, annotation, frame_bgr)
+            continue
+
+        source_modes.add("video")
         path = Path(args.video_root) / video
         if not path.is_file():
             raise FileNotFoundError(f"benchmark video missing: {path}")
-        needed = {item.frame: item for item in video_annotations}
+        needed = {item.frame: item for item in ordered}
         last_needed = max(needed)
         capture = cv2.VideoCapture(str(path))
         if not capture.isOpened():
@@ -479,18 +551,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
                     raise RuntimeError(f"{path} ended before annotated frame {last_needed}")
                 annotation = needed.get(frame_index)
                 if annotation is not None:
-                    result = adapter.detect(frame_bgr)
-                    predicted = [
-                        PredictedObject(item.bbox, item.label, item.score)
-                        for item in result.detections
-                    ]
-                    predictions[(video, frame_index)] = predicted
-                    localization.extend(_matched_localization_iou(annotation, predicted, args.match_iou))
-                    timing["preprocess_ms"] += result.preprocess_ms
-                    timing["inference_ms"] += result.inference_ms
-                    timing["postprocess_ms"] += result.postprocess_ms
-                    timing["detector_wall_ms"] += result.wall_ms
-                    inference_calls += result.inference_calls
+                    inference_calls += record_result(video, annotation, frame_bgr)
                 frame_index += 1
         finally:
             capture.release()
@@ -509,6 +570,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         "model_sha256": sha256_file(args.model),
         "providers": adapter.providers,
         "provider_priority": adapter.providers[0] if adapter.providers else None,
+        "source_modes": sorted(source_modes),
         "provider_note": "Provider list/priority is recorded; per-node DirectML->CPU fallback is not inferred.",
         "contract": adapter.contract(),
         "settings": {
