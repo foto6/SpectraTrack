@@ -310,6 +310,7 @@ def inspect_corpus(
     golden_ground_truth: str | Path,
     train_ground_truth: str | Path | None = None,
     coverage_profile: str = "private-cctv",
+    dataset_import_manifests: Iterable[str | Path] = (),
 ) -> dict[str, Any]:
     train = (
         inspect_split(train_ground_truth, video_root, "train", coverage_profile=coverage_profile)
@@ -324,6 +325,14 @@ def inspect_corpus(
     )
     errors: list[str] = []
     warnings: list[str] = []
+    golden_sha = ground_truth_sha256(golden_ground_truth)
+    train_sha = ground_truth_sha256(train_ground_truth) if train_ground_truth is not None else None
+    dataset_imports = _validate_dataset_import_manifests(
+        dataset_import_manifests,
+        video_root=video_root,
+        golden_ground_truth_sha256=golden_sha,
+        train_ground_truth_sha256=train_sha,
+    )
     if train is not None:
         errors.extend(train["errors"])
         warnings.extend(train["warnings"])
@@ -346,6 +355,7 @@ def inspect_corpus(
         "golden": golden,
         "errors": errors,
         "coverage_profile": coverage_profile,
+        "dataset_imports": dataset_imports,
         "warnings": warnings,
         "valid": not errors,
     }
@@ -357,6 +367,7 @@ def build_frozen_manifest(
     revision: str,
     reviewer: str,
     human_confirmed: bool,
+    public_dataset_confirmed: bool = False,
 ) -> dict[str, Any]:
     if not report.get("valid"):
         raise ValueError("Cannot freeze invalid corpus: " + "; ".join(report.get("errors", [])))
@@ -364,13 +375,30 @@ def build_frozen_manifest(
         raise ValueError("revision must be non-empty")
     if not reviewer.strip():
         raise ValueError("reviewer must be non-empty")
-    if not human_confirmed:
-        raise ValueError("Frozen golden corpus requires explicit human confirmation")
+    dataset_imports = list(report.get("dataset_imports", []))
+    if not human_confirmed and not (dataset_imports and public_dataset_confirmed):
+        raise ValueError(
+            "Frozen corpus requires --confirm-human-reviewed for private GT or "
+            "--confirm-public-dataset-terms for verified public-dataset GT"
+        )
+    confirmation_kind = (
+        "hybrid_private_and_public"
+        if human_confirmed and dataset_imports
+        else "private_human_review"
+        if human_confirmed
+        else "official_public_dataset_ground_truth"
+    )
 
     manifest = {
         "schema": CORPUS_SCHEMA,
         "revision": revision.strip(),
-        "human_confirmation": {"confirmed": True, "reviewer": reviewer.strip()},
+        "human_confirmation": {
+            "confirmed": True,
+            "reviewer": reviewer.strip(),
+            "kind": confirmation_kind,
+        },
+        "coverage_profile": report.get("coverage_profile", "private-cctv"),
+        "dataset_imports": dataset_imports,
         "allowed_labels": ["person"],
         "splits": {
             "train": None,
