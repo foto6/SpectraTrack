@@ -802,3 +802,22 @@ Purpose: isolate association/crossing behavior from detector misses and bbox noi
 Only if ambiguity-guard survives this association-only gate should A2 consume a detector-generated DanceTrack replay in a second phase.
 
 Do not modify production `tracker.py` before final integrator review.
+
+
+### DanceTrack association-only observation contract
+
+For the first DanceTrack gate, tracker input must not contain GT identity information.
+
+For each official scored GT box on an annotated frame, construct a deterministic research `Detection`:
+
+- bbox = canonical GT geometry;
+- label/class = person;
+- score = `1.0`;
+- appearance = `null`;
+- detector_ran = true for evaluated frames.
+
+GT track ID is retained **only in the evaluator**, never copied into tracker input or appearance metadata.
+
+Frames without a GT observation for a person naturally create an observation gap. Do not synthesize detections through occlusion.
+
+This phase performs 0 ONNX inference calls and isolates geometry/lifecycle/association behavior. Any later detector-replay DanceTrack phase is a separate experiment with its own provenance.
