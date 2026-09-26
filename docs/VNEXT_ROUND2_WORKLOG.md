@@ -1160,3 +1160,21 @@ The contract pins:
 - canonical import/freeze provenance;
 - required A1-A4 metrics;
 - private CCTV deferred to the final reduced domain sanity pack.
+
+
+### DONE — hourly coordinator watch enabled
+
+An hourly condition watch is enabled for Round-2 coordination.
+
+Each cycle is instructed to:
+
+- recover state from `coord/vnext-round2`;
+- verify specialist heads/CI/issues and immutable production refs;
+- test target-PC substantive control safely;
+- verify process/artifact/marker/log/timestamps before any restart;
+- continue only research/coordination work within A1-A5 ownership boundaries;
+- persist every meaningful result/failure/blocker into Git;
+- keep `main`, `integration`, RC and release untouched;
+- notify the project owner only when human action is required, a blocker has no autonomous workaround, or the architect gate is complete.
+
+This provides restart-safe ongoing coordination without treating chat memory as project state.
