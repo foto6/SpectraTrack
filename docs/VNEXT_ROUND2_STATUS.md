@@ -81,22 +81,25 @@ Not done:
 
 ## A3 Enhancement — issue #20
 
-Current known base/head before further Round-2 changes:
+Current known Round-2 head:
 
-`agent/vnext-enhancement @ 86b1460b6f9879038de92eb1e1341a96221e6c03`
+`agent/vnext-enhancement @ a5481b1f4bbcc67e77b5eecefb3e8daea783ba5c`
 
 Done:
 
 - strict weak-evidence ROI manifest prepared locally;
-- one selected weak ROI maximum per source frame in the current experiment design.
+- research profiler now has explicit `--max-enhanced-rois-per-frame` budget support;
+- cap=1 semantics are covered by deterministic tests;
+- raw probes remain separately counted and budget-skipped follow-ups are reported;
+- GitHub CI run `36241047867`: success, 154 tests passed, build/package green.
 
 In progress / needs verification:
 
-- weak-person strict profile for bilateral / current_adaptive_cached / sharpen.
+- target-PC weak-person strict profile for bilateral / current_adaptive_cached / sharpen after the interrupted run.
 
 Not done:
 
-- verified strict-gate metrics;
+- verified strict-gate metrics on target evidence;
 - post-fusion quality/cost decision;
 - enhancement-off vs strict-gated final handoff.
 
