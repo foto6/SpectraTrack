@@ -608,3 +608,31 @@ Purpose:
 GitHub Actions run `36239750252` is currently in progress for A1 HEAD `fd9cd0f...`.
 
 Do not mark this step DONE until CI completes successfully.
+
+
+### DONE — A1 resumable public-corpus runner validated
+
+A1 research code HEAD:
+
+`fd9cd0f776d1abb86b7063731af9a77343fc37c8`
+
+A1 role-handoff docs commit:
+
+`9c52142f4d8413f2c56f8b77d5dcb31df9fc2598`
+
+GitHub Actions PC CI run:
+
+`36239750252`
+
+Validated result:
+
+- ruff: passed;
+- compile + pytest: **163 passed in 1.68s**;
+- synthetic tracker benchmark: 1369.3 tracker FPS, crossing/reappearance ID switches 0;
+- diagnostics: `DmlExecutionProvider,CPUExecutionProvider`, `directml=yes`;
+- self-check: `SELF_CHECK=PASS`;
+- standalone Windows build / CLI smoke / packaging / artifact upload: passed.
+
+The new A1 runner can resume per-video prefusion evidence only under matching source/model/GT/corpus/config provenance. It supports MOT17 image sequences and CrowdHuman direct images and can compare hard-NMS / NMM / weighted / evidence-aware on the same detector evidence.
+
+This closes the tooling gap only. The actual held-out MOT17 and CrowdHuman runs are still NOT DONE because target-PC control is currently blocked.
