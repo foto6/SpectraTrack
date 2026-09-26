@@ -203,3 +203,12 @@ Unlock only when:
 - bilateral: 15 recovered / 30 extra calls / +372 pre-fusion FP.
 - current_adaptive_cached: 101 recovered / 158 extra calls / +2170 pre-fusion FP.
 - **WAITING** — no separate post-fusion A3 result exists in the current runs root; final ON/OFF decision requires A5 frozen NightOwls and identical post-fusion held-out evaluation.
+
+
+## A4 existing-evidence audit
+
+- **DONE** — no new scheduler inference was launched.
+- Canonical Git-recorded RX 5700 XT cost frontier remains valid cost evidence.
+- Supporting local MOT17-04 cost sweep SHA `e1c08a72a7e9cada7a619d112bef3e6674f52e56496cb16e6d17441e268c80cc` confirms bounded <=1 s rediscovery points from 6.0–15.0 calls/source-s, but lacks source-commit binding and is quality-blind.
+- Batch diagnostic SHA `576e78b35529a0c9acafe601f24db005de74657ff6c111e6b149d98062663900`: fixed input batch dimension 1; batch 2/4 unsupported. Artifact lacks standalone model/source-commit binding, so no batching change is authorized.
+- **PARKED** — final A4 quality/discovery-latency validation waits for A3 NightOwls OFF/bilateral/current_adaptive_cached decision, then evaluates only 1–3 configs.
