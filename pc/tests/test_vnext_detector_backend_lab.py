@@ -8,6 +8,7 @@ import pytest
 from spectratrack.research.vnext_detector_backend_lab import (
     BACKEND_SPECS,
     RtDetrv2OnnxAdapter,
+    _direct_image_path,
     _half_pixel_resize_rgb,
     _image_sequence_path,
     _load_benchmark_source_records,
@@ -114,6 +115,23 @@ def test_rtdetrv2_adapter_feeds_original_size_and_filters_person():
     assert adapter.session.feed["images"].shape == (1, 3, 64, 64)
     assert adapter.session.feed["orig_target_sizes"].tolist() == [[100, 50]]
     assert result.inference_calls == 1
+
+
+def test_direct_image_source_record_resolves_a5_crowdhuman_image(tmp_path):
+    image_dir = tmp_path / "Images"
+    image_dir.mkdir(parents=True)
+    image_path = image_dir / "crowd.jpg"
+    assert cv2.imwrite(str(image_path), np.zeros((8, 10, 3), dtype=np.uint8))
+
+    record = {
+        "video": "golden/public/crowdhuman-val/crowd.jpg",
+        "frame": 0,
+        "source": "Images/crowd.jpg",
+        "objects": [],
+    }
+
+    assert _direct_image_path(tmp_path, record) == image_path
+    assert _image_sequence_path(tmp_path, record) is None
 
 
 def test_image_sequence_source_record_resolves_exact_a5_frame(tmp_path):

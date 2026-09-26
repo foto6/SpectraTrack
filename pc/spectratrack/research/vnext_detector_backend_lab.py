@@ -465,6 +465,19 @@ def _load_benchmark_source_records(path: str | Path) -> dict[tuple[str, int], di
     return records
 
 
+_BENCHMARK_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+
+
+def _direct_image_path(video_root: str | Path, record: dict[str, Any]) -> Path | None:
+    source = record.get("source")
+    if not isinstance(source, str):
+        return None
+    path = Path(video_root) / source
+    if path.is_file() and path.suffix.lower() in _BENCHMARK_IMAGE_SUFFIXES:
+        return path
+    return None
+
+
 def _image_sequence_path(video_root: str | Path, record: dict[str, Any]) -> Path | None:
     source = record.get("source")
     source_frame = record.get("source_frame")
@@ -477,7 +490,7 @@ def _image_sequence_path(video_root: str | Path, record: dict[str, Any]) -> Path
     matches = [
         candidate
         for candidate in directory.glob(f"{stem}.*")
-        if candidate.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+        if candidate.suffix.lower() in _BENCHMARK_IMAGE_SUFFIXES
     ]
     if len(matches) != 1:
         raise FileNotFoundError(
@@ -518,6 +531,22 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
     for video, video_annotations in sorted(by_video.items()):
         ordered = sorted(video_annotations, key=lambda item: item.frame)
         first_record = source_records.get((video, ordered[0].frame), {})
+        first_direct_image = _direct_image_path(args.video_root, first_record)
+        if first_direct_image is not None:
+            source_modes.add("image")
+            for annotation in ordered:
+                record = source_records.get((video, annotation.frame))
+                if record is None:
+                    raise ValueError(f"missing source record for {video}#{annotation.frame}")
+                image_path = _direct_image_path(args.video_root, record)
+                if image_path is None:
+                    raise FileNotFoundError(f"image source missing for {video}#{annotation.frame}")
+                frame_bgr = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+                if frame_bgr is None:
+                    raise RuntimeError(f"cannot read benchmark image: {image_path}")
+                inference_calls += record_result(video, annotation, frame_bgr)
+            continue
+
         first_image = _image_sequence_path(args.video_root, first_record)
         if first_image is not None:
             source_modes.add("image_sequence")
