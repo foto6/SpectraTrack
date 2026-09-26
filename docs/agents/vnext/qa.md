@@ -970,3 +970,12 @@ Validation result at this checkpoint:
 - frozen corpus hash: **NOT AVAILABLE**
 
 Reason real freeze is not claimed: raw DanceTrack dataset bytes are intentionally external/gitignored and are not present in the agent's GitHub-only execution environment.
+### Round 2 CI failure — source abstraction test migration
+
+- failing branch HEAD at run start: `81cc502d55ad82dab8c4a77cacc01ebad14d3acc`
+- GitHub Actions run: `36254977841`
+- Ruff: **PASS**
+- pytest: **5 failed, 168 passed**
+- failure cause: five pre-existing `test_vnext_qa.py` fixtures still monkeypatched the removed local symbol `vnext_qa.inspect_qa_source` after corpus validation was intentionally routed through the new shared `inspect_qa_logical_source` helper.
+- this is a test-fixture migration failure, not a measured dataset/import correctness result.
+- fix scope: update those fixtures to patch the new logical-source seam; no production/dataset semantics changed for this failure.
