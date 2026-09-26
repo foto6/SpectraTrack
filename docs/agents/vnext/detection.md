@@ -1019,3 +1019,55 @@ Repository checks also found no frozen `nightowls-public-r1` manifest/JSONL arti
 Decision:
 
 **BLOCKED ON A5 FREEZE — do not run or tune on NightOwls yet.** When A5 publishes a frozen full validation or explicitly named frozen slice, A1 must evaluate surviving policies without threshold retuning.
+
+
+## Round 2 MOT17 held-out checkpoint — MOT17-02 prefusion complete
+
+Status:
+
+**DONE — FIRST HELD-OUT SEQUENCE PREFUSION VERIFIED**
+
+The existing retry process remains active and has completed/persisted the first held-out sequence without any restart.
+
+Sequence:
+
+- corpus: `mot17-public-r1`;
+- split: HELD OUT;
+- logical video: `golden/public/mot17/MOT17-02`;
+- source commit: `e2dad933119e0639413200466ffbda0baeba6b2e`;
+- GT SHA-256: `28dcb9d197e0a098a1efb097f1589177350192a8f5f1be3e2ab5cd18d8f205c7`;
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`;
+- provider: `DmlExecutionProvider,CPUExecutionProvider`;
+- frame size: `1920x1080`;
+- detector input: `960x960`;
+- detector conf / decoder IoU: `0.35 / 0.45`;
+- person floor: `0.12`;
+- tile / overlap: `640 / 0.20`;
+- decoder-local NMS: enabled;
+- final cross-pass fusion in prefusion artifact: not applied.
+
+Artifact:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-mot17\golden_public_mot17_MOT17-02.jsonl`
+
+Verified artifact provenance:
+
+- size: `13668394` bytes;
+- modified UTC: `2026-09-26T16:45:11.987Z`;
+- SHA-256: `31b0d5397c0ffffd6d89384648272442ca6aa1fbb7f4f7b5764a6c3a2c24523d`.
+
+Verified prefusion summary:
+
+- policy runs: `600`;
+- actual ONNX calls: `5400`;
+- source mode: `image_sequence`;
+- detector wall time: `628.8552067000419 s`;
+- preprocess: `42044.41860737279 ms`;
+- inference: `533934.2153006 ms`;
+- postprocess: `37245.49529911019 ms`.
+
+The final held-out result/marker are not expected until all six held-out sequences complete. The live process continues into the remaining sequences; no duplicate run has been started.
+
+Decision:
+
+**VALID PARTIAL EVIDENCE / HELD-OUT RUN CONTINUES.**
