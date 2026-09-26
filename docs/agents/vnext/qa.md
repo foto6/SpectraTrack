@@ -814,3 +814,72 @@ New research-only review-progress tooling distinguishes human-saved rows from dr
 ### NOT DONE — human confirmation
 
 The existing 46-frame private review pack remains non-GOLDEN until a human reviews/corrects it. `cctv-golden-r1` must not be frozen from AI-only draft annotations.
+
+
+## Round 2 public-first assignment — 2026-09-26
+
+Status: **IN PROGRESS**
+
+Private CCTV human review is deferred until public finalists exist. The existing 46-frame pack remains local DRAFT evidence only.
+
+### DanceTrack
+
+Official source reviewed:
+
+- https://github.com/DanceTrack/DanceTrack
+
+Verified research constraints:
+
+- public train/validation annotations contain MOT-style bbox + stable track identity;
+- annotation license: CC BY 4.0;
+- dataset images/videos: non-commercial research only;
+- code: MIT.
+
+A5 task:
+
+- add an isolated DanceTrack importer into the existing canonical `qa_benchmark.py` JSONL;
+- preserve source sequence, original frame number, stable GT ID, bbox, source metadata, dataset split/revision, and source/hash provenance;
+- preserve valid/ignore semantics exactly as supported by the source; do not invent semantic tags;
+- raw dataset files stay outside Git;
+- validate/freeze separate `dancetrack-public-r1`;
+- keep public train/validation split provenance explicit.
+
+DanceTrack is primarily A2 association evidence.
+
+### NightOwls
+
+Official source reviewed:
+
+- https://www.nightowls-dataset.org/
+- https://www.nightowls-dataset.org/download/
+
+Verified research constraints:
+
+- night pedestrian benchmark with 279k frames in 40 sequences;
+- official distribution includes PNG/JSON + Caltech-compatible annotations;
+- annotations include pedestrian bbox plus occlusion/difficulty/pose and tracking information;
+- license allows non-commercial research/teaching/personal experimentation, requires citation, and prohibits redistribution of the dataset or modified versions.
+
+A5 task:
+
+- add an isolated NightOwls importer into the existing canonical QA JSONL;
+- preserve official classes/ignore semantics/attributes only where source metadata supports them;
+- preserve stable identity only if the official annotation field/SDK semantics validate it;
+- do not invent night/blur/occlusion labels beyond official dataset/annotation metadata;
+- raw or modified NightOwls data must not be redistributed or committed;
+- freeze separate `nightowls-public-r1`.
+
+NightOwls is the primary public night corpus for A1/A3.
+
+### Secondary/fallback corpora
+
+LLVIP official source:
+
+- https://github.com/bupt-ai-cz/LLVIP
+- non-commercial only;
+- use visible/RGB side only for SpectraTrack comparison;
+- optional secondary low-light evidence.
+
+KAIST multispectral pedestrian benchmark remains fallback only. If later used, SpectraTrack evaluation consumes visible/RGB only; thermal/LWIR is not production detector input.
+
+Do not create a second QA format.
