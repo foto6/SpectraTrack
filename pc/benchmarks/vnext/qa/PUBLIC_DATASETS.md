@@ -151,6 +151,10 @@ Freeze re-hashes every source file listed by the importer. Moving files is fine 
 relative layout under `--video-root` remains the same; changing source bytes invalidates the
 import.
 
+Important: after conversion, scoring uses SpectraTrack's canonical A5 matcher/ignore policy.
+This is intentionally a common project evaluator, **not** a claim of bit-for-bit equivalence with
+the official MOTChallenge TrackEval implementation.
+
 MOT17 is appropriate for:
 
 - tracking recall;
@@ -236,6 +240,9 @@ Conversion policy:
 - `tag=mask` OR `extra.ignore=1` -> canonical `ignore=true`;
 - selected `fbox`/ `vbox` xywh -> xyxy without clipping;
 - original fbox/vbox/box_id/occ remain in source provenance;
+- non-ignored integer `extra.occ` is exposed literally as an attribute such as
+  `crowdhuman_occ_1`, so existing attribute metrics can report it without assigning an
+  undocumented semantic meaning;
 - no semantic CCTV condition tags are guessed;
 - no stable canonical object ID is created;
 - therefore CrowdHuman contributes **no tracking/ID metrics**.
@@ -262,6 +269,10 @@ python -m spectratrack.vnext_qa freeze-corpus `
   --confirm-public-dataset-terms `
   --output benchmarks/vnext/qa/crowdhuman-val-fbox.manifest.json
 ```
+
+As with MOT17, resulting metrics use the common SpectraTrack A5 evaluator. They should not be
+described as official CrowdHuman benchmark numbers unless the official evaluation protocol is run
+separately.
 
 Visible-body diagnostic variant:
 
