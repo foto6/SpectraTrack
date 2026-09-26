@@ -815,3 +815,144 @@ competitive" strongly enough to spend held-out NightOwls inference budget.
 
 No candidate/gate/threshold change is permitted after the frozen NightOwls
 candidate results are observed in this cycle.
+
+
+## Round 2 continuation — target-PC revalidation and CI fixture repair
+
+Continuation request expected:
+
+`agent/vnext-enhancement @ 4b13f8eaec4e9339ea3247fc759f85400e1a13b4`
+
+After `git fetch origin --prune`, the remote branch had already advanced through
+the same A3 Round-2 research line. The requested commit remains an ancestor; it
+was not reset or rewritten. Before this state update the branch advanced to the
+strict same-source alternate handoff work and then to:
+
+`5b1a2b139edf39c56d24cdb80959a977f116d95e`
+
+### DONE — exact target-PC branch/worktree verification
+
+Target worktree:
+
+`C:\Users\foto6\SpectraTrack-worktrees\a3`
+
+Verified after fetch:
+
+- branch: `agent/vnext-enhancement`;
+- working tree: clean before the fixture repair;
+- no A3 benchmark process was active;
+- another active Python workload belonged to A1 held-out detection and was not
+  touched.
+
+No A3 interrupted benchmark was restarted.
+
+### DONE — existing interrupted A3 artifact reverified before restart
+
+Artifact:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a3-round2-weak1.json`
+
+Reverified on the target PC:
+
+- SHA-256: `cad760e97e32380ac3da87d66f56bfc5d2a11097839b45e1806b3d9469e291a6`;
+- size: 8,933 bytes;
+- last-write UTC: `2026-09-26T09:56:06.4866128Z`;
+- schema: `spectratrack-vnext-enhancement-profile-v1`;
+- artifact source commit: `86b1460b6f9879038de92eb1e1341a96221e6c03`;
+- corpus revision: `mot17-public-r1`;
+- actual low-level ONNX calls across the shared experiment: 2,726;
+- wall time: 437.342953 s.
+
+This matches the previously persisted verified MOT17 strict-profile evidence.
+The artifact was not overwritten or rerun.
+
+### BLOCKED — NightOwls held-out cannot start yet
+
+Target-PC searches under:
+
+- `C:\Users\foto6\SpectraTrack-data`;
+- `E:\SpectraTrack`
+
+found no NightOwls dataset/import/freeze/result files.
+
+Latest observed A5 branch:
+
+`agent/vnext-qa @ bf63820f81cd13fdfae8680a200e25f030d314fc`
+
+A5 importer/tooling is CI-validated, but its current state still records:
+
+- real NightOwls validation import: not run;
+- frozen `nightowls-public-r1`: not frozen;
+- frozen NightOwls hash: unavailable.
+
+Therefore A3 has **not** started NightOwls candidate inference, has not observed
+held-out candidate results, and has not retuned any gate/threshold.
+
+The held-out candidate lock remains unchanged:
+
+1. enhancement OFF;
+2. bilateral;
+3. current_adaptive_cached.
+
+Sharpen remains excluded from the NightOwls held-out candidate set based only on
+the pre-held-out MOT17 development evidence already documented above.
+
+Strict semantics remain fixed:
+
+- selective gate = `weak-person`;
+- max enhanced ROIs/source-frame = `1`;
+- raw corroboration mandatory.
+
+LLVIP remains unused; if later activated it is visible/RGB only. IR/thermal is
+not SpectraTrack input.
+
+### FAILED -> FIXED — strict handoff CI fixture provenance
+
+GitHub Actions run `36255981087` / PC CI #305 failed:
+
+- Ruff: PASS;
+- pytest: **1 failed, 163 passed**;
+- failure:
+  `test_apply_alternates_replaces_same_source_measurement_without_new_evidence_source`.
+
+Root cause:
+
+the test prefusion fixture still used the placeholder model hash
+`model-sha`, while the strict same-source handoff correctly requires the
+enhancement evidence model SHA-256 to equal the prefusion model SHA-256.
+
+The production/research provenance invariant was kept. Only the test fixture was
+corrected to the actual SHA-256 of its synthetic `fake-model` bytes:
+
+`5496d6743cdde4fe98674e290e44b3220f5a42bf0c442eb207e88fd041e34d48`
+
+Fix commit:
+
+`5b1a2b139edf39c56d24cdb80959a977f116d95e`
+
+Target-PC validation after fast-forward:
+
+- focused strict-handoff test: **5 passed in 0.56 s**;
+- all A3 efficiency/post-fusion/strict-handoff tests: **21 passed in 0.60 s**.
+
+GitHub Actions run `36256240336` / PC CI #313 reached successful Ruff,
+compile+pytest, synthetic benchmark, diagnostics and self-check before this
+documentation update; packaging/build completion should be checked on the
+final branch head before claiming full CI success.
+
+### Current decision
+
+No new enhancement quality result was produced in this continuation because the
+primary held-out NightOwls corpus is not frozen.
+
+The A3 production decision remains unresolved between:
+
+- strict bilateral;
+- strict current_adaptive_cached;
+- **ENHANCEMENT OFF**.
+
+If the frozen NightOwls held-out comparison does not show a convincing
+post-fusion quality-per-compute/stability gain, the required A3 recommendation
+remains:
+
+`ENHANCEMENT OFF`
