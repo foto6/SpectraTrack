@@ -560,6 +560,11 @@ def import_crowdhuman(
             attributes: list[str] = []
             if visible_ratio is not None and not ignore:
                 attributes.append(f"crowdhuman_{_visibility_attribute(visible_ratio)}")
+            occ = extra.get("occ")
+            if occ is not None and not ignore:
+                if isinstance(occ, bool) or not isinstance(occ, int):
+                    raise ValueError(f"CrowdHuman {image_id}: extra.occ must be an integer when present")
+                attributes.append(f"crowdhuman_occ_{occ}")
             source_annotation = {
                 "dataset": "CrowdHuman",
                 "tag": tag,
