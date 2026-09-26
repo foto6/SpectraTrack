@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from spectratrack.qa_benchmark import GroundTruthFrame, GroundTruthObject
 from spectratrack.tracking_research import (
     AmbiguityGuardCurrentRunner,
@@ -252,8 +254,6 @@ def test_round2_scored_replay_compares_current_and_guard_on_identical_bytes():
 
 
 def test_canonical_gt_adapter_requires_stable_ids_but_never_mutates_replay():
-    import pytest
-
     scenario = _scenario("camera_pan")
     original_hash = scenario.replay.canonical_sha256()
     ground_truth = _canonical_gt_from_scenario(scenario)
@@ -264,17 +264,60 @@ def test_canonical_gt_adapter_requires_stable_ids_but_never_mutates_replay():
     assert all(item.appearance is None for frame in adapted.replay.frames for item in frame.detections)
 
     first = ground_truth[0]
-    bad = [
-        GroundTruthFrame(
-            video=first.video,
-            frame=first.frame,
-            tags=first.tags,
-            objects=(GroundTruthObject(object_id=None, label="person", bbox=first.objects[0].bbox),),
-        )
-    ]
+    bad = list(ground_truth)
+    bad[0] = GroundTruthFrame(
+        video=first.video,
+        frame=first.frame,
+        tags=first.tags,
+        objects=(GroundTruthObject(object_id=None, label="person", bbox=first.objects[0].bbox),),
+    )
     with pytest.raises(ValueError, match="stable object id"):
         scenario_from_canonical_ground_truth(scenario.replay, bad)
 
+
+
+def test_canonical_gt_adapter_rejects_missing_replay_frame_rows():
+    scenario = _scenario("camera_pan")
+    ground_truth = _canonical_gt_from_scenario(scenario)
+
+    with pytest.raises(ValueError, match="missing replay frame"):
+        scenario_from_canonical_ground_truth(scenario.replay, ground_truth[:-1])
+
+
+def test_ignored_gt_regions_do_not_count_as_false_track_creation():
+    scenario = _scenario("camera_pan")
+    ignored_ground_truth = []
+    for frame in scenario.replay.frames:
+        truth = scenario.truth_by_frame[frame.frame]
+        ignored_ground_truth.append(
+            GroundTruthFrame(
+                video=scenario.replay.metadata.video,
+                frame=frame.frame,
+                tags=(),
+                objects=tuple(
+                    GroundTruthObject(
+                        object_id=None,
+                        label=item.label,
+                        bbox=item.bbox,
+                        ignore=True,
+                    )
+                    for item in truth
+                ),
+            )
+        )
+
+    adapted = scenario_from_canonical_ground_truth(scenario.replay, ignored_ground_truth)
+    outputs = {}
+    runner = CurrentTrackerRunner()
+    for frame in adapted.replay.frames:
+        outputs[frame.frame] = runner.step(frame)
+
+    metrics = evaluate_tracking(adapted, outputs)
+    mined = mine_current_failure_windows(adapted)
+
+    assert metrics["gt"] == 0
+    assert metrics["false_track_creations"] == 0
+    assert mined["summary"]["false_track_ids"] == 0
 
 def test_round2_promotion_gate_retains_current_on_any_required_regression():
     control = {
