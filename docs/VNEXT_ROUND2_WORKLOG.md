@@ -1479,3 +1479,52 @@ Therefore:
 Target-PC data search found no NightOwls dataset/import/freeze artifact yet.
 
 A1/A3 NightOwls work remains blocked until A5 creates an exact frozen full validation or pre-result deterministic slice revision/hash.
+
+
+## 2026-09-26 — A1 held-out progress 4/6
+
+A1 advanced to `agent/vnext-detection @ 8f4f7a287311d864807e5d2b1a439b11cb1401b1`, CI green.
+
+Verified completed held-out prefusion + fusion metrics for:
+
+- MOT17-02
+- MOT17-05
+- MOT17-09
+- MOT17-10
+
+Target-PC A1 worker PID `21104` remains alive and accumulating CPU. Final result and completion marker are not present yet. MOT17-11 and MOT17-13 remain.
+
+Coordinator-only provisional aggregate across the four completed sequences, computed directly from the persisted per-sequence TP/FP/FN with no retuning:
+
+Current hard-NMS:
+- TP 28,258
+- FP 31,239
+- FN 15,401
+- precision 0.474948
+- recall 0.647243
+- F1 0.547869
+
+Evidence-aware:
+- TP 28,472
+- FP 29,877
+- FN 15,187
+- precision 0.487960
+- recall 0.652145
+- F1 0.558231
+
+Provisional deltas over these 4/6 sequences:
+- TP +214
+- FP -1,362
+- FN -214
+- precision +1.301 percentage points
+- recall +0.490 percentage points
+- F1 +1.036 percentage points
+
+This is encouraging partial evidence only. No ACCEPT/REJECT until MOT17-11, MOT17-13 and final aggregate are complete.
+
+A2 remains DONE — RETAIN CURRENT TRACKER.
+A3 remains blocked on frozen NightOwls/post-fusion held-out.
+A4 remains parked by design.
+A5 importer tooling remains CI-green; real DanceTrack/NightOwls freezes are not yet complete.
+
+Target PC currently has `C:\Users\foto6\SpectraTrack-data\public\DanceTrack\val.zip` at 4,209,785,614 bytes and the local download-controller process is still present. NightOwls bytes are still absent.
