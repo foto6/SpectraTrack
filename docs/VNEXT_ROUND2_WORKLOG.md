@@ -1946,3 +1946,21 @@ A1 now has no surviving new fusion challenger for production progression in Roun
 - continue A5 official NightOwls intake for A3's independent enhancement gate;
 - keep A4 parked until A3/public finalists are resolved;
 - do not retune A1 on held-out CrowdHuman/NightOwls.
+
+
+### DONE — A1-owned handoff stamped and issue updated
+
+Persisted the final CrowdHuman dense-safety decision into the specialist-owned A1 handoff:
+
+- branch: `agent/vnext-detection`
+- handoff commit: `3dc31c8fa8b323ce86afc14c3105a0c2247a2c48`
+- changed file: `docs/agents/vnext/detection.md`
+- no production/runtime file changed
+
+Issue #18 was also updated with the integrity-verified result and pre-registered gate outcome.
+
+Final A1 Round-2 decision is now durable in both coordination and specialist records:
+
+**RETAIN CURRENT HARD-NMS / REJECT NEW FUSION CHALLENGERS.**
+
+No held-out retuning and no A1 production integration is authorized.
