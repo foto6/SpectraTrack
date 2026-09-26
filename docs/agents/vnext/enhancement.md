@@ -765,3 +765,53 @@ If no strict candidate gives a convincing post-fusion quality-per-compute and
 stability gain on the frozen held-out evidence, A3 must hand off:
 
 `ENHANCEMENT OFF`
+
+
+## Round 2 checkpoint — NightOwls candidate set locked before held-out
+
+To prevent held-out tuning, A3 froze the NightOwls candidate set **before any
+NightOwls candidate result was observed**.
+
+Committed lock:
+
+`pc/benchmarks/vnext/enhancement/round2_nightowls_candidate_lock.json`
+
+Final held-out comparison set:
+
+1. `OFF` — baseline;
+2. `bilateral` — low-work selective candidate;
+3. `current_adaptive_cached` — higher-recovery selective candidate.
+
+Fixed configuration:
+
+- `selective_gate=weak-person`;
+- max enhanced ROIs/source frame = `1`;
+- raw corroboration required;
+- person acceptance = `0.12`;
+- raw probe = `0.08`;
+- corroboration IoU = `0.10`.
+
+### Sharpen decision — excluded before NightOwls held-out
+
+`sharpen` is no longer a NightOwls held-out finalist in this Round-2 cycle.
+
+This decision uses only the already-verified MOT17 development evidence and was
+made before seeing any NightOwls candidate output.
+
+Relative to `current_adaptive_cached`, sharpen was:
+
+- worse on recovered GT / extra call: `0.6304` vs `0.6392`;
+- worse on FP / recovered GT: `21.7241` vs `21.4851`;
+- worse on center jitter delta: `+0.0011781` vs `+0.0009605`;
+- worse on size jitter delta: `+0.0014535` vs `+0.0010520`.
+
+Sharpen's measured image preprocessing was cheaper, and its total incremental
+preprocess+enhanced-detector milliseconds per recovered observation was roughly
+comparable to cached adaptive, but this single-run timing advantage was small and
+did not offset the worse quality ratios/stability.
+
+It therefore does not meet the user's condition "sharpen only if actually
+competitive" strongly enough to spend held-out NightOwls inference budget.
+
+No candidate/gate/threshold change is permitted after the frozen NightOwls
+candidate results are observed in this cycle.
