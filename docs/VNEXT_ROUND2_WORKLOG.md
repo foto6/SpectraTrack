@@ -1744,3 +1744,41 @@ Target-PC state was inspected before any restart. A1 CrowdHuman worker PID 19944
 A5 NightOwls official intake has started on the E: isolated data root. Official validation JSON is present at exact size 10,696,948 bytes and the official SDK checkout is present. The resumable validation ZIP download is active; observed ZIP size was 2,355,912,704 bytes and its progress log was actively updating (about 1.83 GiB of 52.81 GiB at the sample, about 5.85 MiB/s). Download state/part files are present. No second downloader was started.
 
 Decision: continue the existing A1 and A5 jobs untouched. No human action is required at this checkpoint.
+
+
+## 2026-09-27 — target-PC duplicate A1 writer blocker discovered
+
+### BLOCKED / NEEDS SAFE DEDUPLICATION — two live CrowdHuman writers share the same outputs
+
+Coordinator re-inspected target-PC process state before any restart.
+
+Observed simultaneously:
+
+- PID `28260`: `C:\Users\foto6\SpectraTrack-env\Scripts\python.exe -m spectratrack.research.vnext_detection_corpus ...`
+- PID `19944`: `C:\Users\foto6\AppData\Local\Programs\Python\Python312\python.exe -m spectratrack.research.vnext_detection_corpus ...`
+
+Both command lines target the same:
+
+- output: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-crowdhuman.json`
+- prefusion dir: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-crowdhuman`
+- corpus revision: `crowdhuman-val-fbox-r1`
+- recorded source commit argument: `06b3fee1791aeb7565b4e09fc874c44da2690252`
+
+This creates a concurrent-writer/corruption risk. No A1 process was stopped or restarted at discovery time because process ancestry/start times and write ownership still need to be verified first.
+
+Also observed:
+
+- NightOwls official ZIP downloader PID `15200` remains active on the isolated E: root;
+- no second NightOwls downloader was started.
+
+### FAILED ATTEMPT — compact artifact metadata probe
+
+A one-line Python metadata probe for A1/A2/A3/NightOwls paths failed with a local command-string escaping `SyntaxError` before reading or changing any artifact. The failure is rejected as evidence and no benchmark state was modified.
+
+### NEXT
+
+1. inspect A1 PIDs 28260/19944 start times, parent PIDs and CPU deltas;
+2. inspect current prefusion file count/timestamps and final result/completion-marker presence;
+3. identify the canonical active worker and terminate only the duplicate if ownership is unambiguous;
+4. do not restart CrowdHuman;
+5. continue the existing NightOwls downloader untouched.
