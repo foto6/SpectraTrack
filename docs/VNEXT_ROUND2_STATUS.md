@@ -17,7 +17,7 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 ## Global gates
 
 - **DONE** — A1 MOT17 held-out complete. Evidence-aware is the sole retained fusion challenger: F1 0.527449 vs hard-NMS 0.516517, precision 0.431776 vs 0.418094, recall 0.677588 vs 0.675549, FP 57,727 vs 60,868, fusion mistakes 540 vs 1016.
-- **NEEDS VALIDATION** — A1 CrowdHuman dense-safety workers have both exited on their own. Exactly 4,370 prefusion files plus final result and completion marker now exist. No process was killed/restarted. JSON/marker/hash/provenance/aggregate validation is the immediate next gate before accepting the result.
+- **DONE / FAIL GATE** — A1 CrowdHuman dense-safety result is integrity-verified over all 4,370 frozen validation images. Evidence-aware improves precision (+4.447576 pp), F1 (+3.115044 pp), bbox IoU (+0.007883) and cuts FP by 20,677 / fusion mistakes by 502, but recall is lower by 0.706668 pp. The pre-registered gate required recall not lower, so evidence-aware is rejected for Round-2 production/integrator progression; hard-NMS remains control.
 - **DONE** — A2 Round-2 decision: RETAIN CURRENT TRACKER. current-ambiguity-guard rejected by real identical-replay ID-switch gate.
 - **WAITING** — A3 strict candidate set remains OFF / bilateral / current_adaptive_cached; NightOwls held-out waits for A5 frozen corpus/slice.
 - **PARKED** — A4 scheduler quality search remains intentionally deferred until public quality finalists are ready.
@@ -179,3 +179,12 @@ Unlock only when:
 
 - **CLEARED / NEEDS RESULT VALIDATION** — the previously observed duplicate CrowdHuman PIDs `28260` and `19944` both exited on their own before the corrected probe. Exactly 4,370 prefusion files, the final result JSON, and completion marker now exist. No A1 process was killed or restarted; validate hashes/provenance/metrics next.
 - **IN PROGRESS** — official NightOwls ZIP downloader PID `15200` remains active on the isolated E: root; observed ZIP size 13,480,124,416 bytes; no duplicate downloader was started.
+
+
+## A1 CrowdHuman final gate
+
+- **DONE** — result SHA `c09f91ec4c27f28057c8937c84390e10c80cbd16ae56fe3840cbf1363055690a`; marker SHA `23f3cc80df109fc1e0d93851b14f57a6f432e7e02039dd343b9b20e249de5957`; GT/model hashes match frozen provenance.
+- **DONE** — 4,370/4,370 unique selected images and 4,370 prefusion artifacts.
+- **FAIL / REJECT CHALLENGER** — evidence-aware vs hard-NMS: precision +4.447576 pp, recall -0.706668 pp, F1 +3.115044 pp, FP -20,677, bbox IoU +0.007883, fusion mistakes -502. Because the frozen rule required recall not lower, the challenger fails dense safety.
+- **RETAIN CONTROL** — hard-NMS remains the A1 Round-2 fusion policy. No held-out retuning.
+- **A1 NIGHTOWLS CHALLENGER GATE NO LONGER BLOCKING** — there is no surviving new fusion challenger to rescue in this cycle. NightOwls intake remains required for A3 and may be used for hard-NMS baseline characterization only.
