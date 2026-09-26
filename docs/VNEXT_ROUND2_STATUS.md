@@ -42,7 +42,7 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 Current known Round-2 head:
 
-`agent/vnext-detection @ 32ae82052b6de37ae938e2e2cded27c9787118d5`
+`agent/vnext-detection @ bccf087df01b74bc463dcc3525e5665110ff8225`
 
 Done:
 
@@ -67,7 +67,7 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-tracking @ 8c4c9b69f9d3f332ed2d655ff5f7bc9cb69cb6e4`
+`agent/vnext-tracking @ 35de7cbdb4023c66cfdba27698bd8b62dd106e78`
 
 Done:
 
@@ -94,7 +94,7 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-enhancement @ a5481b1f4bbcc67e77b5eecefb3e8daea783ba5c`
+`agent/vnext-enhancement @ 4b13f8eaec4e9339ea3247fc759f85400e1a13b4`
 
 Done:
 
@@ -118,7 +118,7 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-performance @ b3afa9d3843faa2f74b101cf2e40beea27caf6a9`
+`agent/vnext-performance @ 45bd0bc85f7e677cd602b435108b2095ab0ee78b`
 
 Done:
 
@@ -137,7 +137,7 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-qa @ 8faf6c9180c5d84555589e2ed7600832b036ac78`
+`agent/vnext-qa @ abc269f5ebe062c80d1fba8eb5c06b1b1450c6b9`
 
 Done:
 
