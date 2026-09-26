@@ -1,8 +1,10 @@
 import json
+from types import SimpleNamespace
 import cv2
 import numpy as np
 
 from spectratrack.qa_benchmark import GroundTruthFrame, GroundTruthObject
+import spectratrack.research.vnext_detection_corpus as corpus_module
 from spectratrack.research.vnext_detection_corpus import (
     attach_ground_truth,
     collect_corpus_video_frames,
@@ -186,6 +188,96 @@ def test_evaluate_methods_reports_aggregate_and_per_video():
     assert aggregate["evidence-aware"]["recall"] == 0.5
     assert per_video["a"]["evidence-aware"]["recall"] == 0.0
     assert per_video["b"]["evidence-aware"]["recall"] == 1.0
+
+def test_resume_marks_new_prefusion_as_fresh_then_reuses_on_second_run(tmp_path, monkeypatch):
+    model = tmp_path / "model.onnx"
+    model.write_bytes(b"model")
+    gt = tmp_path / "gt.jsonl"
+    gt.write_text("{}\n", encoding="utf-8")
+    prefusion_dir = tmp_path / "prefusion"
+    annotation = _annotation("clip", 0)
+    calls = {"collect": 0}
+
+    class FakeRunnerDetector:
+        def __init__(self, *_args, **_kwargs):
+            self.providers = ["CPUExecutionProvider"]
+            self.input_w = 960
+            self.input_h = 960
+
+    def fake_collect(*_args, **_kwargs):
+        calls["collect"] += 1
+        frame = ResearchFrame(
+            "clip",
+            0,
+            0.0,
+            100,
+            80,
+            (FusionCandidate((1.0, 1.0, 8.0, 12.0), 0.4, 0, "person", "full", "full"),),
+            annotation.objects,
+            annotation.tags,
+        )
+        return [frame], {
+            "policy_runs": 1,
+            "inference_calls": 3,
+            "wall_time_s": 2.5,
+            "stage_ms": {"inference": 2000.0},
+            "source_modes": ["image_sequence"],
+        }
+
+    monkeypatch.setattr(corpus_module, "YoloOnnxDetector", FakeRunnerDetector)
+    monkeypatch.setattr(corpus_module, "load_ground_truth", lambda _path: [annotation])
+    monkeypatch.setattr(corpus_module, "_load_benchmark_source_records", lambda _path: {})
+    monkeypatch.setattr(corpus_module, "ground_truth_sha256", lambda _path: "g" * 64)
+    monkeypatch.setattr(corpus_module, "collect_corpus_video_frames", fake_collect)
+
+    args = SimpleNamespace(
+        model=str(model),
+        ground_truth=str(gt),
+        video_root=str(tmp_path),
+        output=str(tmp_path / "unused.json"),
+        source_commit="a" * 40,
+        corpus_revision="mot17-public-r1",
+        include_video=[],
+        prefusion_dir=str(prefusion_dir),
+        replay_dir=None,
+        resume=True,
+        per_video=True,
+        frame_limit_per_video=0,
+        input_size=960,
+        conf=0.35,
+        decoder_iou=0.45,
+        person_conf=0.12,
+        tile_size=640,
+        tile_overlap=0.20,
+        match_iou=0.50,
+        fusion_iou=0.55,
+        center_ratio=0.20,
+        size_ratio=1.80,
+        score_power=1.0,
+        full_weight=1.0,
+        tile_weight=1.0,
+        evidence_weak_score=0.12,
+        evidence_solo_score=0.20,
+        evidence_strong_score=0.35,
+        evidence_min_sources=2,
+        method=["hard-nms"],
+        cpu=True,
+    )
+
+    first = corpus_module.run_corpus_benchmark(args)
+    assert calls["collect"] == 1
+    assert first["performance"]["per_video"]["clip"]["evidence_source"] == "new_inference"
+    assert first["performance"]["new_inference_calls"] == 3
+    assert first["performance"]["reused_inference_calls"] == 0
+    assert first["performance"]["new_detector_wall_s"] == 2.5
+
+    second = corpus_module.run_corpus_benchmark(args)
+    assert calls["collect"] == 1
+    assert second["performance"]["per_video"]["clip"]["evidence_source"] == "reused_prefusion"
+    assert second["performance"]["new_inference_calls"] == 0
+    assert second["performance"]["reused_inference_calls"] == 3
+    assert second["performance"]["reused_detector_wall_s"] == 2.5
+
 
 def test_export_canonical_replays_uses_prefusion_without_inference(tmp_path):
     prefusion_dir = tmp_path / "prefusion"
