@@ -213,3 +213,26 @@ Decision:
 
 Reason: A1-A4 need richer common evidence, but the existing QA result contract is already used by regression tooling. Additive measurement fields let vNext experiments share quality/compute evidence without invalidating existing QA consumers or creating a second incompatible evaluator.
 
+## 2026-09-26 — public pedestrian datasets supplement, not replace, private CCTV validation
+
+Decision:
+
+- add isolated importers for MOT17 train ground truth and CrowdHuman validation annotations;
+- importers convert into the existing `qa_benchmark.py` JSONL format; there is no second evaluator or GT schema;
+- public dataset files remain external/local and are never committed by A5;
+- frozen public corpus manifests include dataset/version/split, source-file SHA-256 values, conversion settings, selected sequences, and importer source commit;
+- MOT17 keeps stable pedestrian identities; target-like distractor classes (person-on-vehicle, static person, distractor, reflection) become canonical `ignore=true`; unrelated classes do not enter person scoring;
+- MOT17 original 1-based frame number and source sequence are preserved as source provenance while canonical evaluator frame indices remain zero-based;
+- CrowdHuman uses the official validation split only for detection evaluation;
+- CrowdHuman full-body `fbox` is the default A5 evaluation policy because CrowdHuman explicitly defines a full-body detection task; visible-body `vbox` is an explicit opt-in and must be frozen as a different corpus revision;
+- CrowdHuman objects intentionally have no stable canonical IDs, so tracking metrics remain disabled for its independent images;
+- imported full-body boxes may extend beyond image bounds when the source annotation policy does; validator still requires them to intersect the image;
+- public datasets are a reproducible benchmark layer, not a substitute for the user-owned human-confirmed private CCTV holdout.
+
+Licensing/terms constraints recorded by the importer:
+
+- MOTChallenge datasets: CC BY-NC-SA 3.0;
+- CrowdHuman images: non-commercial research/education only and may not be redistributed.
+
+Reason: public annotations reduce manual labeling cost and improve repeatability, but domain shift means a small private CCTV holdout remains necessary for product-specific evidence.
+
