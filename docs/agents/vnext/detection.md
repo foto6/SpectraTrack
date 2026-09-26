@@ -998,3 +998,24 @@ The run is active and has not yet reached the first persisted per-sequence prefu
 Decision:
 
 **IN PROGRESS / NEEDS COMPLETION — preserve PID 21908 run and continue artifact/process monitoring.**
+
+
+## Round 2 NightOwls dependency verification
+
+Observed A5 branch:
+
+`agent/vnext-qa @ bf63820f81cd13fdfae8680a200e25f030d314fc`
+
+A5 currently records:
+
+- NightOwls importer/tooling: READY;
+- deterministic slice tooling: READY;
+- official validation import: NOT RUN;
+- `nightowls-public-r1`: NOT FROZEN;
+- real canonical JSONL/import manifest hashes: NOT AVAILABLE.
+
+Repository checks also found no frozen `nightowls-public-r1` manifest/JSONL artifact.
+
+Decision:
+
+**BLOCKED ON A5 FREEZE — do not run or tune on NightOwls yet.** When A5 publishes a frozen full validation or explicitly named frozen slice, A1 must evaluate surviving policies without threshold retuning.
