@@ -17,7 +17,7 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 ## Global gates
 
 - **DONE** — A1 MOT17 held-out complete. Evidence-aware is the sole retained fusion challenger: F1 0.527449 vs hard-NMS 0.516517, precision 0.431776 vs 0.418094, recall 0.677588 vs 0.675549, FP 57,727 vs 60,868, fusion mistakes 540 vs 1016.
-- **BLOCKED / IN PROGRESS** — A1 CrowdHuman dense-safety has two live processes targeting the same output/prefusion paths (PIDs 28260 and 19944). Safe deduplication is required before interpreting further progress. No restart or termination has been done yet; final result/marker remain unverified.
+- **NEEDS VALIDATION** — A1 CrowdHuman dense-safety workers have both exited on their own. Exactly 4,370 prefusion files plus final result and completion marker now exist. No process was killed/restarted. JSON/marker/hash/provenance/aggregate validation is the immediate next gate before accepting the result.
 - **DONE** — A2 Round-2 decision: RETAIN CURRENT TRACKER. current-ambiguity-guard rejected by real identical-replay ID-switch gate.
 - **WAITING** — A3 strict candidate set remains OFF / bilateral / current_adaptive_cached; NightOwls held-out waits for A5 frozen corpus/slice.
 - **PARKED** — A4 scheduler quality search remains intentionally deferred until public quality finalists are ready.
@@ -177,6 +177,5 @@ Unlock only when:
 
 ## Live blocker update — duplicate A1 writer
 
-- **BLOCKED / NEEDS SAFE DEDUPLICATION** — target-PC inspection found two concurrent `vnext_detection_corpus` processes writing the same CrowdHuman output/prefusion paths: PIDs `28260` and `19944`.
-- No A1 process has been killed or restarted yet. Next step is process ancestry/start-time/CPU/write-ownership verification, then terminate only the unambiguous duplicate.
-- **IN PROGRESS** — official NightOwls ZIP downloader PID `15200` remains active on the isolated E: root; no duplicate downloader was started.
+- **CLEARED / NEEDS RESULT VALIDATION** — the previously observed duplicate CrowdHuman PIDs `28260` and `19944` both exited on their own before the corrected probe. Exactly 4,370 prefusion files, the final result JSON, and completion marker now exist. No A1 process was killed or restarted; validate hashes/provenance/metrics next.
+- **IN PROGRESS** — official NightOwls ZIP downloader PID `15200` remains active on the isolated E: root; observed ZIP size 13,480,124,416 bytes; no duplicate downloader was started.
