@@ -262,6 +262,48 @@ def inspect_split(
     }
 
 
+def _validate_dataset_import_manifests(
+    paths: Iterable[str | Path],
+    *,
+    video_root: str | Path,
+    golden_ground_truth_sha256: str,
+    train_ground_truth_sha256: str | None,
+) -> list[dict[str, Any]]:
+    from .public_dataset_import import load_import_manifest
+
+    root = Path(video_root)
+    validated: list[dict[str, Any]] = []
+    for path in paths:
+        manifest = load_import_manifest(path)
+        output_sha = manifest.get("output", {}).get("ground_truth_sha256")
+        if output_sha not in {golden_ground_truth_sha256, train_ground_truth_sha256}:
+            raise ValueError(
+                f"{path}: imported ground-truth SHA does not match current TRAIN/GOLDEN JSONL"
+            )
+        if not manifest.get("terms_acknowledged"):
+            raise ValueError(f"{path}: public dataset terms were not acknowledged at import time")
+        for source_file in manifest.get("source_files", []):
+            if not isinstance(source_file, dict):
+                raise ValueError(f"{path}: source_files entry must be an object")
+            relative = source_file.get("path")
+            expected_sha = source_file.get("sha256")
+            if not isinstance(relative, str) or not relative:
+                raise ValueError(f"{path}: source_files path must be non-empty")
+            if not isinstance(expected_sha, str) or len(expected_sha) != 64:
+                raise ValueError(f"{path}: source_files SHA-256 must be 64-hex")
+            source_path = root / relative
+            if not source_path.is_file():
+                raise FileNotFoundError(source_path)
+            actual_sha = sha256_file(source_path)
+            if actual_sha != expected_sha:
+                raise ValueError(
+                    f"{path}: source file hash mismatch for {relative}: "
+                    f"recorded={expected_sha} actual={actual_sha}"
+                )
+        validated.append(manifest)
+    return validated
+
+
 def inspect_corpus(
     *,
     video_root: str | Path,
