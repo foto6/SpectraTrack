@@ -5,7 +5,12 @@ import cv2
 import numpy as np
 import pytest
 
-from spectratrack.public_dataset_import import import_crowdhuman, import_dancetrack, import_mot17
+from spectratrack.public_dataset_import import (
+    import_crowdhuman,
+    import_dancetrack,
+    import_mot17,
+    import_nightowls,
+)
 from spectratrack.qa_benchmark import evaluate_frames, load_ground_truth
 from spectratrack.vnext_qa import build_frozen_manifest, inspect_corpus
 
@@ -312,7 +317,7 @@ def test_import_dancetrack_reuses_mot_geometry_without_mot17_semantics(tmp_path:
     assert rows[0]["tags"] == []
     assert rows[0]["objects"][0]["id"] == "DanceTrack:dancetrack0001:4"
     assert rows[0]["objects"][0]["bbox"] == [0.0, 0.0, 10.0, 20.0]
-    assert rows[0]["objects"][0]["attributes"] if "attributes" in rows[0]["objects"][0] else [] == []
+    assert rows[0]["objects"][0].get("attributes", []) == []
     assert manifest["dataset"]["split"] == "val"
     assert manifest["tracking_supported"] is True
     assert manifest["conversion_settings"]["trailing_fields"].startswith("required constant")
@@ -353,6 +358,269 @@ def test_import_dancetrack_validates_seqinfo_image_dimensions(tmp_path: Path):
             output_manifest=tmp_path / "bad.import.json",
             split="val",
             importer_source_commit="2" * 40,
+            acknowledge_terms=True,
+        )
+
+
+def _nightowls_sdk_fixture(root: Path):
+    sdk = root / "nightowlsapi"
+    (sdk / "python").mkdir(parents=True)
+    (sdk / "README.md").write_text(
+        "NightOwls API\nLicense: non-commercial research only\n",
+        encoding="utf-8",
+    )
+    (sdk / "python" / "coco.py").write_text("# official COCO-compatible loader fixture\n", encoding="utf-8")
+    (sdk / "python" / "eval.py").write_text(
+        "annFile = 'nightowls_validation.json'\n",
+        encoding="utf-8",
+    )
+    (sdk / "python" / "eval_MR_multisetup.py").write_text(
+        "catIds = [1]  # pedestrian evaluation\n",
+        encoding="utf-8",
+    )
+
+
+def _nightowls_fixture(root: Path, *, missing_tracking=False):
+    _nightowls_sdk_fixture(root)
+    image_dir = root / "nightowls_validation"
+    for index in range(4):
+        _write_image(image_dir / f"frame_{index:02d}.png", width=1024, height=640)
+
+    images = [
+        {
+            "id": 100 + index,
+            "file_name": f"frame_{index:02d}.png",
+            "width": 1024,
+            "height": 640,
+            "daytime": "night",
+            "recordings_id": 7.0,
+            "timestamp": 1000 + index * 10,
+        }
+        for index in range(4)
+    ]
+    annotations = [
+        {
+            "id": 1,
+            "image_id": 100,
+            "category_id": 1,
+            "bbox": [10, 20, 20, 70],
+            "area": 1400,
+            "tracking_id": None if missing_tracking else 55,
+            "occluded": False,
+            "difficult": False,
+            "pose_id": 1,
+            "ignore": 0,
+            "truncated": False,
+        },
+        {
+            "id": 2,
+            "image_id": 100,
+            "category_id": 2,
+            "bbox": [100, 20, 25, 75],
+            "area": 1875,
+            "tracking_id": 77,
+            "occluded": False,
+            "difficult": False,
+            "pose_id": 2,
+            "ignore": 0,
+            "truncated": False,
+        },
+        {
+            "id": 3,
+            "image_id": 100,
+            "category_id": 4,
+            "bbox": [200, 20, 50, 80],
+            "area": 4000,
+            "tracking_id": 88,
+            "occluded": None,
+            "difficult": None,
+            "pose_id": 5,
+            "ignore": 1,
+            "truncated": False,
+        },
+        {
+            "id": 4,
+            "image_id": 101,
+            "category_id": 1,
+            "bbox": [12, 21, 20, 70],
+            "area": 1400,
+            "tracking_id": 55,
+            "occluded": True,
+            "difficult": True,
+            "pose_id": 2,
+            "ignore": 0,
+            "truncated": True,
+        },
+        {
+            "id": 5,
+            "image_id": 102,
+            "category_id": 1,
+            "bbox": [300, 100, 30, 100],
+            "area": 3000,
+            "tracking_id": 66,
+            "occluded": False,
+            "difficult": False,
+            "pose_id": 1,
+            "ignore": 1,
+            "truncated": False,
+        },
+    ]
+    data = {
+        "images": images,
+        "annotations": annotations,
+        "categories": [
+            {"id": 1, "name": "pedestrian"},
+            {"id": 2, "name": "bicycledriver"},
+            {"id": 3, "name": "motorbikedriver"},
+            {"id": 4, "name": "ignore"},
+        ],
+        "poses": [
+            {"id": 1, "name": "standing"},
+            {"id": 2, "name": "walking"},
+            {"id": 5, "name": "unknown"},
+        ],
+    }
+    (root / "nightowls_validation.json").write_text(
+        json.dumps(data),
+        encoding="utf-8",
+    )
+
+
+def test_import_nightowls_preserves_official_semantics_and_tracking(tmp_path: Path):
+    root = tmp_path / "NightOwls"
+    root.mkdir()
+    _nightowls_fixture(root)
+    gt = tmp_path / "nightowls.jsonl"
+    import_manifest = tmp_path / "nightowls.import.json"
+
+    manifest = import_nightowls(
+        dataset_root=root,
+        annotations="nightowls_validation.json",
+        images_dir="nightowls_validation",
+        sdk_dir="nightowlsapi",
+        output_ground_truth=gt,
+        output_manifest=import_manifest,
+        importer_source_commit="9" * 40,
+        acknowledge_terms=True,
+    )
+
+    rows = _read_jsonl(gt)
+    assert len(rows) == 4
+    assert manifest["dataset"]["split"] == "validation"
+    assert manifest["tracking_supported"] is True
+    assert manifest["tracking_contract"]["repeated_trajectory_observed"] is True
+    assert manifest["stats"]["rider_or_other_classes_omitted"] == 1
+    assert manifest["stats"]["official_ignore_regions"] == 1
+
+    first = rows[0]
+    assert first["video"] == "golden/public/nightowls-val/recording-7"
+    assert first["frame"] == 0
+    assert first["source_frame"] == 100
+    assert first["source_sequence"] == "NightOwls:recording-7"
+    assert first["tags"] == ["night_dark"]
+    scored = [obj for obj in first["objects"] if not obj.get("ignore", False)]
+    ignored = [obj for obj in first["objects"] if obj.get("ignore", False)]
+    assert [obj["id"] for obj in scored] == ["NightOwls:7:55"]
+    assert len(ignored) == 1
+    assert ignored[0]["attributes"] == ["nightowls_official_ignore_region"]
+    assert all("bicycledriver" not in obj.get("attributes", []) for obj in first["objects"])
+
+    second_scored = [obj for obj in rows[1]["objects"] if not obj.get("ignore", False)][0]
+    assert second_scored["id"] == "NightOwls:7:55"
+    assert "nightowls_occluded_true" in second_scored["attributes"]
+    assert "nightowls_difficult_true" in second_scored["attributes"]
+    assert "nightowls_pose_walking" in second_scored["attributes"]
+    assert "nightowls_truncated_true" in second_scored["attributes"]
+
+    parsed = load_ground_truth(gt)
+    assert parsed[0].objects[0].object_id == "NightOwls:7:55"
+
+    report = inspect_corpus(
+        video_root=root,
+        golden_ground_truth=gt,
+        coverage_profile="public-dataset",
+        dataset_import_manifests=[import_manifest],
+    )
+    assert report["valid"]
+    assert report["golden"]["videos"][0]["source_kind"] == "frame_images"
+    assert report["golden"]["videos"][0]["source_count"] == 4
+
+
+def test_import_nightowls_disables_tracking_when_official_ids_are_incomplete(tmp_path: Path):
+    root = tmp_path / "NightOwls"
+    root.mkdir()
+    _nightowls_fixture(root, missing_tracking=True)
+    gt = tmp_path / "nightowls.jsonl"
+
+    manifest = import_nightowls(
+        dataset_root=root,
+        annotations="nightowls_validation.json",
+        images_dir="nightowls_validation",
+        sdk_dir="nightowlsapi",
+        output_ground_truth=gt,
+        output_manifest=tmp_path / "nightowls.import.json",
+        importer_source_commit="8" * 40,
+        acknowledge_terms=True,
+    )
+
+    assert manifest["tracking_supported"] is False
+    assert manifest["tracking_contract"]["all_scored_pedestrians_have_valid_tracking_id"] is False
+    rows = _read_jsonl(gt)
+    scored = [
+        obj
+        for row in rows
+        for obj in row["objects"]
+        if not obj.get("ignore", False)
+    ]
+    assert all("id" not in obj for obj in scored)
+
+
+def test_import_nightowls_slice_is_deterministic_and_tracking_disabled(tmp_path: Path):
+    root = tmp_path / "NightOwls"
+    root.mkdir()
+    _nightowls_fixture(root)
+
+    manifests = []
+    for suffix in ("a", "b"):
+        manifest = import_nightowls(
+            dataset_root=root,
+            annotations="nightowls_validation.json",
+            images_dir="nightowls_validation",
+            sdk_dir="nightowlsapi",
+            output_ground_truth=tmp_path / f"nightowls-{suffix}.jsonl",
+            output_manifest=tmp_path / f"nightowls-{suffix}.import.json",
+            slice_frames=3,
+            slice_seed="round2-fixed-seed",
+            importer_source_commit="7" * 40,
+            acknowledge_terms=True,
+        )
+        manifests.append(manifest)
+
+    assert manifests[0]["slice"]["selected_image_ids"] == manifests[1]["slice"]["selected_image_ids"]
+    assert manifests[0]["slice"]["selected_image_ids_sha256"] == manifests[1]["slice"]["selected_image_ids_sha256"]
+    assert manifests[0]["tracking_supported"] is False
+    assert manifests[0]["slice"]["tracking_supported"] is False
+    assert len(manifests[0]["slice"]["selected_image_ids"]) == 3
+
+
+def test_import_nightowls_rejects_wrong_pedestrian_category_contract(tmp_path: Path):
+    root = tmp_path / "NightOwls"
+    root.mkdir()
+    _nightowls_fixture(root)
+    path = root / "nightowls_validation.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["categories"][0]["name"] = "person"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="id=1/name=pedestrian"):
+        import_nightowls(
+            dataset_root=root,
+            annotations="nightowls_validation.json",
+            images_dir="nightowls_validation",
+            sdk_dir="nightowlsapi",
+            output_ground_truth=tmp_path / "bad.jsonl",
+            output_manifest=tmp_path / "bad.import.json",
+            importer_source_commit="6" * 40,
             acknowledge_terms=True,
         )
 
