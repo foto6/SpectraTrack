@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import argparse
 import hashlib
 import json
@@ -40,6 +40,7 @@ class ResearchScenario:
     replay: DetectionReplay
     truth_by_frame: dict[int, tuple[TruthObject, ...]]
     focus: str
+    ignored_bboxes_by_frame: dict[int, tuple[BBox, ...]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1054,6 +1055,15 @@ def _match_truth(
     return {row: column for row, column in _maximize_assignment(scores)}
 
 
+def _track_overlaps_ignored_region(
+    track: TrackView,
+    ignored_bboxes: tuple[BBox, ...],
+    *,
+    threshold: float = DEFAULT_MATCH_IOU,
+) -> bool:
+    return any(bbox_iou(track.bbox, ignored_bbox) >= threshold for ignored_bbox in ignored_bboxes)
+
+
 def evaluate_tracking(
     scenario: ResearchScenario,
     outputs: dict[int, list[TrackView]],
@@ -1081,8 +1091,13 @@ def evaluate_tracking(
         matches = _match_truth(truth, tracks)
         matched_gt += len(matches)
         used_tracks = {tracks[column].track_id for column in matches.values()}
+        ignored_bboxes = scenario.ignored_bboxes_by_frame.get(frame.frame, ())
         for track in tracks:
-            if track.missed == 0 and track.track_id not in used_tracks:
+            if (
+                track.missed == 0
+                and track.track_id not in used_tracks
+                and not _track_overlaps_ignored_region(track, ignored_bboxes)
+            ):
                 false_track_ids.add(track.track_id)
 
         visible_ids = {item.object_id for item in truth}
@@ -1282,8 +1297,13 @@ def mine_current_failure_windows(
         tracks = outputs.get(frame.frame, [])
         matches = _match_truth(truth, tracks)
         used_track_ids = {tracks[column].track_id for column in matches.values()}
+        ignored_bboxes = scenario.ignored_bboxes_by_frame.get(frame.frame, ())
         for track in tracks:
-            if track.missed == 0 and track.track_id not in used_track_ids:
+            if (
+                track.missed == 0
+                and track.track_id not in used_track_ids
+                and not _track_overlaps_ignored_region(track, ignored_bboxes)
+            ):
                 false_track_first_frame.setdefault(track.track_id, frame.frame)
 
         for truth_index, truth_item in enumerate(truth):
@@ -1639,22 +1659,32 @@ def scenario_from_canonical_ground_truth(
     label: str = "person",
 ) -> ResearchScenario:
     """Bind canonical QA GT to one immutable replay without exposing GT IDs to the tracker."""
-    replay_frames = {frame.frame for frame in replay.frames}
-    rows = [
-        frame
+    rows_by_frame = {
+        frame.frame: frame
         for frame in ground_truth
-        if frame.video == replay.metadata.video and frame.frame in replay_frames
-    ]
-    if not rows:
+        if frame.video == replay.metadata.video
+    }
+    replay_frame_ids = [frame.frame for frame in replay.frames]
+    missing_frames = [frame_id for frame_id in replay_frame_ids if frame_id not in rows_by_frame]
+    if missing_frames:
+        preview = ", ".join(str(frame_id) for frame_id in missing_frames[:10])
+        suffix = "" if len(missing_frames) <= 10 else f" (+{len(missing_frames) - 10} more)"
         raise ValueError(
-            f"ground truth has no frames for replay video {replay.metadata.video!r} within replay scope"
+            f"canonical ground truth is missing replay frame(s) for "
+            f"{replay.metadata.video!r}: {preview}{suffix}"
         )
 
-    truth_by_frame: dict[int, tuple[TruthObject, ...]] = {frame.frame: () for frame in replay.frames}
-    for frame in rows:
+    truth_by_frame: dict[int, tuple[TruthObject, ...]] = {}
+    ignored_bboxes_by_frame: dict[int, tuple[BBox, ...]] = {}
+    for replay_frame in replay.frames:
+        frame = rows_by_frame[replay_frame.frame]
         objects: list[TruthObject] = []
+        ignored_bboxes: list[BBox] = []
         for obj in frame.objects:
-            if obj.ignore or obj.label != label:
+            if obj.label != label:
+                continue
+            if obj.ignore:
+                ignored_bboxes.append(obj.bbox)
                 continue
             if obj.object_id is None:
                 raise ValueError(
@@ -1662,14 +1692,15 @@ def scenario_from_canonical_ground_truth(
                 )
             objects.append(TruthObject(object_id=obj.object_id, bbox=obj.bbox, label=obj.label))
         truth_by_frame[frame.frame] = tuple(objects)
+        ignored_bboxes_by_frame[frame.frame] = tuple(ignored_bboxes)
 
     return ResearchScenario(
         name=f"canonical-replay:{replay.metadata.video}",
         replay=replay,
         truth_by_frame=truth_by_frame,
         focus="current-vs-ambiguity-guard on identical canonical A1 replay bytes",
+        ignored_bboxes_by_frame=ignored_bboxes_by_frame,
     )
-
 
 def run_scored_replay_candidate(
     scenario: ResearchScenario,
