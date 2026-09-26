@@ -158,3 +158,77 @@ Rerun finalists on the exact A5 corpus revision, especially:
 - tiny-person segments.
 
 Do not use synthetic tests or GitHub Actions hardware as evidence of target RX 5700 XT quality-per-compute.
+
+
+## Round 2 strict candidate contract
+
+Broad adaptive enhancement is no longer a production candidate.
+
+Round-2 finalist configuration is fixed before held-out evaluation:
+
+- selective gate: `weak-person`;
+- max enhanced ROIs per source frame: `1`;
+- raw corroboration: required;
+- baseline: enhancement OFF;
+- candidates: `bilateral`, `current_adaptive_cached`, and `sharpen` only while it remains competitive.
+
+Do not retune these gates after viewing NightOwls validation/slice candidate results.
+
+The verified interrupted target-PC MOT17 artifact is summarized in:
+
+`round2_mot17_weak1_verified.json`
+
+It is **pre-fusion evidence only**. Its recovered-GT / FP values must not be used as the final enhancement decision.
+
+## Post-fusion quality/cost summary
+
+A3 does not implement or fork A1 final fusion. After A1/A5 produces canonical post-fusion OFF and strict-candidate result JSON files, summarize them together with the matching strict A3 profile:
+
+```powershell
+python -m spectratrack.research.strict_enhancement_summary \
+  --baseline-result C:\path\off.postfusion.json \
+  --candidate-result C:\path\bilateral.postfusion.json \
+  --a3-profile C:\path\a3-strict-profile.json \
+  --operation bilateral \
+  --output C:\path\bilateral.strict-summary.json
+```
+
+Supported strict operations:
+
+- `bilateral`;
+- `current_adaptive_cached`;
+- `sharpen`.
+
+The summary refuses profiles unless provenance shows:
+
+- `selective_gate=weak-person`;
+- `max_enhanced_rois_per_frame=1`;
+- raw corroboration enabled;
+- matching GT hash/evaluation settings;
+- matching model hash when available.
+
+It reports:
+
+- recovered/lost GT after fusion;
+- post-fusion recall/precision and deltas;
+- post-fusion FP delta;
+- canonical A5 bbox-stability deltas;
+- raw and extra enhancement ONNX calls;
+- recovered GT per extra call;
+- FP cost per recovered GT;
+- wall-time / processing-seconds-per-source-second deltas;
+- A5-provided `by_tag`, `by_attribute`, and `by_size` subgroup deltas.
+
+The subgroup layer never invents NightOwls semantics. Low-light, occlusion, difficulty, pose, small/distant or other slices are reported only when the A5 canonical import exposes source-backed tags/attributes/size bins.
+
+## NightOwls held-out gate
+
+`nightowls-public-r1` is the primary Round-2 night enhancement benchmark once A5 freezes the official validation import/slice.
+
+NightOwls validation/slice is held-out. Candidate results may decide accept/reject, but they must not be used to retune the fixed weak-person gate or enhancement budget in this cycle.
+
+LLVIP may be used only as secondary visible/RGB evidence. IR/thermal frames are not SpectraTrack detector input.
+
+If OFF is not beaten convincingly on post-fusion quality per compute and stability, the A3 handoff decision is:
+
+`ENHANCEMENT OFF`
