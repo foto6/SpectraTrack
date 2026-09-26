@@ -194,3 +194,12 @@ Unlock only when:
 - **DONE** — A1 branch advanced handoff-only to `3dc31c8fa8b323ce86afc14c3105a0c2247a2c48`.
 - **DONE** — issue #18 records the same CrowdHuman FAIL / hard-NMS retain decision.
 - No production/runtime code was changed by this final handoff update.
+
+
+## A3 pre-NightOwls audit
+
+- **DONE** — existing `a3-round2-weak1.json` re-audited without rerun; SHA `cad760e97e32380ac3da87d66f56bfc5d2a11097839b45e1806b3d9469e291a6`.
+- **LOCKED FINALISTS** — OFF / bilateral / current_adaptive_cached. Sharpen remains excluded before held-out.
+- bilateral: 15 recovered / 30 extra calls / +372 pre-fusion FP.
+- current_adaptive_cached: 101 recovered / 158 extra calls / +2170 pre-fusion FP.
+- **WAITING** — no separate post-fusion A3 result exists in the current runs root; final ON/OFF decision requires A5 frozen NightOwls and identical post-fusion held-out evaluation.
