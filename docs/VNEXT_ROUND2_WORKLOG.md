@@ -2041,3 +2041,93 @@ It remains useful research evidence, but is not eligible for Round-2 production 
 NightOwls is no longer required to rescue/re-evaluate this failed fusion candidate in Round 2. It remains required for A3 enhancement ON/OFF validation.
 
 At the same checkpoint, official NightOwls archive download is active on E:. Live observed size increased from 14,594,334,720 to 14,619,402,240 bytes over five seconds (~25.4% of 57,481,286,834 bytes).
+
+
+### DONE — existing A3 strict-profile artifact audited; no rerun performed
+
+Verified existing artifact:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a3-round2-weak1.json`
+
+Integrity/provenance:
+
+- SHA-256: `cad760e97e32380ac3da87d66f56bfc5d2a11097839b45e1806b3d9469e291a6`
+- size: `8,933` bytes
+- schema: `spectratrack-vnext-enhancement-profile-v1`
+- artifact source commit: `86b1460b6f9879038de92eb1e1341a96221e6c03`
+- corpus revision: `mot17-public-r1`
+- strict selective gate: `weak-person`
+- raw corroboration required: true
+- shared actual low-level ONNX calls: `2726`
+- wall time: `437.3429532 s`
+- sampled source duration: `10.0 s`
+
+No new A3 inference was run and the artifact was not overwritten.
+
+Existing strict-profile ratios:
+
+**bilateral**
+- recovered GT: 15
+- lost GT: 0
+- enhanced calls: 30
+- recovered GT / extra call: `0.5000`
+- pre-fusion FP delta: `+372`
+- FP / recovered GT: `24.8`
+- bbox IoU delta: `+0.00034427`
+- center jitter delta: `+0.00003574`
+- size jitter delta: `-0.00012873`
+- incremental operation + enhanced-detector time: `3951.023 ms`
+- incremental ms / recovered GT: `263.402`
+
+**current_adaptive_cached**
+- recovered GT: 101
+- lost GT: 0
+- enhanced calls: 158
+- recovered GT / extra call: `0.639241`
+- pre-fusion FP delta: `+2170`
+- FP / recovered GT: `21.4851`
+- bbox IoU delta: `+0.00056160`
+- center jitter delta: `+0.00096054`
+- size jitter delta: `+0.00105200`
+- incremental operation + enhanced-detector time: `22369.101 ms`
+- incremental ms / recovered GT: `221.476`
+
+**sharpen**
+- recovered GT: 87
+- lost GT: 0
+- enhanced calls: 138
+- recovered GT / extra call: `0.630435`
+- pre-fusion FP delta: `+1890`
+- FP / recovered GT: `21.7241`
+- bbox IoU delta: `+0.00024108`
+- center jitter delta: `+0.00117812`
+- size jitter delta: `+0.00145353`
+- incremental operation + enhanced-detector time: `18981.214 ms`
+- incremental ms / recovered GT: `218.175`
+
+The A3 specialist handoff had already frozen the held-out candidate set before NightOwls results:
+
+1. enhancement OFF
+2. bilateral
+3. current_adaptive_cached
+
+Sharpen remains excluded before held-out because it is not sufficiently competitive on the development evidence.
+
+### VERIFIED — no existing post-fusion A3 result artifact found in current runs root
+
+The current run directory contains the existing A3 quality audit/profile artifacts but no separate strict post-fusion result artifact.
+
+Therefore the recovered-GT and FP deltas above remain **pre-fusion development evidence** and cannot decide enhancement ON/OFF.
+
+### DECISION — pre-NightOwls shortlist unchanged
+
+- OFF remains first-class baseline.
+- bilateral remains finalist.
+- current_adaptive_cached remains finalist.
+- sharpen remains excluded.
+- no threshold/gate retuning.
+- final A3 decision still requires frozen NightOwls bytes/GT and post-fusion quality/cost/stability evaluation on identical evidence.
+
+### NEXT
+
+Wait for A5 to finish and freeze the official NightOwls corpus/slice. Do not start held-out enhancement inference before that immutable revision/hash exists.
