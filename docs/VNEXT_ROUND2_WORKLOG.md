@@ -636,3 +636,19 @@ Validated result:
 The new A1 runner can resume per-video prefusion evidence only under matching source/model/GT/corpus/config provenance. It supports MOT17 image sequences and CrowdHuman direct images and can compare hard-NMS / NMM / weighted / evidence-aware on the same detector evidence.
 
 This closes the tooling gap only. The actual held-out MOT17 and CrowdHuman runs are still NOT DONE because target-PC control is currently blocked.
+
+
+## 2026-09-26 — quick status check
+
+### DONE
+
+- Confirmed the target PC still answers Remote Desktop Commander ping.
+- A1 resumable public-corpus runner remains CI-green at research code HEAD `fd9cd0f776d1abb86b7063731af9a77343fc37c8`; role handoff docs are at `9c52142f4d8413f2c56f8b77d5dcb31df9fc2598`.
+- Git-side Round-2 coordination remains intact.
+
+### BLOCKED / NOT DONE
+
+- Detailed Remote Desktop Commander file/process reads still time out, so local A2/A3 artifact state cannot yet be safely verified.
+- A1 held-out MOT17/CrowdHuman target-PC runs are still not done.
+- No A2/A3 jobs are being blindly restarted while local artifact/process state is unverified.
+- Production integration remains locked.
