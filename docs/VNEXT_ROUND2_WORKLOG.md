@@ -1833,3 +1833,116 @@ NightOwls continued untouched:
 ### NEXT
 
 Validate the completed A1 CrowdHuman JSON and completion marker, compute hashes, confirm all 4370 images are represented under the frozen no-retune policy, then record the dense-safety decision before touching A3/A4.
+
+
+## 2026-09-27 — A1 CrowdHuman dense-safety final validation
+
+### DONE — artifact integrity and frozen provenance verified
+
+Completed artifact:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a1-round2-crowdhuman.json`
+
+Completion marker:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a1-round2-crowdhuman.json.complete.json`
+
+Verified hashes:
+
+- result SHA-256: `c09f91ec4c27f28057c8937c84390e10c80cbd16ae56fe3840cbf1363055690a`
+- completion-marker SHA-256: `23f3cc80df109fc1e0d93851b14f57a6f432e7e02039dd343b9b20e249de5957`
+- frozen CrowdHuman GT SHA-256: `2576c6a1db502cef1ffd103337b7728e628d6dfca8bedb3df9d606ce2f23dd0f`
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`
+
+Marker/source provenance:
+
+- schema: `spectratrack-vnext-a1-completion-v1`
+- corpus revision: `crowdhuman-val-fbox-r1`
+- experiment source commit: `06b3fee1791aeb7565b4e09fc874c44da2690252`
+- result size: `4,772,059` bytes
+- provider priority: `DmlExecutionProvider` with CPU fallback
+- input size: 960
+- person floor: 0.12
+- decoder-local NMS IoU: 0.45
+- tile / overlap: 640 / 0.20
+- match / fusion IoU: 0.50 / 0.55
+- evidence weak / solo / strong: 0.12 / 0.20 / 0.35
+- evidence minimum independent sources: 2
+
+Coverage/integrity:
+
+- frame_count: `4370`
+- selected IDs: `4370`
+- unique selected IDs: `4370`
+- prefusion artifacts: `4370`
+
+Compute:
+
+- benchmark wall: `5298.5990031 s`
+- actual ONNX calls: `41,578`
+- represented detector wall: `4962.0631030 s`
+- policy runs: `4370`
+
+### DONE — CrowdHuman aggregate metrics
+
+Hard-NMS control:
+
+- TP / FP / FN: `56,728 / 111,218 / 42,753`
+- precision: `0.3377752373`
+- recall: `0.5702395432`
+- F1: `0.4242503562`
+- bbox localization IoU: `0.7421247706`
+- fusion mistakes: `1022`
+
+Evidence-aware challenger:
+
+- TP / FP / FN: `56,025 / 90,541 / 43,456`
+- precision: `0.3822509995`
+- recall: `0.5631728672`
+- F1: `0.4554007974`
+- bbox localization IoU: `0.7500074527`
+- fusion mistakes: `520`
+
+Evidence-aware minus hard-NMS:
+
+- TP: `-703`
+- FP: `-20,677`
+- FN: `+703`
+- precision: `+4.447576 pp`
+- recall: `-0.706668 pp`
+- F1: `+3.115044 pp`
+- bbox localization IoU: `+0.007882682`
+- fusion mistakes: `-502` (`-49.119%`)
+
+Supporting rejected-policy evidence:
+
+- conservative-NMM: precision `0.321643556`, recall `0.601572160`, F1 `0.419169226`, bbox IoU `0.757733404`, fusion mistakes `520`
+- weighted: precision `0.315183938`, recall `0.589861381`, F1 `0.410840936`, bbox IoU `0.746784240`, fusion mistakes `520`
+
+### DECISION — evidence-aware FAILS the frozen CrowdHuman dense-safety gate
+
+The A1 handoff froze the decision rule **before** the result:
+
+evidence-aware passes only if precision, recall, F1 and bbox localization IoU are not lower than hard-NMS and fusion mistakes do not increase.
+
+Evidence-aware violates exactly one mandatory condition:
+
+- recall is lower by `0.706668 percentage points`.
+
+Therefore:
+
+- **evidence-aware = FAIL / REJECT for Round-2 production/integrator progression**
+- **hard-NMS = RETAIN CONTROL**
+- conservative-NMM and weighted remain rejected from MOT17 and are not resurrected
+- no threshold/config retuning is permitted from CrowdHuman held-out evidence
+- the positive MOT17 result remains valid research evidence, but it does not override the pre-registered dense-safety gate
+
+A1 now has no surviving new fusion challenger for production progression in Round 2. A1 NightOwls challenger testing is no longer required to rescue this candidate; any later NightOwls hard-NMS run would be baseline characterization only unless the architect explicitly opens a new research cycle.
+
+### NEXT
+
+- persist the same final decision into the A1-owned handoff/issue;
+- keep A2 decision unchanged: RETAIN CURRENT TRACKER;
+- continue A5 official NightOwls intake for A3's independent enhancement gate;
+- keep A4 parked until A3/public finalists are resolved;
+- do not retune A1 on held-out CrowdHuman/NightOwls.
