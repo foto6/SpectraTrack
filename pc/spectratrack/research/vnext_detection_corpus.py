@@ -372,7 +372,9 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
 
     for video, video_annotations in sorted(by_video.items()):
         prefusion_path = None if prefusion_dir is None else prefusion_dir / f"{_safe_stem(video)}.jsonl"
+        reused = False
         if args.resume and prefusion_path is not None and prefusion_path.is_file():
+            reused = True
             metadata, cached_frames, summary = read_prefusion_dump(prefusion_path)
             _validate_reusable_prefusion(
                 metadata,
@@ -412,7 +414,6 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
                     summary,
                 )
 
-        reused = bool(args.resume and prefusion_path is not None and prefusion_path.is_file())
         video_performance = _per_video_performance(summary, reused=reused)
         performance["per_video"][video] = video_performance
         performance["represented_detector_wall_s"] += video_performance["represented_detector_wall_s"]
