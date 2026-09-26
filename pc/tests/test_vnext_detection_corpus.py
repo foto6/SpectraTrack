@@ -8,7 +8,9 @@ import spectratrack.research.vnext_detection_corpus as corpus_module
 from spectratrack.research.vnext_detection_corpus import (
     attach_ground_truth,
     collect_corpus_video_frames,
+    _artifact_manifest,
     _per_video_performance,
+    _write_completion_marker,
     evaluate_methods,
     export_canonical_replays,
 )
@@ -317,6 +319,16 @@ def test_export_canonical_replays_uses_prefusion_without_inference(tmp_path):
     )
 
     assert set(outputs["clip"]) == {"hard-nms", "evidence-aware"}
+    artifacts = _artifact_manifest(
+        prefusion_dir=prefusion_dir,
+        replay_outputs=outputs,
+        videos=["clip"],
+    )
+    assert artifacts["prefusion"]["clip"]["size_bytes"] > 0
+    assert len(artifacts["prefusion"]["clip"]["sha256"]) == 64
+    assert set(artifacts["replays"]["clip"]) == {"hard-nms", "evidence-aware"}
+    assert all(len(item["sha256"]) == 64 for item in artifacts["replays"]["clip"].values())
+
     for method, path_text in outputs["clip"].items():
         path = replay_dir / f"clip.{method}.replay.jsonl"
         assert path_text == str(path)
@@ -324,4 +336,25 @@ def test_export_canonical_replays_uses_prefusion_without_inference(tmp_path):
         assert rows[0]["schema"] == "spectratrack-detection-replay-v1"
         assert rows[0]["config"]["cross_pass_fusion"]["method"] == method
         assert rows[1]["detections"][0]["appearance"] is None
+
+
+def test_completion_marker_hashes_final_result(tmp_path):
+    output = tmp_path / "heldout.json"
+    output.write_text('{"done": true}\n', encoding="utf-8")
+    report = {
+        "source_commit": "a" * 40,
+        "corpus_revision": "mot17-public-r1",
+        "ground_truth_sha256": "b" * 64,
+        "model_sha256": "c" * 64,
+    }
+
+    marker = _write_completion_marker(output, report)
+    payload = json.loads(marker.read_text(encoding="utf-8"))
+
+    assert payload["schema"] == "spectratrack-vnext-a1-completion-v1"
+    assert payload["source_commit"] == "a" * 40
+    assert payload["output"]["path"] == str(output)
+    assert payload["output"]["size_bytes"] == output.stat().st_size
+    assert len(payload["output"]["sha256"]) == 64
+    assert payload["output"]["mtime_ns"] == output.stat().st_mtime_ns
 
