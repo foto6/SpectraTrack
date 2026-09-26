@@ -1,17 +1,21 @@
 import json
 
+from spectratrack.qa_benchmark import GroundTruthFrame, GroundTruthObject
 from spectratrack.tracking_research import (
     AmbiguityGuardCurrentRunner,
     CurrentTrackerRunner,
     GlobalAssignmentCurrentRunner,
     ReferenceStyleTracker,
     _aggregate,
+    ambiguity_guard_promotion_gate,
+    compare_current_ambiguity_guard,
     bbox_stability_probe,
     current_failure_audit,
     evaluate_tracking,
     mine_current_failure_windows,
     run_loaded_replay,
     run_synthetic_bakeoff,
+    scenario_from_canonical_ground_truth,
     synthetic_scenarios,
 )
 
@@ -203,3 +207,99 @@ def test_research_report_quality_fields_are_json_serializable():
     encoded = json.dumps(report, sort_keys=True)
     assert '"current"' in encoded
     assert '"bbox_stability"' in encoded
+
+
+
+def _canonical_gt_from_scenario(scenario):
+    rows = []
+    for frame in scenario.replay.frames:
+        rows.append(
+            GroundTruthFrame(
+                video=scenario.replay.metadata.video,
+                frame=frame.frame,
+                tags=(),
+                objects=tuple(
+                    GroundTruthObject(
+                        object_id=item.object_id,
+                        label=item.label,
+                        bbox=item.bbox,
+                    )
+                    for item in scenario.truth_by_frame[frame.frame]
+                ),
+            )
+        )
+    return rows
+
+
+def test_round2_scored_replay_compares_current_and_guard_on_identical_bytes():
+    scenario = _scenario("nearby_same_class")
+    ground_truth = _canonical_gt_from_scenario(scenario)
+    report = compare_current_ambiguity_guard(
+        scenario.replay,
+        ground_truth,
+        subject_commit="372c96e71e504a54ea2ac027ab988dfba2bd1918",
+        ground_truth_hash="gt-sha",
+    )
+
+    assert report["replay_canonical_sha256"] == scenario.replay.canonical_sha256()
+    assert report["control"]["metrics"]["id_switches"] >= 2
+    assert report["candidate"]["metrics"]["id_switches"] == 0
+    assert report["control"]["metrics"]["tracking_recall"] == report["candidate"]["metrics"]["tracking_recall"]
+    assert report["promotion"]["passed"] is True
+    assert report["promotion"]["decision"] == "ADVANCE TO DANCETRACK ASSOCIATION-ONLY"
+    assert report["detector_policy_runs"] == 0
+    assert report["onnx_inference_calls"] == 0
+
+
+def test_canonical_gt_adapter_requires_stable_ids_but_never_mutates_replay():
+    import pytest
+
+    scenario = _scenario("camera_pan")
+    original_hash = scenario.replay.canonical_sha256()
+    ground_truth = _canonical_gt_from_scenario(scenario)
+    adapted = scenario_from_canonical_ground_truth(scenario.replay, ground_truth)
+
+    assert adapted.replay is scenario.replay
+    assert adapted.replay.canonical_sha256() == original_hash
+    assert all(item.appearance is None for frame in adapted.replay.frames for item in frame.detections)
+
+    first = ground_truth[0]
+    bad = [
+        GroundTruthFrame(
+            video=first.video,
+            frame=first.frame,
+            tags=first.tags,
+            objects=(GroundTruthObject(object_id=None, label="person", bbox=first.objects[0].bbox),),
+        )
+    ]
+    with pytest.raises(ValueError, match="stable object id"):
+        scenario_from_canonical_ground_truth(scenario.replay, bad)
+
+
+def test_round2_promotion_gate_retains_current_on_any_required_regression():
+    control = {
+        "tracking_recall": 0.90,
+        "id_switches": 100,
+        "fragmentations": 20,
+        "false_track_creations": 10,
+        "recovery_events": 5,
+        "mean_recovery_latency_frames": 2.0,
+        "recovered_same_id": 4,
+        "wrong_recovery": 1,
+        "mean_uninterrupted_track_length": 10.0,
+    }
+    candidate = dict(control)
+    candidate.update(
+        tracking_recall=0.897,
+        id_switches=91,
+        fragmentations=22,
+        false_track_creations=11,
+    )
+    verdict = ambiguity_guard_promotion_gate(control, candidate)
+
+    assert verdict["passed"] is False
+    assert verdict["decision"] == "RETAIN CURRENT TRACKER"
+    assert verdict["gates"]["tracking_recall_loss_max_0_25pp"] is False
+    assert verdict["gates"]["id_switch_improvement_min_10pct"] is False
+    assert verdict["gates"]["fragmentation_increase_max_5pct"] is False
+    assert verdict["gates"]["no_false_track_increase"] is False
