@@ -16,6 +16,10 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 ## Global gates
 
+- **DONE** — DanceTrack frozen: dancetrack-public-r1, corpus SHA df240532ad3f2099947f318b682737ccdb3e6345dc9da1e380ff4cab8d6c6b5c; 25 sequences / 25,508 frames / 225,148 people; validation clean.
+- **IN PROGRESS** — A1 CrowdHuman dense-safety running; ~20% image-level prefusion artifacts persisted at latest live check.
+- **BLOCKED** — NightOwls official archive is reachable but safe local storage is insufficient for archive + extraction on current C:/E: free space.
+
 - **DONE** — A1 full MOT17 held-out complete: evidence-aware F1 0.527449 vs hard-NMS 0.516517, FP -3141, TP +132, fusion mistakes 1016 -> 540; result/marker/replays verified.
 - **DONE (download integrity)** — DanceTrack val.zip complete and valid with 25 GT files; A5 local import/freeze may proceed.
 - **BLOCKED** — NightOwls official local bytes/freeze still absent.
@@ -59,7 +63,7 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 Current known Round-2 head:
 
-`agent/vnext-detection @ 89d58aad9890949ce410ed95e1112bcd3cd1cfd6`
+`agent/vnext-detection @ 043931fb0bda2a10716ca19d2381adbd56c8d59b`
 
 Done:
 
@@ -154,7 +158,7 @@ Not done:
 
 Current known Round-2 head:
 
-`agent/vnext-qa @ bf63820f81cd13fdfae8680a200e25f030d314fc`
+`agent/vnext-qa @ 6760ac740b9875f2d0754e3cf5870a41b2f52a0e`
 
 Done:
 
