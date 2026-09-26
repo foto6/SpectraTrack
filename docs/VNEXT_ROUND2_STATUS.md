@@ -154,3 +154,11 @@ Unlock only when:
 - **NEEDS VERIFICATION** — A2 audit output files after the interrupted run.
 - **NEEDS VERIFICATION** — A3 `a3-round2-weak1.json` completion after the interrupted run.
 - **RULE** — do not restart A2/A3 blindly until existing local process/artifact state is verified.
+
+
+## Current execution blocker
+
+- **BLOCKED (control channel)** — target PC Remote Desktop Commander substantive operations are timing out.
+- This does **not** mean A2/A3 benchmarks failed.
+- Do not restart A2/A3 until existing local process/artifact state is verified.
+- GitHub coordination, branch verification, and documentation remain available.
