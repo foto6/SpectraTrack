@@ -336,3 +336,217 @@ A1-A4 should report the relevant rows on the same frozen public/private revision
 
 Public datasets substantially reduce manual annotation work, but they do not prove performance on
 the user's CCTV. Product GO still requires the small private holdout.
+# 5. DanceTrack Round-2 held-out association corpus
+
+Official source:
+
+- `https://github.com/DanceTrack/DanceTrack`
+- official dataset link from that repository: `https://huggingface.co/datasets/noahcao/dancetrack`
+
+Terms recorded by A5:
+
+- annotations: CC BY 4.0;
+- dataset images/videos: non-commercial research only;
+- code: MIT.
+
+Raw DanceTrack media remains under the gitignored `benchmarks/vnext/qa/public/` area.
+
+Expected official layout under the selected dataset root:
+
+```text
+dancetrack/
+  train/
+    dancetrack0001/
+      img1/
+      gt/gt.txt
+      seqinfo.ini
+  val/
+    ...
+  test/
+    ...
+```
+
+Round-2 held-out import uses `val`:
+
+```powershell
+python -m spectratrack.vnext_qa import-dancetrack `
+  --dataset-root benchmarks/vnext/qa/public/DanceTrack/dancetrack `
+  --split val `
+  --output benchmarks/vnext/qa/imports/dancetrack-val.jsonl `
+  --manifest benchmarks/vnext/qa/imports/dancetrack-val.import.json `
+  --acknowledge-terms
+```
+
+Conversion contract:
+
+- reuses the existing generic MOT `seqinfo.ini`, MOT-row parser, 1-based xywh -> 0-based xyxy conversion, and source hashing;
+- stable canonical ID: `DanceTrack:<sequence>:<original-id>`;
+- original source frame remains in `source_frame`;
+- exact sequence remains in `source_sequence`;
+- official trailing fields must be exactly `1,1,1`; they are treated only as DanceTrack format constants;
+- no MOT17 class IDs, distractor categories, visibility bins, or semantic scene tags are inherited;
+- every sequence verifies seqinfo frame count and dimensions against the real images;
+- public test GT is not fabricated and `test` is rejected by the importer.
+
+Validate:
+
+```powershell
+python -m spectratrack.vnext_qa validate-corpus `
+  --video-root benchmarks/vnext/qa/public/DanceTrack/dancetrack `
+  --golden-ground-truth benchmarks/vnext/qa/imports/dancetrack-val.jsonl `
+  --coverage-profile public-dataset `
+  --dataset-import benchmarks/vnext/qa/imports/dancetrack-val.import.json `
+  --output benchmarks/vnext/qa/imports/dancetrack-val.validation.json
+```
+
+Freeze only after the real local dataset import/validation succeeds:
+
+```powershell
+python -m spectratrack.vnext_qa freeze-corpus `
+  --video-root benchmarks/vnext/qa/public/DanceTrack/dancetrack `
+  --golden-ground-truth benchmarks/vnext/qa/imports/dancetrack-val.jsonl `
+  --coverage-profile public-dataset `
+  --dataset-import benchmarks/vnext/qa/imports/dancetrack-val.import.json `
+  --revision dancetrack-public-r1 `
+  --reviewer "DanceTrack official validation GT" `
+  --confirm-public-dataset-terms `
+  --output benchmarks/vnext/qa/imports/dancetrack-public-r1.manifest.json
+```
+
+`dancetrack-public-r1` is a held-out A2 association/ID gate. Do not retune the Round-2 ambiguity candidate from its validation metrics.
+
+# 6. NightOwls Round-2 night corpus
+
+Use only the official NightOwls distribution and official SDK:
+
+- download page: `https://www.nightowls-dataset.org/download/`
+- official SDK: `https://gitlab.com/vgg/nightowlsapi`
+- validation images: `https://thor.robots.ox.ac.uk/~vgg/data/nightowls/python/nightowls_validation.zip`
+- validation annotations: `https://thor.robots.ox.ac.uk/~vgg/data/nightowls/python/nightowls_validation.json`
+
+Terms:
+
+- non-commercial research / teaching / personal experimentation;
+- citation required;
+- dataset or modified versions may not be redistributed.
+
+Example local setup from `pc/`:
+
+```powershell
+mkdir benchmarks\vnext\qa\public\NightOwls
+cd benchmarks\vnext\qa\public\NightOwls
+curl.exe -L https://thor.robots.ox.ac.uk/~vgg/data/nightowls/python/nightowls_validation.zip -o nightowls_validation.zip
+curl.exe -L https://thor.robots.ox.ac.uk/~vgg/data/nightowls/python/nightowls_validation.json -o nightowls_validation.json
+Expand-Archive .\nightowls_validation.zip -DestinationPath .
+git clone https://gitlab.com/vgg/nightowlsapi.git nightowlsapi
+cd ..\..\..\..
+```
+
+Point `--images-dir` at the extracted directory containing the official validation PNG files.
+
+Full validation import:
+
+```powershell
+python -m spectratrack.vnext_qa import-nightowls `
+  --dataset-root benchmarks/vnext/qa/public/NightOwls `
+  --annotations nightowls_validation.json `
+  --images-dir nightowls_validation `
+  --sdk-dir nightowlsapi `
+  --output benchmarks/vnext/qa/imports/nightowls-val.jsonl `
+  --manifest benchmarks/vnext/qa/imports/nightowls-val.import.json `
+  --acknowledge-terms
+```
+
+Fail-closed official semantics:
+
+- category id 1 must be named `pedestrian` and is the only scored target class;
+- pedestrian `ignore` is preserved;
+- the official category named `ignore` becomes a canonical ignore region;
+- bicycledriver, motorbikedriver and other non-pedestrian categories are never silently relabeled as ordinary pedestrians;
+- official `occluded`, `difficult`, `pose_id`, `truncated`, tracking id, recording id, timestamp and daytime metadata are preserved where present;
+- `night_dark` is added only when the official image metadata literally says `daytime=night`;
+- a stable canonical tracking ID is emitted only when all scored pedestrians have valid official `tracking_id` values and at least one repeated trajectory is observed;
+- canonical track ID is namespaced by recording: `NightOwls:<recording>:<tracking_id>`;
+- image ordering inside a recording is determined only from official timestamp/image metadata.
+
+The importer also hashes the local official SDK files used to establish the COCO/evaluation contract.
+
+## Optional deterministic Round-2 validation slice
+
+If full YOLO11x/960 validation is too expensive, freeze a slice **before any candidate result**:
+
+```powershell
+python -m spectratrack.vnext_qa import-nightowls `
+  --dataset-root benchmarks/vnext/qa/public/NightOwls `
+  --annotations nightowls_validation.json `
+  --images-dir nightowls_validation `
+  --sdk-dir nightowlsapi `
+  --slice-frames 5000 `
+  --slice-seed spectratrack-round2-nightowls-v1 `
+  --logical-prefix golden/public/nightowls-val-slice `
+  --output benchmarks/vnext/qa/imports/nightowls-val-slice.jsonl `
+  --manifest benchmarks/vnext/qa/imports/nightowls-val-slice.import.json `
+  --acknowledge-terms
+```
+
+Slice selection uses only official image/annotation metadata. It deterministically covers observed:
+
+- positive and negative/background images;
+- bbox-height strata;
+- occlusion;
+- difficulty;
+- pose;
+- official daytime metadata.
+
+No detector/candidate output participates in selection. Selected image IDs and their deterministic hash are recorded in the import manifest.
+
+Because a sparse slice breaks temporal continuity, `tracking_supported=false` for the slice even if the full official validation JSON contains valid tracking IDs. A1/A3 may share the frozen slice; A2 temporal conclusions require the full sequence import.
+
+Validate full or sliced import with the same canonical command:
+
+```powershell
+python -m spectratrack.vnext_qa validate-corpus `
+  --video-root benchmarks/vnext/qa/public/NightOwls `
+  --golden-ground-truth benchmarks/vnext/qa/imports/nightowls-val.jsonl `
+  --coverage-profile public-dataset `
+  --dataset-import benchmarks/vnext/qa/imports/nightowls-val.import.json `
+  --output benchmarks/vnext/qa/imports/nightowls-val.validation.json
+```
+
+Full validation freeze:
+
+```powershell
+python -m spectratrack.vnext_qa freeze-corpus `
+  --video-root benchmarks/vnext/qa/public/NightOwls `
+  --golden-ground-truth benchmarks/vnext/qa/imports/nightowls-val.jsonl `
+  --coverage-profile public-dataset `
+  --dataset-import benchmarks/vnext/qa/imports/nightowls-val.import.json `
+  --revision nightowls-public-r1 `
+  --reviewer "NightOwls official validation GT" `
+  --confirm-public-dataset-terms `
+  --output benchmarks/vnext/qa/imports/nightowls-public-r1.manifest.json
+```
+
+If a slice is used instead, its frozen revision must explicitly include `slice` and must never be reported as the full `nightowls-public-r1` result.
+
+# 7. Secondary Round-2 corpora
+
+LLVIP:
+
+- optional secondary evidence only;
+- visible/RGB side only;
+- detection/enhancement only;
+- documented detection boxes do not justify invented stable tracking identities.
+
+KAIST:
+
+- fallback only;
+- visible/RGB side only for SpectraTrack inference;
+- thermal/LWIR is not SpectraTrack production input;
+- do not activate it unless NightOwls/LLVIP evidence is insufficient.
+
+# 8. Private CCTV timing
+
+Do not ask for review of the existing 46-frame draft now.
+
+After public finalists are selected, reduce the private gate to roughly 10–15 hardest standalone frames plus 3–5 temporal episodes. Human action should be CONFIRM / FIX / REJECT. AI-only private annotations remain DRAFT and must never be frozen as `cctv-golden-r1`.
