@@ -16,6 +16,10 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 ## Global gates
 
+- **DONE** — A1 full MOT17 held-out complete: evidence-aware F1 0.527449 vs hard-NMS 0.516517, FP -3141, TP +132, fusion mistakes 1016 -> 540; result/marker/replays verified.
+- **DONE (download integrity)** — DanceTrack val.zip complete and valid with 25 GT files; A5 local import/freeze may proceed.
+- **BLOCKED** — NightOwls official local bytes/freeze still absent.
+
 - **IN PROGRESS** — A1 MOT17 held-out: 4/6 sequences complete (02/05/09/10); provisional evidence-aware aggregate F1 0.558231 vs hard-NMS 0.547869. Final decision waits for 11/13.
 
 - **DONE** — A2 Round-2 decision: RETAIN CURRENT TRACKER; ambiguity-guard rejected by real identical-replay ID-switch gate.
@@ -55,7 +59,7 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 Current known Round-2 head:
 
-`agent/vnext-detection @ 8f4f7a287311d864807e5d2b1a439b11cb1401b1`
+`agent/vnext-detection @ 89d58aad9890949ce410ed95e1112bcd3cd1cfd6`
 
 Done:
 
