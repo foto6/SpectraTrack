@@ -882,35 +882,142 @@ Validation on `fb7809d67851640a35c7ee848418497c8985c65c`:
 
 The ignored-region/missing-GT follow-up at `6895a398...` is still awaiting its own final CI result at the time of this checkpoint.
 
-### BLOCKED — mandatory identical real A1 replay comparison
+### DONE — mandatory identical real A1 replay comparison
 
-Current A1 branch observed:
+The target PC returned online after the earlier blocker. A2 did **not** restart detector inference. It inspected existing local artifacts and reused the already-produced canonical A1 control replay.
 
-`agent/vnext-detection @ bccf087df01b74bc463dcc3525e5665110ff8225`
+Execution worktree:
 
-A1's tracked Round-2 state explicitly says the target-PC held-out run/artifact state could not be positively recovered before the remote device went offline. In particular these local artifacts remain unverified/unavailable to A2:
+- `C:\Users\foto6\SpectraTrack-worktrees\a2`
+- branch: `agent/vnext-tracking`
+- exact scored-comparison subject commit: `9b733fdc40d71a81c190b7a3eefaa8ae9cc62fac`
+- `git fetch origin --prune`: completed before the run
+- worktree was clean before fast-forward to the exact remote A2 head.
 
-- `a1-round2-mot17-heldout.json`;
-- `a1-round2-prefusion-mot17`;
-- completion marker/log/timestamp/size/hash;
-- surviving canonical A1 replay bytes.
+Canonical control evidence:
 
-Remote target PC:
+- frozen corpus revision: `mot17-public-r1`
+- corpus SHA-256: `8bfa6e54ab7a0160c133d8c7d0a2896b7ba254a23cf06afee2d4c9c453836759`
+- GT path: `C:\Users\foto6\SpectraTrack-data\imports\mot17-public.jsonl`
+- GT SHA-256: `28dcb9d197e0a098a1efb097f1589177350192a8f5f1be3e2ab5cd18d8f205c7`
+- scored sequence: `golden/public/mot17/MOT17-04`
+- replay frames: 600
+- A1 replay path: `C:\Users\foto6\SpectraTrack-data\runs\a1-replay-mot17-04-600-hard-nms.jsonl`
+- replay source-file SHA-256: `b2719a2c93c353123437497ac9513033898d3d65750a32ed633d05e8fb65b2d4`
+- replay canonical SHA-256: `d27d45172a2df0a5c81ff83be2ceed03d2ed1eef922d3fde06f72b3126a89c59`
+- replay producer source commit: `943abee566c45116cee2b0e72b7d2c48753891ef`
+- detector/model: `current-yolo-onnx-prefusion`
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`
+- replay provider: `DmlExecutionProvider,CPUExecutionProvider`
+- input size: 960
+- person threshold: 0.12
+- fusion: hard NMS
+- original replay-generation work: 600 detector policy runs / 5400 ONNX calls.
+- **A2 tracker-only comparison itself:** 0 detector policy runs / **0 ONNX inference calls**.
 
-- device: `DESKTOP-64LCMQ8`;
-- current observed status: **offline**;
-- last seen: `2026-09-26T15:54:48.004Z`.
+Both candidates consumed the same immutable replay object/bytes and the same canonical GT. Stable GT identity stayed evaluator-only.
 
-GitHub contains no uploaded held-out A1 replay artifact to substitute for those bytes.
+Generated scored artifact:
 
-Therefore:
+- path: `C:\Users\foto6\SpectraTrack-data\runs\a2-round2-current-vs-ambiguity-mot17-04-hard-nms.json`
+- size: 3976 bytes
+- local timestamp: 2026-09-26 23:30
+- artifact SHA-256: `bdb5dacb673cc80c2d3a02f977d4d7a0a6c44dd50c685b4c174c9578f001927b`
+- schema: `spectratrack-tracking-round2-comparison-v1`
+- matching IoU: 0.30.
 
-- real A1 replay SHA-256: **UNAVAILABLE — artifact inaccessible**;
-- real current metrics: **NOT RUN**;
-- real ambiguity-guard metrics: **NOT RUN**;
-- promotion gate decision: **NOT YET EVALUATED**.
+#### Current control
 
-No `RETAIN` or `ADVANCE` decision is claimed without the required bytes.
+- tracking recall: **0.8584821095** (22985 / 26774 GT observations)
+- ID switches: **335**
+- fragmentations: **281**
+- false track creations: **147**
+- recovery events: **281**
+- mean recovery latency: **7.2811 frames**
+- same-ID recoveries: **165**
+- wrong-ID recoveries: **116**
+- mean uninterrupted track length: **41.1181 frames**
+- uninterrupted segments: 559
+- tracker-only wall time: 6.2113 s
+- tracker-only CPU time: 6.1563 s.
+
+#### current-ambiguity-guard
+
+- tracking recall: **0.8582953612** (22980 / 26774)
+- ID switches: **397**
+- fragmentations: **289**
+- false track creations: **147**
+- recovery events: **289**
+- mean recovery latency: **7.1349 frames**
+- same-ID recoveries: **166**
+- wrong-ID recoveries: **123**
+- mean uninterrupted track length: **36.9453 frames**
+- uninterrupted segments: 622
+- tracker-only wall time: 6.8605 s
+- tracker-only CPU time: 6.8281 s.
+
+#### Promotion gates
+
+Measured delta candidate - control:
+
+- tracking recall: -0.0001867483 = **-0.01867 percentage points** -> PASS vs max 0.25 pp loss;
+- ID switches: **+62**, equivalent to **-18.51% improvement** (18.51% worse) -> **FAIL** vs target >=10% improvement;
+- fragmentations: +8 = **+2.847%** -> PASS vs max +5%;
+- false track creations: +0 -> PASS;
+- recovery events: +8;
+- same-ID recoveries: +1;
+- wrong-ID recoveries: **+7**;
+- mean uninterrupted track length: **-4.1727 frames**.
+
+Promotion result:
+
+`RETAIN CURRENT TRACKER`
+
+This is the assigned fail-safe result, not an inconclusive outcome. The ambiguity guard does not advance.
+
+#### Failure-mechanism diff
+
+A second read-only diagnostic artifact compared exact GT switch-event keys between control and guard on the same replay:
+
+- path: `C:\Users\foto6\SpectraTrack-data\runs\a2-round2-switch-diff-mot17-04-hard-nms.json`
+- artifact SHA-256: `c5b0f5cd92a20ba443e183d3c81b8b8cf9f8bf5a45344be5df7a08054803d62c`
+- replay source SHA-256: `b2719a2c93c353123437497ac9513033898d3d65750a32ed633d05e8fb65b2d4`
+- current switch events: 335
+- guard switch events: 397
+- common switch events: 277
+- current-only switch events removed by guard: **58**
+- guard-only new switch events: **120**.
+
+Interpretation: ambiguity-scoped maximum-score assignment does correct some current greedy mistakes, but on this dense real sequence it creates roughly twice as many new identity discontinuities as it removes. The candidate optimizes local tracker association score, which is not sufficiently aligned with GT identity continuity to justify promotion.
+
+No alternate replay was searched for a more favorable result after this gate failed.
+
+### DONE — evaluator hardening / validation
+
+Two evaluator-only correctness issues were found before claiming the real result:
+
+1. canonical ignored person regions must suppress false-track counts;
+2. non-person tracks present in the A1 replay must not count as false **person** track creations.
+
+Fix commits:
+
+- `f8906a65b8bbe51c68dc0187aa0d335901656f71` — ignore-region support + strict replay-frame GT coverage;
+- `6895a39812e035bcf4dcde64788c28349cd987c5` — migrate/add ignore and missing-GT tests;
+- `8c5d5884a5f1ec54734d535cdf9aa806008a5c2b` — score false tracks only for the evaluation label;
+- `9b733fdc40d71a81c190b7a3eefaa8ae9cc62fac` — regression test for non-person false-track exclusion.
+
+Retained failed CI attempt:
+
+- run `36255182487` at `f8906a65...`: Ruff PASS, **1 failed / 168 passed**;
+- cause: an existing stable-ID test fixture supplied only one GT row, so the newly-correct missing-frame guard fired before the expected stable-ID error;
+- this was a test migration failure, not a tracker metric result;
+- fixed by `6895a398...`.
+
+Validation:
+
+- `6895a398...`, run `36255218128`: **171 passed**, full Windows CI green;
+- final scored code HEAD `9b733fdc...`, run `36255611233`: **172 passed in 1.47 s**, Ruff PASS, compile PASS, tracker smoke **1352.3 FPS**, crossing/reappearance smoke switches 0, diagnostics PASS, `SELF_CHECK=PASS`, standalone build + both CLI smokes PASS;
+- target-PC focused tests on exact `9b733fdc...`: **29 passed in 0.34 s**, focused Ruff PASS.
 
 ### WAITING — DanceTrack association-only
 
@@ -927,7 +1034,9 @@ A5 has implemented the isolated DanceTrack importer and canonical provenance plu
 
 Therefore A2 has not started the association-only DanceTrack experiment.
 
-When unlocked, phase 1 remains exactly:
+Additionally, `current-ambiguity-guard` already failed the mandatory identical-A1-replay promotion gate above, so it is **not advanced** to DanceTrack in this Round-2 state. Even if A5 freezes DanceTrack later, architect direction would be required to override the explicit `RETAIN CURRENT TRACKER` gate outcome.
+
+When/if explicitly re-opened after a valid freeze, phase 1 remains exactly:
 
 - canonical GT bbox -> tracker Detection;
 - person class/label;
