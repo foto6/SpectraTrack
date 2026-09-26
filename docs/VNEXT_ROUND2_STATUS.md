@@ -29,8 +29,8 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 - **DONE** — A1 resumable canonical public-corpus runner implemented and CI-validated.
 - **DONE** — A1 canonical replay-export fix validated; branch docs head `32ae820...` CI-green (`36242653285`).
 - **NOT DONE** — A1 held-out multi-sequence Round-2 validation (target-PC run still required).
-- **IN PROGRESS / needs verification** — A2 failure-audit runs and targeted candidate work.
-- **IN PROGRESS / needs verification** — A3 strict weak-evidence enhancement profile.
+- **DONE (old audit artifacts verified) / IN PROGRESS** — A2 hard-NMS/NMM/weighted current-tracker audit artifacts exist and are valid; required current-vs-ambiguity real-replay comparison remains NOT DONE.
+- **DONE (MOT17 strict-profile artifact verified) / IN PROGRESS** — A3 weak-person strict profile exists with measured quality/cost; post-fusion and NightOwls decision remains NOT DONE.
 - **DONE** — A4 real RX 5700 XT execution-cost frontier.
 - **DONE** — A5 draft-seeded private review tooling and 46-frame review pack preparation.
 - **DONE** — A5 review-progress accounting validated; branch docs head `8faf6c9...` CI-green (`36242654534`).
@@ -178,14 +178,14 @@ Unlock only when:
 - **DONE** — GitHub branch heads re-verified; none of A1-A5 advanced beyond the heads recorded above during the interruption.
 - **DONE** — target PC answered a direct connectivity ping.
 - **NEEDS VERIFICATION** — detailed target-PC process/GPU state; repeated substantive control queries, including direct A3 artifact metadata, timed out.
-- **NEEDS VERIFICATION** — A2 audit output files after the interrupted run.
-- **NEEDS VERIFICATION** — A3 `a3-round2-weak1.json` completion after the interrupted run.
+- **DONE** — A2 old hard-NMS/NMM/weighted audit output files recovered and provenance verified; they do not include the ambiguity-guard comparison.
+- **DONE** — A3 `a3-round2-weak1.json` recovered as a complete strict-profile artifact; final enhancement decision still requires post-fusion/NightOwls evidence.
 - **RULE** — do not restart A2/A3 blindly until existing local process/artifact state is verified.
 
 
 ## Current execution blocker
 
-- **BLOCKED (control channel)** — target PC Remote Desktop Commander substantive operations are still timing out after successful ping, including process/file/meta history probes; no blind A1/A2/A3 restart is authorized.
+- **DONE** — target-PC substantive Remote Desktop Commander control restored; process/artifact inspection succeeds. Blind restarts remain prohibited by policy, but the relay blocker is cleared.
 - **DEFERRED (private domain gate)** — do not ask for 46-frame human review now. Public human-annotated benchmarks run first; later reduce to ~10-15 hardest frames + 3-5 temporal episodes before human confirmation.
 - This does **not** mean A2/A3 benchmarks failed.
 - Do not restart A2/A3 until existing local process/artifact state is verified.
