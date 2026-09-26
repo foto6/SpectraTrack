@@ -602,6 +602,18 @@ def test_import_nightowls_slice_is_deterministic_and_tracking_disabled(tmp_path:
     assert manifests[0]["slice"]["tracking_supported"] is False
     assert len(manifests[0]["slice"]["selected_image_ids"]) == 3
 
+    selected_rows = _read_jsonl(tmp_path / "nightowls-a.jsonl")
+    has_positive = any(
+        any(not obj.get("ignore", False) for obj in row["objects"])
+        for row in selected_rows
+    )
+    has_negative = any(
+        not any(not obj.get("ignore", False) for obj in row["objects"])
+        for row in selected_rows
+    )
+    assert has_positive
+    assert has_negative
+
 
 def test_import_nightowls_rejects_wrong_pedestrian_category_contract(tmp_path: Path):
     root = tmp_path / "NightOwls"
