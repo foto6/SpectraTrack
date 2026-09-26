@@ -36,19 +36,23 @@ Every meaningful step and every completed, failed, blocked, in-progress, or not-
 
 Current known Round-2 head:
 
-`agent/vnext-detection @ b468836c9be1fd3669b46887a56ece4e9aafcd7f`
+`agent/vnext-detection @ 002b698b06c439694906c9c5b3e765e543bd0029`
 
 Done:
 
 - evidence-aware weak-person fusion candidate exists;
-- focused tests passed;
 - default and threshold-grid MOT17-04 development evidence recorded;
-- canonical evidence-aware replay artifacts emitted locally.
+- canonical evidence-aware replay artifacts emitted locally;
+- resumable public-corpus runner implemented and CI-validated;
+- fixed Round-2 MOT17 split committed before held-out evaluation:
+  - development: MOT17-04;
+  - held out: MOT17-02/05/09/10/11/13;
+- CrowdHuman kept separate as dense detection-safety validation;
+- exact resumable held-out command documented.
 
 Not done:
 
-- fixed multi-sequence MOT17 dev/validation split;
-- held-out per-sequence/aggregate validation;
+- target-PC held-out per-sequence/aggregate validation;
 - CrowdHuman dense-safety validation for the new candidate;
 - final Round-2 A1 accept/reject handoff.
 
