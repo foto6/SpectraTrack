@@ -709,3 +709,32 @@ Status:
 **IN PROGRESS / CI VERIFICATION REQUIRED**
 
 Target-PC held-out execution remains **NEEDS VERIFICATION** and has not been restarted.
+
+
+## Round 2 artifact-recovery hardening before target run
+
+Research-code HEAD after this step:
+
+`af1220cefaa6e1ebfa3eb9c05229aa0382361efa`
+
+Reason:
+
+The target-PC restart contract requires process/artifact/marker/log/timestamp-size verification before any expensive rerun. The corpus runner previously wrote the final report and replay paths but did not persist hashes/size/mtime or a completion marker.
+
+Research-only additions:
+
+- every prefusion artifact recorded in the final report now includes path, SHA-256, size bytes, and mtime_ns;
+- every canonical replay artifact records the same provenance;
+- final corpus output writes a sidecar completion marker:
+  `<output>.complete.json`;
+- completion marker binds source commit, corpus revision, GT SHA-256, model SHA-256, final output path/hash/size/mtime;
+- CLI completion output prints method results plus final output and marker provenance;
+- regression tests verify prefusion/replay hashes and completion-marker binding.
+
+This does not change fusion thresholds, detector semantics, production code, or held-out split.
+
+Status:
+
+**IN PROGRESS / CI VERIFICATION REQUIRED**
+
+Target PC remains offline; held-out inference has not been restarted.
