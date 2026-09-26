@@ -947,6 +947,16 @@ def _parser() -> argparse.ArgumentParser:
     mot.add_argument("--importer-source-commit")
     mot.add_argument("--acknowledge-terms", action="store_true")
 
+    dance = sub.add_parser("import-dancetrack")
+    dance.add_argument("--dataset-root", required=True)
+    dance.add_argument("--output", required=True)
+    dance.add_argument("--manifest", required=True)
+    dance.add_argument("--split", choices=("train", "val"), default="val")
+    dance.add_argument("--sequences")
+    dance.add_argument("--logical-prefix")
+    dance.add_argument("--importer-source-commit")
+    dance.add_argument("--acknowledge-terms", action="store_true")
+
     crowd = sub.add_parser("import-crowdhuman")
     crowd.add_argument("--dataset-root", required=True)
     crowd.add_argument("--annotations", default="annotation_val.odgt")
@@ -969,6 +979,17 @@ def main() -> int:
                 output_ground_truth=args.output,
                 output_manifest=args.manifest,
                 detector_variant=args.variant,
+                sequences=args.sequences,
+                logical_prefix=args.logical_prefix,
+                importer_source_commit=args.importer_source_commit,
+                acknowledge_terms=args.acknowledge_terms,
+            )
+        elif args.command == "import-dancetrack":
+            result = import_dancetrack(
+                dataset_root=args.dataset_root,
+                output_ground_truth=args.output,
+                output_manifest=args.manifest,
+                split=args.split,
                 sequences=args.sequences,
                 logical_prefix=args.logical_prefix,
                 importer_source_commit=args.importer_source_commit,
