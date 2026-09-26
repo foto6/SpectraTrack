@@ -561,3 +561,30 @@ Rationale: the Round-2 evidence-aware policy was already tuned using MOT17-04 fi
 CrowdHuman validation remains a separate dense-detection safety check.
 
 Held-out results are evaluation-only for this cycle: do not use them to silently retune the thresholds. A failed held-out gate must remain recorded as a failed candidate or trigger a separately versioned next research cycle.
+
+
+## Round 2 coordinator verification — 2026-09-26 19:30 +07
+
+### DONE — canonical replay-export fix validated
+
+Current branch HEAD before this documentation update:
+
+`704c9a645d276ceb1d2acd26f0dc44ad296196ce`
+
+Replacement GitHub Actions run:
+
+`36241884895` — **SUCCESS**
+
+The previous lint failure (`F821 Undefined name json`) remains part of the recorded history. Commit `704c9a6...` fixes only the missing test import; the held-out policy/config is unchanged.
+
+### NOT DONE — held-out target-PC evidence
+
+Still required, without retuning on held-out data:
+
+- MOT17 held-out sequences 02/05/09/10/11/13;
+- hard-nms vs conservative-nmm vs weighted vs evidence-aware on identical pre-fusion evidence;
+- per-sequence and aggregate precision/recall/F1/FP/FN/localization/stability/fusion/cost metrics;
+- CrowdHuman validation dense-safety comparison;
+- canonical replay artifacts for surviving policies.
+
+The target-PC run must not be restarted or duplicated until local process/artifact state is positively checked.
