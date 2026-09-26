@@ -1314,3 +1314,28 @@ Verified compute summary: frame size `1920x1080`; policy runs `900`; represented
 Held-out interpretation only: evidence-aware has the best F1/precision/area stability/temporal IoU among the four on MOT17-11 and materially improves stability/fusion mistakes vs hard NMS; conservative NMM has the highest recall/localization IoU. No threshold/config retuning occurred.
 
 Decision: **VALID HELD-OUT EVIDENCE / NEEDS MOT17-13 AND FULL AGGREGATE.**
+
+## Round 2 MOT17 held-out checkpoint — MOT17-13 complete
+
+Status:
+
+**DONE — PREFUSION VERIFIED + PER-SEQUENCE METRICS COMPUTED, ZERO NEW ONNX CALLS FOR FUSION EVAL**
+
+Verified prefusion artifact: `C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-mot17\golden_public_mot17_MOT17-13.jsonl`; size `11703141` bytes; modified UTC `2026-09-26T17:37:48.6360118Z`; SHA-256 `cbfb254a6c13dd138a92c9c1d54dbb22e8cab3e639dc2d46f4f05ad343055741`.
+
+Frozen provenance is unchanged: corpus `mot17-public-r1`, HELD OUT, source commit `e2dad933119e0639413200466ffbda0baeba6b2e`, GT SHA-256 `28dcb9d197e0a098a1efb097f1589177350192a8f5f1be3e2ab5cd18d8f205c7`, model SHA-256 `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`, provider `DmlExecutionProvider,CPUExecutionProvider`, input `960`, detector conf/decoder IoU `0.35/0.45`, person floor `0.12`, tile/overlap `640/0.20`, match/fusion IoU `0.50/0.55`, evidence weak/solo/strong `0.12/0.20/0.35`, min sources `2`.
+
+Verified compute summary: frame size `1920x1080`; policy runs `750`; represented actual ONNX calls `6750`; detector wall time `786.0482912000734 s`; preprocess `55815.77189848758 ms`; inference `667988.0271981237 ms`; postprocess `43810.955403605476 ms`. Fusion-only evaluation used saved prefusion and added zero ONNX calls.
+
+| metric | hard-nms | conservative-nmm | weighted | evidence-aware |
+| --- | ---: | ---: | ---: | ---: |
+| TP / FP / FN | 8709 / 7284 / 2933 | 8992 / 9393 / 2650 | 8930 / 9461 / 2712 | 8585 / 6560 / 3057 |
+| precision / recall / F1 | 0.544551 / 0.748067 / 0.630288 | 0.489094 / 0.772376 / 0.598928 | 0.485564 / 0.767050 / 0.594679 | 0.566854 / 0.737416 / 0.640983 |
+| bbox localization IoU | 0.759105 | 0.772458 | 0.766620 | 0.769180 |
+| center / width / height jitter px | 3.086414 / 2.538411 / 3.511091 | 2.832500 / 2.457267 / 3.075117 | 2.715979 / 2.237067 / 2.844085 | 2.668574 / 2.206511 / 2.729856 |
+| area jitter ratio / temporal IoU | 0.092658 / 0.852829 | 0.086524 / 0.861262 | 0.079202 / 0.864744 | 0.076024 / 0.868155 |
+| duplicates / fusion mistakes | 18916 / 183 | 18916 / 96 | 18916 / 96 | 18916 / 96 |
+
+Held-out interpretation only: evidence-aware has the best F1/precision and strongest stability/temporal IoU on MOT17-13 while reducing fusion mistakes vs hard NMS; its recall is lower than hard NMS. Conservative NMM has the highest recall but larger FP cost. No threshold/config retuning occurred.
+
+Decision: **VALID HELD-OUT EVIDENCE / ALL SIX PREFUSION SEQUENCES COMPLETE; NEEDS VERIFIED FINAL AGGREGATE + MARKER/REPLAYS.**
