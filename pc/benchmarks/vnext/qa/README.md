@@ -2,6 +2,11 @@
 
 This directory is the A5 research workspace for a **small, human-confirmed, reproducible CCTV corpus**.
 
+To reduce manual annotation, A5 also supports isolated import of official **MOT17 train GT** and
+**CrowdHuman validation GT** into this same canonical QA format. See
+`benchmarks/vnext/qa/PUBLIC_DATASETS.md`. Public benchmarks supplement the private CCTV holdout;
+they do not replace it.
+
 It extends the existing `spectratrack.qa_benchmark` workflow. It does **not** replace the canonical JSONL ground-truth format and does not treat model output as ground truth.
 
 ## Non-negotiable split
