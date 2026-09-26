@@ -308,3 +308,30 @@ Do not create `agent/vnext-integrator` until all are satisfied:
 9. A5 unified public evidence bundle;
 10. reduced human-confirmed private `cctv-golden-r1` sanity pack;
 11. surviving public pipeline passes that private domain sanity check.
+
+
+### Public split / leakage policy
+
+DanceTrack:
+
+- public validation split is the primary Round-2 held-out association gate;
+- GT identities are evaluator-only in association-only experiments;
+- no ambiguity-guard tuning from DanceTrack validation results in this cycle;
+- any later detector-replay phase must use the same frozen validation sequence list.
+
+NightOwls:
+
+- validation is held out for Round-2 A1/A3 night evaluation;
+- no threshold/gate tuning after reading NightOwls validation candidate results;
+- if tuning is required in a later versioned cycle, use a separately declared development/train split.
+
+Because full NightOwls validation is expensive for YOLO11x/960 multi-pass inference, A5 may define a deterministic stratified Round-2 evaluation slice **before** any A1/A3 candidate result is observed. If a slice is used it must:
+
+- be frozen and hashed;
+- sample by source sequence/official annotation metadata only, never by candidate/model output;
+- preserve positives and true background/negative frames;
+- cover available official occlusion/difficulty/pose and bbox-size strata;
+- be identical for all compared candidates;
+- be reported explicitly as a slice, never as a full NightOwls validation result.
+
+A later larger/full confirmation may be run only on the surviving candidate(s).
