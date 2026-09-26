@@ -1528,3 +1528,95 @@ A4 remains parked by design.
 A5 importer tooling remains CI-green; real DanceTrack/NightOwls freezes are not yet complete.
 
 Target PC currently has `C:\Users\foto6\SpectraTrack-data\public\DanceTrack\val.zip` at 4,209,785,614 bytes and the local download-controller process is still present. NightOwls bytes are still absent.
+
+
+## 2026-09-27 — A1 MOT17 held-out complete; DanceTrack download validated
+
+### DONE — A1 full frozen MOT17 held-out
+
+Target-PC result completed successfully for all six held-out sequences:
+
+- MOT17-02
+- MOT17-05
+- MOT17-09
+- MOT17-10
+- MOT17-11
+- MOT17-13
+
+Final result:
+`C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json`
+
+Completion marker:
+`C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json.complete.json`
+
+Verified result SHA-256:
+`94a208a44ff2e29f69575ed5c58c4f5a1720605aedaf5e713f7798234d065fa4`
+
+Frame count: 4266
+Actual ONNX calls: 32535
+Benchmark wall: 4043.225 s
+24 canonical replay artifacts emitted.
+
+Final aggregate:
+
+hard-nms:
+- TP 43,733
+- FP 60,868
+- FN 21,004
+- precision 0.418094
+- recall 0.675549
+- F1 0.516517
+- bbox IoU 0.755325
+- center jitter 5.436632 px
+- area jitter ratio 0.080205
+- temporal IoU 0.875081
+- fusion mistakes 1016
+
+evidence-aware:
+- TP 43,865
+- FP 57,727
+- FN 20,872
+- precision 0.431776
+- recall 0.677588
+- F1 0.527449
+- bbox IoU 0.776246
+- center jitter 3.700660 px
+- area jitter ratio 0.063549
+- temporal IoU 0.892984
+- fusion mistakes 540
+
+Final held-out deltas evidence-aware vs hard-nms:
+- TP +132
+- FP -3,141
+- FN -132
+- precision +1.3683 pp
+- recall +0.2039 pp
+- F1 +1.0931 pp
+- bbox IoU +0.02092
+- center jitter ~31.9% lower
+- area jitter ~20.8% lower
+- temporal IoU +0.01790
+- fusion mistakes -476 (~46.9%)
+
+This is now valid full held-out MOT17 evidence and is materially positive for evidence-aware fusion. CrowdHuman and NightOwls gates remain separate required evidence before final production promotion.
+
+### DONE — DanceTrack validation archive download integrity
+
+Target file:
+`C:\Users\foto6\SpectraTrack-data\public\DanceTrack\val.zip`
+
+Observed exact size:
+`4,209,785,614 bytes`
+
+Server linked size also reports exactly:
+`4,209,785,614 bytes`
+
+ZIP validation after download:
+- entries: 25,634
+- per-sequence `gt/gt.txt` files: 25
+- `zipfile.testzip()`: None
+- therefore archive is structurally valid and contains validation GT.
+
+This clears the external DanceTrack download blocker. A5 may now extract/import/validate/freeze `dancetrack-public-r1` using its already CI-green importer and provenance contract.
+
+NightOwls bytes remain absent and are still a blocker for the A1/A3 night gate.
