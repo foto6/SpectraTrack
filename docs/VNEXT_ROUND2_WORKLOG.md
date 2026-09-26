@@ -784,3 +784,25 @@ Safe Git-side step:
 - do not change production enhancement/runtime code.
 
 This makes the Round-2 strict budget reproducible instead of depending on a hand-crafted manifest.
+
+
+### DONE — A3 explicit strict enhancement budget is CI-green
+
+A3 role-handoff head:
+
+`a5481b1f4bbcc67e77b5eecefb3e8daea783ba5c`
+
+Research code head:
+
+`898caa9c6ecff4d15b0d5cbabaae9390b8e86fd8`
+
+GitHub Actions run `36241047867`:
+
+- result: SUCCESS;
+- ruff passed;
+- compile + pytest: **154 passed in 2.66 s**;
+- synthetic tracker smoke: 1798.9 tracker FPS;
+- crossing/reappearance smoke switches: 0;
+- diagnostics/self-check/build/package/upload passed.
+
+The profiler now enforces a reproducible per-operation/source-frame enhanced-inference cap and records budget-skipped ROIs. The quality decision remains pending target-PC evidence.
