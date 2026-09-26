@@ -916,3 +916,35 @@ Recovery rule:
 Decision:
 
 **RETRY AUTHORIZED — launcher-only failure, no inference/artifact state to preserve.**
+
+
+## Round 2 MOT17 held-out retry launch
+
+Status:
+
+**IN PROGRESS — REAL BENCHMARK PROCESS RUNNING**
+
+Exact experiment source commit:
+
+`e2dad933119e0639413200466ffbda0baeba6b2e`
+
+The only change from the failed first launch is the shell-command separator. Fusion policy, thresholds, corpus, split, model and provider configuration are unchanged.
+
+Target process:
+
+- Remote Desktop Commander PID: `21908`;
+- launcher status immediately after start: running.
+
+The failed first-launch log was preserved separately at:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.failed-launch-1.console.log`
+
+Current real-run log:
+
+`C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json.console.log`
+
+All result/prefusion/replay/marker paths remain those recorded in the launch checkpoint.
+
+Decision:
+
+**IN PROGRESS — DO NOT START A DUPLICATE RUN.**
