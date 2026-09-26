@@ -1110,3 +1110,15 @@ Role handoff commits:
 - A5 QA: `abc269f5ebe062c80d1fba8eb5c06b1b1450c6b9` — DanceTrack + NightOwls isolated importer/freeze assignment.
 
 Issues #18-#23 were updated with the same role boundaries and persistence requirements. No production branch or specialist branch was merged into another.
+
+
+### DONE — held-out split / leakage rules for new public corpora
+
+Pinned before candidate evaluation:
+
+- DanceTrack validation is the primary held-out association gate; no current-ambiguity-guard retuning from DanceTrack validation results.
+- NightOwls validation is the primary held-out night gate; no A1/A3 threshold/gate retuning after candidate results are observed.
+- A deterministic stratified NightOwls Round-2 slice is permitted for compute control only if frozen before candidate results and sampled solely from source sequence/official annotation metadata, not model output.
+- Any slice must preserve positive and negative/background evidence, use identical bytes for every candidate, and be reported as a slice rather than a full-validation result.
+
+This prevents compute-driven cherry-picking while keeping YOLO11x/960 multi-pass evaluation tractable.
