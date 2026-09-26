@@ -685,3 +685,27 @@ Status:
 **IN PROGRESS / CI VERIFICATION REQUIRED**
 
 Target-PC execution remains **NEEDS VERIFICATION** because the device is still offline; no restart has been issued.
+
+
+## Round 2 resumable-provenance self-review fix
+
+Research-code HEAD after this step:
+
+`530353f2ebe1010f47510426056611edabaaa22b`
+
+Self-review found a subtle reporting error in the newly added per-sequence cost accounting: under `--resume`, a newly collected prefusion file exists by the time reporting runs, so inferring reuse from a post-write `is_file()` check could mislabel fresh inference as reused.
+
+Fix:
+
+- reuse state is now decided before collection and carried explicitly through the loop;
+- first resumable run records `new_inference`;
+- a second run over the same validated prefusion records `reused_prefusion`;
+- regression test executes both passes and verifies new/reused ONNX call and represented detector-wall accounting.
+
+Fusion policy/config/thresholds are unchanged. No production file changed.
+
+Status:
+
+**IN PROGRESS / CI VERIFICATION REQUIRED**
+
+Target-PC held-out execution remains **NEEDS VERIFICATION** and has not been restarted.
