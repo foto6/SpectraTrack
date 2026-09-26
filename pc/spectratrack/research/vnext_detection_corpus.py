@@ -16,6 +16,7 @@ from .vnext_detection_fusion import (
     FusionConfig,
     ResearchFrame,
     collect_prefusion_people_recall,
+    convert_prefusion_to_replay,
     evaluate_fusion,
     read_prefusion_dump,
     write_prefusion_dump,
@@ -178,6 +179,53 @@ def _safe_stem(video: str) -> str:
     return stem.strip("._") or "video"
 
 
+def export_canonical_replays(
+    *,
+    prefusion_dir: str | Path,
+    replay_dir: str | Path,
+    videos: Iterable[str],
+    methods: Iterable[str],
+    config: FusionConfig,
+) -> dict[str, dict[str, str]]:
+    """Convert frozen per-video prefusion evidence to canonical A2 replays.
+
+    This performs no detector inference. The caller is responsible for ensuring
+    the prefusion artifacts were validated/reused under the corpus runner's
+    provenance contract.
+    """
+    source = Path(prefusion_dir)
+    target = Path(replay_dir)
+    if not source.is_dir():
+        raise FileNotFoundError(f"prefusion directory is missing: {source}")
+    target.mkdir(parents=True, exist_ok=True)
+
+    requested_methods = tuple(dict.fromkeys(methods))
+    unknown = [method for method in requested_methods if method not in METHODS]
+    if unknown:
+        raise ValueError(f"unknown fusion methods: {unknown}")
+    if not requested_methods:
+        raise ValueError("at least one fusion method is required")
+
+    outputs: dict[str, dict[str, str]] = {}
+    for video in sorted(set(videos)):
+        stem = _safe_stem(video)
+        prefusion_path = source / f"{stem}.jsonl"
+        if not prefusion_path.is_file():
+            raise FileNotFoundError(f"prefusion artifact is missing for {video}: {prefusion_path}")
+        per_method: dict[str, str] = {}
+        for method in requested_methods:
+            replay_path = target / f"{stem}.{method}.replay.jsonl"
+            convert_prefusion_to_replay(
+                prefusion_path,
+                replay_path,
+                method=method,
+                config=config,
+            )
+            per_method[method] = str(replay_path)
+        outputs[video] = per_method
+    return outputs
+
+
 def _prefusion_metadata(
     *,
     args: argparse.Namespace,
@@ -251,6 +299,9 @@ def _validate_reusable_prefusion(
 
 
 def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
+    if getattr(args, "replay_dir", None) and not getattr(args, "prefusion_dir", None):
+        raise ValueError("--replay-dir requires --prefusion-dir so replay provenance stays tied to frozen prefusion evidence")
+
     model_path = Path(args.model)
     if not model_path.is_file():
         raise FileNotFoundError(f"model not found: {model_path}")
@@ -368,6 +419,15 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         match_iou=args.match_iou,
         per_video=args.per_video,
     )
+    replay_outputs: dict[str, dict[str, str]] = {}
+    if getattr(args, "replay_dir", None):
+        replay_outputs = export_canonical_replays(
+            prefusion_dir=args.prefusion_dir,
+            replay_dir=args.replay_dir,
+            videos=by_video,
+            methods=args.method,
+            config=config,
+        )
     return {
         "schema": "spectratrack-vnext-fusion-corpus-v1",
         "source_commit": args.source_commit,
@@ -398,6 +458,7 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         },
         "methods": methods,
         "per_video": per_video,
+        "replays": replay_outputs,
         "note": "Research corpus evidence only; no production behavior changed.",
     }
 
@@ -412,6 +473,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--corpus-revision", required=True)
     parser.add_argument("--include-video", action="append", default=[])
     parser.add_argument("--prefusion-dir")
+    parser.add_argument("--replay-dir")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--per-video", action="store_true")
     parser.add_argument("--frame-limit-per-video", type=int, default=0)
