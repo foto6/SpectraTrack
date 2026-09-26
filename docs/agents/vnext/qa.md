@@ -1382,3 +1382,184 @@ These annotations remain valid official detection GT, but they invalidate a one-
 - deterministic slice selection function and selected-image hash are unchanged.
 
 Focused NightOwls tests after this second compatibility fix: **6 passed**.
+
+## Round 2 A5 — NightOwls locked 5000-frame validation slice frozen
+
+Status: **DONE**
+
+The previously locked selection contract was not changed:
+
+- slice frames: **5000**;
+- seed: `spectratrack-round2-nightowls-v1`;
+- logical prefix: `golden/public/nightowls-val-slice`;
+- frozen revision: **`nightowls-public-slice5000-r1`**;
+- sparse-slice `tracking_supported=false`;
+- no detector / enhancement / candidate output participated in selection.
+
+Official source integrity on target PC:
+
+- validation ZIP URL: `https://thor.robots.ox.ac.uk/~vgg/data/nightowls/python/nightowls_validation.zip`;
+- ZIP path: `E:\SpectraTrack-data\public\NightOwls\nightowls_validation.zip`;
+- exact bytes: **57,481,286,834**;
+- SHA-256: **`6663dc5099714ffb8c18bb37942ce523de9dfdda44327284bdab12354e8fcf9d`**;
+- ZIP entries: **51,849**;
+- summed uncompressed bytes: **57,595,824,667**;
+- unsafe absolute / `..` entries: **0**;
+- `zipfile.testzip()`: **None**.
+
+Official annotation source:
+
+- URL: `https://thor.robots.ox.ac.uk/~vgg/data/nightowls/python/nightowls_validation.json`;
+- path: `E:\SpectraTrack-data\public\NightOwls\nightowls_validation.json`;
+- bytes: **10,696,948**;
+- SHA-256: **`584c0dc11f0d086fc5bcbaca0385cf2dd9794074f815f2727fbf9a093fd9a9b6`**;
+- JSON parse: PASS;
+- images: **51,848**;
+- annotations: **17,091**;
+- categories: `1=pedestrian`, `2=bicycledriver`, `3=motorbikedriver`, `4=ignore`.
+
+Official SDK:
+
+- repository: `https://gitlab.com/vgg/nightowlsapi.git`;
+- local path: `E:\SpectraTrack-data\public\NightOwls\nightowlsapi`;
+- exact commit: **`ad0f18fc95e093e86036f055ab210a3de46021b7`**;
+- Git tree: **`1c9e7008487c3d8bdd3e8c77fb2280f30a549dfc`**;
+- importer-required SDK-files aggregate SHA-256: **`28a7ffc824288e47195fbe2993d1c7544a4a07df0ef3579bc99073f1a1f00c07`**.
+
+Safe extraction / storage:
+
+- free space before extraction: **152,112,304,128 bytes**;
+- isolated extraction root: `E:\SpectraTrack-data\public\NightOwls\extracted`;
+- image root: `E:\SpectraTrack-data\public\NightOwls\extracted\nightowls_validation`;
+- extracted PNG count: **51,848**;
+- free space immediately after extraction: **94,352,064,512 bytes**;
+- current E: free space after import/freeze: **94,336,090,112 bytes**;
+- C: was not used for NightOwls raw/extracted data.
+
+Locked metadata-only slice pre-audit:
+
+- pre-audit artifact: `E:\SpectraTrack-data\public\NightOwls\nightowls-json-slice-preaudit.json`;
+- SHA-256: **`bd5025a29ab5c624f1d73729e9286e35b87d9ec168187396c9cc9b92ac8a527f`**;
+- selected image IDs: **5000**;
+- selected-image-ID SHA-256: **`429b41320f158ab9723215c3164dc020b96bf076fdab8f4c802167c6d54934d5`**;
+- positive images: **605**;
+- true-negative images: **4395**;
+- daytime coverage: **4999 night + 1 dusk**;
+- scored-person bbox strata: `<24=4`, `24-47=108`, `48-95=477`, `>=96=380`;
+- occlusion coverage: `true=158`, `false=803`, `null=8`;
+- difficulty coverage: `true=14`, `false=955`;
+- all official pose IDs observed in the selected scored pedestrians are retained.
+
+Real-data importer compatibility fixes were required before successful import. They are recorded in the preceding checkpoints. Final importer source commit used for the frozen artifact:
+
+**`f2374582fa0c8d19762a5182519c0074a6c2e39a`**
+
+This commit does not change deterministic slice selection. It only fails safe on official null recording IDs and duplicate per-image tracking IDs.
+
+Canonical import artifacts:
+
+- JSONL: `E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-val-slice.jsonl`;
+  - bytes: **3,103,854**;
+  - SHA-256: **`6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc`**;
+- import manifest: `E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-val-slice.import.json`;
+  - bytes: **1,269,288**;
+  - file SHA-256: **`a37ab965879c04d1676992fde665301a42925f2b4caad2cc04903e5ebd4bf8e4`**;
+  - deterministic `import_manifest_sha256`: **`8ee6f2ec5f38af9c0e2843c0fc975e2173d64c7800de6d67697f2d4e833857c0`**;
+  - aggregate referenced-source SHA-256: **`4850b671eda18bb06ea02dcb57ece47fdc0a747e840bf69ae836e401fdec4129`**;
+  - selected-image-files aggregate SHA-256: **`7d685dcb81ad30356fd1a3ddd70042ca0268090f7d569f656fbe384949b6407c`**;
+  - referenced source roles: **5000 images + 4 official SDK files + 1 official JSON**.
+
+Canonical semantics / independent audit:
+
+- audit artifact: `E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-slice-raw-canonical-audit.json`;
+- audit SHA-256: **`491636fb5cdd62ecba655a356d2d0a04617d4a3826e466daa5215ffc5a33c666`**;
+- audit errors: **0**;
+- canonical rows: **5000**;
+- canonical objects: **1521**;
+- scored pedestrian objects: **969**;
+- canonical official-ignore objects: **552**;
+- raw selected annotations by category: `pedestrian=969`, `bicycledriver=31`, `motorbikedriver=21`, `ignore=639`;
+- bicycledriver / motorbikedriver scored as pedestrian: **0**;
+- non-intersecting target-like boxes omitted under existing policy: **87**;
+- canonical bbox conversion/source mapping mismatches: **0**;
+- canonical tracking-ID fields: **0**;
+- unexpected/invented metadata tags: **0**;
+- `night_dark` tags: **4999**, solely because official `daytime=night`; the one official dusk image receives no invented night tag;
+- official occlusion/difficulty/pose/truncation are source-backed attributes only;
+- selected-image hash re-derived from canonical import: exact locked match **`429b41320f158ab9723215c3164dc020b96bf076fdab8f4c802167c6d54934d5`**.
+
+Tracking contract result from real official annotations:
+
+- all scored pedestrians have syntactically valid official `tracking_id`: **true**;
+- all scored pedestrians have official recording namespace: **false**;
+- repeated trajectories exist: **true**;
+- unique tracking ID per image: **false**;
+- duplicate tracking-id/image pairs: **6**;
+- deterministic sparse slice disables temporal tracking: **true**;
+- final `tracking_supported`: **false**.
+
+Canonical validation:
+
+- validation artifact: `E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-val-slice.validation.json`;
+- SHA-256: **`46bfd5e27a0eb856ecfaf9c0b6ba1f5d9b491c3f2e1efff4ac6cc7d7b8d17fe2`**;
+- `valid=true`;
+- errors: **0**;
+- warnings: **0**;
+- frame records: **5000**;
+- logical validation sequences: **143**;
+- source files were re-hashed by `validate-corpus`.
+
+Frozen corpus:
+
+- revision: **`nightowls-public-slice5000-r1`**;
+- exact corpus SHA-256: **`1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8`**;
+- frozen manifest: `E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-public-slice5000-r1.manifest.json`;
+- frozen manifest file SHA-256: **`6d609998ec12eebe908056ed08019208e6b954befb2fa4cca3974f1bf31990da`**;
+- frozen manifest loaded successfully through `load_frozen_manifest()`;
+- loaded corpus hash exactly matches the freeze output.
+
+Final evidence bundle:
+
+- `E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-final-evidence.json`;
+- SHA-256: **`eb73f63a2a5342c34f4a549366735ebe9e331cf92c1299d51f78762b40b838c8`**.
+
+Official SDK files bound into the import manifest:
+
+- `nightowlsapi/README.md` SHA-256 `d0986b3ba6099947b2d7483275405fa6ffb2ec0c304275ee2daac159359a312c`;
+- `nightowlsapi/python/coco.py` SHA-256 `2616d338d0203aa70fe5ce4c7f393009f88b1d1b3a1724df4dd3b384f0dc607f`;
+- `nightowlsapi/python/eval.py` SHA-256 `f90eeb147106bc179702a1b09de8a258dd73a74a96dbd5040baf98018d19493a`;
+- `nightowlsapi/python/eval_MR_multisetup.py` SHA-256 `213629facdbe0ad3b0e2d4cf3bafb526f0955a628e617ffbbcb05cbbdde7a6eb`.
+
+NightOwls real-data compatibility code commit CI:
+
+- source commit: `f2374582fa0c8d19762a5182519c0074a6c2e39a`;
+- GitHub Actions run: `36279005657` — **SUCCESS**;
+- Ruff: PASS;
+- pytest: **176 passed in 2.85s**;
+- synthetic benchmark smoke: PASS;
+- diagnostics/self-check: PASS;
+- PyInstaller + standalone CLI smoke: PASS.
+
+Existing frozen corpora were not modified:
+
+- `mot17-public-r1` — unchanged;
+- `crowdhuman-val-fbox-r1` — unchanged;
+- `dancetrack-public-r1` — unchanged.
+
+Raw NightOwls ZIP/extracted PNG/JSON/SDK bytes remain outside Git under the isolated E: data root.
+
+### A1 / A3 held-out handoff
+
+For any Round-2 NightOwls comparison, use exactly:
+
+- revision: **`nightowls-public-slice5000-r1`**;
+- corpus SHA-256: **`1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8`**;
+- frozen manifest: `E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-public-slice5000-r1.manifest.json`;
+- canonical GT: `E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-val-slice.jsonl`;
+- video/source root: `E:\SpectraTrack-data\public\NightOwls`.
+
+A1 and A3 must use the same frozen revision/hash and identical scoring settings. Do not change selected IDs, seed, thresholds, annotation semantics or corpus bytes after seeing candidate results. In particular A3 OFF / bilateral / current_adaptive_cached must be rerun against this exact frozen slice without NightOwls threshold retuning.
+
+A5 did **not** run A1/A3 candidate inference.
+
+Final NightOwls intake/freeze status: **DONE**.
