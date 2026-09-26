@@ -180,6 +180,7 @@ def test_import_crowdhuman_uses_full_body_by_default_and_disables_tracking(tmp_p
     assert row["allow_out_of_bounds"] is True
     assert row["objects"][0]["bbox"] == [-5.0, 5.0, 20.0, 65.0]
     assert "id" not in row["objects"][0]
+    assert "crowdhuman_occ_1" in row["objects"][0]["attributes"]
     assert row["objects"][1]["ignore"] is True
     assert manifest["conversion_settings"]["bbox_kind"] == "full"
     assert manifest["tracking_supported"] is False
