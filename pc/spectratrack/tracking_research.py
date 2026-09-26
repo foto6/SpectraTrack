@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import argparse
+import hashlib
 import json
 import math
 import statistics
 import time
+from pathlib import Path
 from typing import Callable, Iterable
 
 from .detection_replay import (
@@ -16,6 +18,7 @@ from .detection_replay import (
     ReplayMetadata,
     load_detection_replay,
 )
+from .qa_benchmark import GroundTruthFrame, ground_truth_sha256, load_ground_truth
 from .tracker import MultiObjectTracker, appearance_similarity, bbox_iou, shift_box, transform_box
 from .types import BBox, Detection, Track
 
@@ -1628,6 +1631,163 @@ def run_synthetic_bakeoff(performance_repeats: int = 20) -> dict:
     }
 
 
+
+def scenario_from_canonical_ground_truth(
+    replay: DetectionReplay,
+    ground_truth: Iterable[GroundTruthFrame],
+    *,
+    label: str = "person",
+) -> ResearchScenario:
+    """Bind canonical QA GT to one immutable replay without exposing GT IDs to the tracker."""
+    replay_frames = {frame.frame for frame in replay.frames}
+    rows = [
+        frame
+        for frame in ground_truth
+        if frame.video == replay.metadata.video and frame.frame in replay_frames
+    ]
+    if not rows:
+        raise ValueError(
+            f"ground truth has no frames for replay video {replay.metadata.video!r} within replay scope"
+        )
+
+    truth_by_frame: dict[int, tuple[TruthObject, ...]] = {frame.frame: () for frame in replay.frames}
+    for frame in rows:
+        objects: list[TruthObject] = []
+        for obj in frame.objects:
+            if obj.ignore or obj.label != label:
+                continue
+            if obj.object_id is None:
+                raise ValueError(
+                    f"stable object id is required for tracking evaluation: {frame.video}#{frame.frame}"
+                )
+            objects.append(TruthObject(object_id=obj.object_id, bbox=obj.bbox, label=obj.label))
+        truth_by_frame[frame.frame] = tuple(objects)
+
+    return ResearchScenario(
+        name=f"canonical-replay:{replay.metadata.video}",
+        replay=replay,
+        truth_by_frame=truth_by_frame,
+        focus="current-vs-ambiguity-guard on identical canonical A1 replay bytes",
+    )
+
+
+def run_scored_replay_candidate(
+    scenario: ResearchScenario,
+    candidate: str,
+) -> dict[str, object]:
+    factories = _candidate_factories()
+    if candidate not in {"current", "current-ambiguity-guard"}:
+        raise ValueError("Round-2 scored replay comparison permits only current or current-ambiguity-guard")
+    outputs, timing = run_candidate(scenario, factories[candidate])
+    return {
+        "candidate": candidate,
+        "metrics": evaluate_tracking(scenario, outputs),
+        "performance": timing,
+    }
+
+
+def ambiguity_guard_promotion_gate(
+    control: dict[str, float | int | None],
+    candidate: dict[str, float | int | None],
+) -> dict[str, object]:
+    control_recall = float(control["tracking_recall"])
+    candidate_recall = float(candidate["tracking_recall"])
+    recall_loss = max(0.0, control_recall - candidate_recall)
+
+    control_switches = int(control["id_switches"])
+    candidate_switches = int(candidate["id_switches"])
+    switch_improvement = (
+        (control_switches - candidate_switches) / control_switches
+        if control_switches > 0
+        else 0.0
+    )
+
+    control_fragmentation = int(control["fragmentations"])
+    candidate_fragmentation = int(candidate["fragmentations"])
+    fragmentation_increase = candidate_fragmentation - control_fragmentation
+    fragmentation_increase_fraction = (
+        fragmentation_increase / control_fragmentation
+        if control_fragmentation > 0
+        else (0.0 if candidate_fragmentation == 0 else float("inf"))
+    )
+
+    control_false = int(control["false_track_creations"])
+    candidate_false = int(candidate["false_track_creations"])
+    false_track_increase = candidate_false - control_false
+
+    gates = {
+        "tracking_recall_loss_max_0_25pp": recall_loss <= 0.0025 + 1e-12,
+        "id_switch_improvement_min_10pct": switch_improvement >= 0.10 - 1e-12,
+        "fragmentation_increase_max_5pct": fragmentation_increase_fraction <= 0.05 + 1e-12,
+        # Round 2 says no material false-track increase but does not assign a tolerance.
+        # Use the conservative zero-increase interpretation rather than inventing one.
+        "no_false_track_increase": false_track_increase <= 0,
+    }
+    passed = all(gates.values())
+    return {
+        "passed": passed,
+        "decision": "ADVANCE TO DANCETRACK ASSOCIATION-ONLY" if passed else "RETAIN CURRENT TRACKER",
+        "gates": gates,
+        "delta": {
+            "tracking_recall": candidate_recall - control_recall,
+            "tracking_recall_loss_percentage_points": recall_loss * 100.0,
+            "id_switches": candidate_switches - control_switches,
+            "id_switch_improvement_fraction": switch_improvement,
+            "fragmentations": fragmentation_increase,
+            "fragmentation_increase_fraction": fragmentation_increase_fraction,
+            "false_track_creations": false_track_increase,
+            "recovery_events": int(candidate["recovery_events"]) - int(control["recovery_events"]),
+            "mean_recovery_latency_frames": (
+                None
+                if control["mean_recovery_latency_frames"] is None
+                or candidate["mean_recovery_latency_frames"] is None
+                else float(candidate["mean_recovery_latency_frames"])
+                - float(control["mean_recovery_latency_frames"])
+            ),
+            "recovered_same_id": int(candidate["recovered_same_id"]) - int(control["recovered_same_id"]),
+            "wrong_recovery": int(candidate["wrong_recovery"]) - int(control["wrong_recovery"]),
+            "mean_uninterrupted_track_length": float(candidate["mean_uninterrupted_track_length"])
+            - float(control["mean_uninterrupted_track_length"]),
+        },
+    }
+
+
+def compare_current_ambiguity_guard(
+    replay: DetectionReplay,
+    ground_truth: Iterable[GroundTruthFrame],
+    *,
+    subject_commit: str | None = None,
+    ground_truth_hash: str | None = None,
+) -> dict[str, object]:
+    scenario = scenario_from_canonical_ground_truth(replay, ground_truth)
+    control = run_scored_replay_candidate(scenario, "current")
+    candidate = run_scored_replay_candidate(scenario, "current-ambiguity-guard")
+    return {
+        "schema": "spectratrack-tracking-round2-comparison-v1",
+        "subject_commit": subject_commit,
+        "research_base": RESEARCH_BASE_SHA,
+        "video": replay.metadata.video,
+        "ground_truth_sha256": ground_truth_hash,
+        "detection_replay_schema": DETECTION_REPLAY_SCHEMA,
+        "replay_source_sha256": replay.source_sha256,
+        "replay_canonical_sha256": replay.canonical_sha256(),
+        "replay_metadata": replay.metadata.to_json(),
+        "match_iou": DEFAULT_MATCH_IOU,
+        "detector_policy_runs": 0,
+        "onnx_inference_calls": 0,
+        "control": control,
+        "candidate": candidate,
+        "promotion": ambiguity_guard_promotion_gate(control["metrics"], candidate["metrics"]),
+    }
+
+
+def _sha256_path(path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
 def run_loaded_replay(
     replay: DetectionReplay,
     candidate: str = "current",
@@ -1693,6 +1853,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default="current",
     )
     parser.add_argument("--audit-current", action="store_true")
+    parser.add_argument("--ground-truth", help="Canonical A5 QA JSONL for scored replay comparison")
+    parser.add_argument(
+        "--compare-ambiguity-guard",
+        action="store_true",
+        help="Score current vs current-ambiguity-guard on the exact same replay bytes",
+    )
+    parser.add_argument("--revision", help="Exact A2 subject commit recorded in scored comparison provenance")
     parser.add_argument("--performance-repeats", type=int, default=20)
     parser.add_argument("--output")
     return parser
@@ -1702,9 +1869,25 @@ def main() -> int:
     args = _build_parser().parse_args()
     if args.performance_repeats < 1:
         raise SystemExit("--performance-repeats must be >= 1")
+    if args.compare_ambiguity_guard and (not args.replay or not args.ground_truth):
+        raise SystemExit("--compare-ambiguity-guard requires --replay and --ground-truth")
+    if args.ground_truth and not args.compare_ambiguity_guard:
+        raise SystemExit("--ground-truth is used only with --compare-ambiguity-guard")
+    if args.audit_current and args.compare_ambiguity_guard:
+        raise SystemExit("--audit-current and --compare-ambiguity-guard are mutually exclusive")
+
     if args.replay:
         replay = load_detection_replay(args.replay)
-        report = run_loaded_replay(replay, candidate=args.candidate, audit_current=args.audit_current)
+        if args.compare_ambiguity_guard:
+            ground_truth = load_ground_truth(args.ground_truth)
+            report = compare_current_ambiguity_guard(
+                replay,
+                ground_truth,
+                subject_commit=args.revision,
+                ground_truth_hash=ground_truth_sha256(args.ground_truth),
+            )
+        else:
+            report = run_loaded_replay(replay, candidate=args.candidate, audit_current=args.audit_current)
     else:
         if args.audit_current:
             raise SystemExit("--audit-current applies only to --replay current")
@@ -1713,6 +1896,7 @@ def main() -> int:
     if args.output:
         with open(args.output, "w", encoding="utf-8") as handle:
             handle.write(text + "\n")
+        print(f"artifact_sha256={_sha256_path(args.output)}")
     print(text)
     return 0
 
