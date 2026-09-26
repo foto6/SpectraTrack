@@ -652,3 +652,21 @@ This closes the tooling gap only. The actual held-out MOT17 and CrowdHuman runs 
 - A1 held-out MOT17/CrowdHuman target-PC runs are still not done.
 - No A2/A3 jobs are being blindly restarted while local artifact/process state is unverified.
 - Production integration remains locked.
+
+
+## 2026-09-26 — continue Round 2 while target-PC control is degraded
+
+### IN PROGRESS — A2 targeted-association candidate design from Git source
+
+Because target-PC artifact/process inspection is still unreliable, the next safe step is Git-side A2 research that does not require rerunning detector inference.
+
+Plan:
+
+1. inspect current `agent/vnext-tracking` failure-miner/candidate code and tests;
+2. identify the smallest targeted ambiguity/hysteresis change that preserves current two-stage high/low semantics;
+3. add it only to research tooling, not production `tracker.py`;
+4. add deterministic tests for the specific close/competing-association case;
+5. push to A2 and use GitHub CI for code validation;
+6. defer real replay acceptance/rejection until target-PC artifacts are again readable.
+
+No production branch or runtime behavior will be changed.
