@@ -588,3 +588,22 @@ Still required, without retuning on held-out data:
 - canonical replay artifacts for surviving policies.
 
 The target-PC run must not be restarted or duplicated until local process/artifact state is positively checked.
+
+
+## Round 2 public-first detection assignment — 2026-09-26
+
+Status: **IN PROGRESS / TARGET-PC HELD-OUT STILL NOT DONE**
+
+The fixed MOT17 development/held-out split remains unchanged. Held-out results must not be used to retune thresholds.
+
+Immediate evidence order:
+
+1. MOT17 held-out: hard-nms / conservative-nmm / weighted / evidence-aware on identical prefusion evidence;
+2. CrowdHuman validation: dense/close-person/fusion safety, no tracking metrics;
+3. after A5 freezes `nightowls-public-r1`, run surviving A1 policies on NightOwls validation without threshold retuning on the validation set.
+
+NightOwls is a public night detector/fusion gate, not a new tuning corpus unless A5 explicitly publishes a separate train/development split.
+
+For surviving temporal policies, emit canonical `spectratrack-detection-replay-v1` for A2.
+
+Do not change detector families or production detector semantics in response to held-out results during this cycle.
