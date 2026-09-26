@@ -143,3 +143,98 @@ Interpretation:
 5. Make scheduler budget explicit in both calls and wall time. Detector cadence is now part of the performance research problem.
 6. Do not integrate into production until a private human-confirmed CCTV GOLDEN corpus exists and the surviving candidates pass it.
 7. Keep all round-2 work isolated. No merge to `integration`, `main`, or RC.
+
+
+## Public-first dataset evidence — 2026-09-26
+
+This section records external dataset suitability/terms research. It does not claim any local benchmark run.
+
+### DanceTrack — ACCEPTED for isolated non-commercial research
+
+Official project/repository:
+
+- https://github.com/DanceTrack/DanceTrack
+- project: https://dancetrack.github.io/
+
+Official repository states:
+
+- 100 videos: 40 train, 25 validation, 35 test;
+- public train/validation annotations contain bounding boxes and stable identities;
+- GT follows MOT-style rows: `frame, id, bb_left, bb_top, bb_width, bb_height, ...`;
+- annotations are licensed CC BY 4.0;
+- dataset images/videos are for non-commercial research use;
+- code is MIT.
+
+Architect decision:
+
+- A5 may implement an isolated importer into the existing canonical QA JSONL;
+- raw DanceTrack media stays outside Git/product artifacts;
+- freeze a separate `dancetrack-public-r1`;
+- use primarily for A2 association/crossing/ID stress;
+- first A2 phase must be association-only from GT-derived observations before spending detector inference.
+
+### NightOwls — ACCEPTED as primary night research corpus
+
+Official source:
+
+- https://www.nightowls-dataset.org/
+- https://www.nightowls-dataset.org/download/
+- official SDK linked by the dataset site: https://gitlab.com/vgg/nightowlsapi
+
+Official site states:
+
+- 279k frames across 40 night/dawn sequences;
+- 1024x640, recorded from an industry-standard camera;
+- PNG/JSON and Caltech-compatible distributions;
+- pedestrian/cyclist/motorcyclist/ignore annotations;
+- pedestrian annotations include occlusion, difficulty, pose/truncation metadata;
+- dataset documentation states tracking information is available to identify the same object across multiple frames;
+- scenes include low illumination, motion blur, noise, reflections and changing contrast;
+- non-commercial research/teaching/personal experimentation is allowed with citation;
+- redistribution of the dataset or modified versions is prohibited.
+
+Architect decision:
+
+- primary public night/low-light corpus for A1 and A3;
+- A2 temporal use only after A5 validates stable-ID semantics in the official annotations/SDK;
+- freeze separate `nightowls-public-r1`;
+- raw or modified NightOwls files must never be committed or redistributed.
+
+### LLVIP — ACCEPTED as optional secondary visible-only evidence
+
+Official repository:
+
+- https://github.com/bupt-ai-cz/LLVIP
+- terms: https://github.com/bupt-ai-cz/LLVIP/blob/main/Term%20of%20Use%20and%20License.md
+
+Official terms state non-commercial research/teaching/personal experimentation only, with citation and privacy restrictions.
+
+Architect decision:
+
+- optional secondary low-light detector/enhancement evidence;
+- SpectraTrack comparisons use **visible/RGB side only**;
+- IR images are not production detector input;
+- no tracking/identity metrics unless annotation semantics genuinely support them.
+
+### KAIST multispectral pedestrian benchmark — FALLBACK
+
+Official repository:
+
+- https://github.com/SoonminHwang/rgbt-ped-detection
+
+The benchmark contains aligned visible + thermal pedestrian sequences with dense manual annotations and temporal correspondence.
+
+Architect decision:
+
+- not primary Round-2 night corpus because NightOwls better matches RGB-only night evaluation and avoids unnecessary multispectral-origin complexity;
+- if later needed, use visible/RGB only for SpectraTrack input;
+- thermal/LWIR is never substituted for RGB production evidence.
+
+### Public evidence mapping
+
+- MOT17 -> A1 detection/fusion + A2 tracking;
+- CrowdHuman -> A1 dense/close-person/fusion safety; no tracking metrics;
+- DanceTrack -> A2 association/ID/crossing stress;
+- NightOwls -> A1 night detection/fusion + A3 enhancement; optional A2 temporal tracking only after stable-ID validation;
+- LLVIP visible -> optional secondary low-light A1/A3 evidence;
+- private CCTV -> reduced final domain sanity check only.
