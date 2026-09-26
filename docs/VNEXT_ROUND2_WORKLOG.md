@@ -768,3 +768,19 @@ GitHub Actions run `36240708158` completed successfully:
 - Windows standalone build/smoke/package/upload passed.
 
 The candidate is now mechanism-valid but remains **NOT YET ACCEPTED** for production. Real replay comparison is still required once target-PC artifact access is reliable.
+
+
+### IN PROGRESS — make A3 strict enhancement budget reproducible in tooling
+
+The existing local weak-person experiment enforced one selected ROI per source frame by preparing a special manifest. That is useful evidence, but the budget is not yet encoded in the A3 profiler itself.
+
+Safe Git-side step:
+
+- add an explicit research-only per-frame enhanced-ROI cap to the A3 profiler;
+- default to unlimited so existing behavior/tests remain backward-compatible;
+- enforce the cap independently per operation after operation/selective gates;
+- record cap and budget-skipped ROI counts in result provenance;
+- add deterministic tests proving that two eligible ROIs in one frame produce only one enhanced call when the cap is 1;
+- do not change production enhancement/runtime code.
+
+This makes the Round-2 strict budget reproducible instead of depending on a hand-crafted manifest.
