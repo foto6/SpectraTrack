@@ -117,6 +117,23 @@ def collect_corpus_video_frames(
     }
 
 
+def _per_video_performance(summary: Mapping[str, Any], *, reused: bool) -> dict[str, Any]:
+    wall_time_s = float(summary.get("wall_time_s", 0.0))
+    inference_calls = int(summary.get("inference_calls", 0))
+    return {
+        "policy_runs": int(summary.get("policy_runs", 0)),
+        "inference_calls": inference_calls,
+        "new_inference_calls": 0 if reused else inference_calls,
+        "reused_inference_calls": inference_calls if reused else 0,
+        "represented_detector_wall_s": wall_time_s,
+        "new_detector_wall_s": 0.0 if reused else wall_time_s,
+        "reused_detector_wall_s": wall_time_s if reused else 0.0,
+        "stage_ms": {name: float(value) for name, value in dict(summary.get("stage_ms", {})).items()},
+        "source_modes": sorted(summary.get("source_modes", [])),
+        "evidence_source": "reused_prefusion" if reused else "new_inference",
+    }
+
+
 def attach_ground_truth(
     frames: Iterable[ResearchFrame],
     annotations: Mapping[tuple[str, int], GroundTruthFrame],
@@ -346,6 +363,10 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         "source_modes": set(),
         "new_videos": 0,
         "reused_videos": 0,
+        "represented_detector_wall_s": 0.0,
+        "new_detector_wall_s": 0.0,
+        "reused_detector_wall_s": 0.0,
+        "per_video": {},
     }
     benchmark_started = time.perf_counter()
 
@@ -391,6 +412,12 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
                     summary,
                 )
 
+        reused = bool(args.resume and prefusion_path is not None and prefusion_path.is_file())
+        video_performance = _per_video_performance(summary, reused=reused)
+        performance["per_video"][video] = video_performance
+        performance["represented_detector_wall_s"] += video_performance["represented_detector_wall_s"]
+        performance["new_detector_wall_s"] += video_performance["new_detector_wall_s"]
+        performance["reused_detector_wall_s"] += video_performance["reused_detector_wall_s"]
         performance["policy_runs"] += int(summary.get("policy_runs", len(frames)))
         performance["inference_calls"] += int(summary.get("inference_calls", 0))
         for name, value in dict(summary.get("stage_ms", {})).items():
