@@ -16,7 +16,7 @@ def _write_prefusion(path):
             "type": "metadata",
             "schema": "spectratrack-detection-prefusion-v1",
             "source_commit": "a1",
-            "model_sha256": "model-sha",
+            "model_sha256": "5496d6743cdde4fe98674e290e44b3220f5a42bf0c442eb207e88fd041e34d48",
             "video_sha256": "video-sha",
             "config": {"person_conf": 0.12},
         },
