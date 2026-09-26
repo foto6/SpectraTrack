@@ -208,6 +208,7 @@ def _prefusion_metadata(
             "decoder_local_nms": True,
             "final_cross_pass_fusion": "not_applied",
             "enhancement": "off",
+            "frame_limit_per_video": args.frame_limit_per_video,
         },
         "width": frame.width,
         "height": frame.height,
@@ -242,6 +243,7 @@ def _validate_reusable_prefusion(
         "person_conf": args.person_conf,
         "tile_size": args.tile_size,
         "tile_overlap": args.tile_overlap,
+        "frame_limit_per_video": args.frame_limit_per_video,
     }
     for key, value in expected.items():
         if config.get(key) != value:
@@ -287,6 +289,8 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
     performance = {
         "policy_runs": 0,
         "inference_calls": 0,
+        "new_inference_calls": 0,
+        "reused_inference_calls": 0,
         "stage_ms": {},
         "source_modes": set(),
         "new_videos": 0,
@@ -307,6 +311,7 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
             )
             frames = attach_ground_truth(cached_frames, annotation_map)
             performance["reused_videos"] += 1
+            performance["reused_inference_calls"] += int(summary.get("inference_calls", 0))
         else:
             frames, summary = collect_corpus_video_frames(
                 detector,
@@ -319,6 +324,7 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
                 frame_limit=args.frame_limit_per_video,
             )
             performance["new_videos"] += 1
+            performance["new_inference_calls"] += int(summary.get("inference_calls", 0))
             if prefusion_path is not None:
                 write_prefusion_dump(
                     prefusion_path,
