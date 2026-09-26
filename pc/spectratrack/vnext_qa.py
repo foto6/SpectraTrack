@@ -378,8 +378,8 @@ def build_frozen_manifest(
     dataset_imports = list(report.get("dataset_imports", []))
     if not human_confirmed and not (dataset_imports and public_dataset_confirmed):
         raise ValueError(
-            "Frozen corpus requires --confirm-human-reviewed for private GT or "
-            "--confirm-public-dataset-terms for verified public-dataset GT"
+            "Frozen corpus requires explicit human confirmation via --confirm-human-reviewed "
+            "for private GT or --confirm-public-dataset-terms for verified public-dataset GT"
         )
     confirmation_kind = (
         "hybrid_private_and_public"
