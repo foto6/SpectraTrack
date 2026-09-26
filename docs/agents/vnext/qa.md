@@ -1039,3 +1039,108 @@ Validation result at this checkpoint:
 - deterministic slice frozen revision/hash: **NOT CREATED**
 
 Reason real freeze is not claimed: official validation media is external, approximately 50GB, redistribution is prohibited, and those bytes are not present in the agent's GitHub-only execution environment. No mirror/resized substitute was used.
+## Round 2 A5 — public gate importer final validation
+
+Validated code/state checkpoint:
+
+`55a5388c3a94adabd3c6393387859177fac6d169`
+
+GitHub Actions:
+
+- run: `36255262803`
+- result: **SUCCESS**
+- Ruff: **PASS** — `All checks passed!`
+- compileall + pytest: **174 passed in 1.60s**
+- synthetic tracker smoke: **PASS** — 500 frames / 24 targets / 11970 observations / 1812.1 tracker_fps
+- diagnostics: **PASS**
+- self-check: **PASS**
+- standalone Windows build: **PASS**
+- standalone app help + batch help: **PASS**
+- source + Windows artifact packaging/upload: **PASS**
+
+The synthetic tracker throughput above validates regression tooling only; it is not a DanceTrack/NightOwls quality or performance result.
+
+### Frozen corpus integrity
+
+Existing Round-2 frozen corpora remain untouched:
+
+- `mot17-public-r1` — unchanged
+- `crowdhuman-val-fbox-r1` — unchanged
+
+The Round-2 diff from requested starting HEAD `f4f406182df54335e2c26a34091915408204789c` contains only A5 importer/source-control/tests/docs. No existing frozen manifest/data artifact was modified.
+
+### DanceTrack final implementation status
+
+- official source: `https://github.com/DanceTrack/DanceTrack`
+- annotations: CC BY 4.0
+- media: non-commercial research only
+- split policy: validation is held-out Round-2 association gate
+- importer command: `python -m spectratrack.vnext_qa import-dancetrack ...`
+- intended frozen revision: `dancetrack-public-r1`
+- real dataset import in this environment: **NOT RUN**
+- canonical JSONL artifact path after local import: `pc/benchmarks/vnext/qa/imports/dancetrack-val.jsonl`
+- import manifest path: `pc/benchmarks/vnext/qa/imports/dancetrack-val.import.json`
+- real artifact hashes: **NOT AVAILABLE until official local bytes are imported**
+- frozen `dancetrack-public-r1` hash: **NOT AVAILABLE / NOT FROZEN**
+
+A2 handoff after local freeze:
+
+- use the exact frozen `dancetrack-public-r1` revision/hash;
+- association-only first phase should use deterministic detections copied from GT boxes with score 1.0, `label=person`, `appearance=null`, `detector_ran=true` and zero ONNX calls;
+- GT identities stay evaluator-only; do not expose GT IDs as tracker hints;
+- do not retune the ambiguity candidate from held-out validation metrics;
+- detector-replay DanceTrack runs are follow-up evidence only if association-only A2 survives.
+
+### NightOwls final implementation status
+
+- official source/download: `https://www.nightowls-dataset.org/download/`
+- official SDK: `https://gitlab.com/vgg/nightowlsapi`
+- terms: non-commercial research/teaching/personal experimentation; citation required; redistribution prohibited
+- split policy: official validation is held-out Round-2 night gate
+- importer command: `python -m spectratrack.vnext_qa import-nightowls ...`
+- intended full frozen revision: `nightowls-public-r1`
+- real validation import in this environment: **NOT RUN**
+- canonical full JSONL artifact path after local import: `pc/benchmarks/vnext/qa/imports/nightowls-val.jsonl`
+- import manifest path: `pc/benchmarks/vnext/qa/imports/nightowls-val.import.json`
+- real artifact hashes: **NOT AVAILABLE until official local bytes are imported**
+- frozen `nightowls-public-r1` hash: **NOT AVAILABLE / NOT FROZEN**
+
+If full validation inference is too expensive:
+
+- create a deterministic stratified slice before any candidate result;
+- selection uses official source/annotation metadata only, never detector/model output;
+- freeze the slice under a revision explicitly containing `slice`; never report a slice as full `nightowls-public-r1`;
+- exact selected image IDs + deterministic selected-ID hash are recorded in import provenance;
+- use the identical frozen slice for A1 and A3;
+- sparse slice has `tracking_supported=false` by construction.
+
+A1/A3 handoff after local freeze:
+
+- compare only on the exact same NightOwls frozen revision/hash;
+- A1 reports raw/passive/fusion evidence on the held-out night gate;
+- A3 reports enhancement evidence on the same frozen source bytes;
+- preserve official rider separation: bicycledriver/motorbikedriver are not ordinary pedestrian GT;
+- do not call canonical A5 numbers official NightOwls challenge numbers unless the official evaluator is run separately.
+
+### Secondary corpora
+
+- LLVIP: not activated in this implementation; if needed, visible/RGB only, detection/enhancement only, no invented stable tracking IDs.
+- KAIST: not activated; fallback only, visible/RGB only; thermal/LWIR is not SpectraTrack production input.
+
+### Private CCTV Round-2 gate
+
+Current instruction remains:
+
+- do **not** ask the user to review the existing 46-frame draft now;
+- after public finalists, reduce to about 10–15 hardest standalone frames plus 3–5 temporal episodes;
+- human action then becomes CONFIRM / FIX / REJECT;
+- AI-only private annotations remain DRAFT and must not be frozen.
+
+### Readiness
+
+- DanceTrack importer/tooling: **READY FOR OFFICIAL LOCAL DATA INTAKE**
+- NightOwls importer/tooling: **READY FOR OFFICIAL LOCAL DATA INTAKE**
+- deterministic NightOwls slice tooling: **READY BEFORE candidate results**
+- actual DanceTrack held-out gate: **BLOCKED only on external dataset import/freeze**
+- actual NightOwls held-out gate: **BLOCKED only on external dataset import/freeze**
+- common Round-2 candidate comparison should not begin on these two gates until their exact frozen manifest/hash is produced locally and distributed unchanged to the relevant agents.
