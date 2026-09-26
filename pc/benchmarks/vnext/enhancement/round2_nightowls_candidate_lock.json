@@ -17,8 +17,11 @@
     "corroboration_iou": 0.1
   },
   "primary_heldout": {
-    "corpus_revision": "nightowls-public-r1",
-    "split": "official validation or A5-frozen deterministic validation slice",
+    "corpus_revision": "nightowls-public-slice5000-r1",
+    "corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
+    "ground_truth_sha256": "6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc",
+    "manifest_sha256": "6d609998ec12eebe908056ed08019208e6b954befb2fa4cca3974f1bf31990da",
+    "split": "A5-frozen deterministic official validation slice, 5000 frames",
     "retuning_after_results": "forbidden"
   },
   "candidates": [
@@ -64,5 +67,19 @@
       }
     }
   ],
-  "final_decision_rule": "If neither strict bilateral nor strict current_adaptive_cached shows a convincing post-fusion quality-per-compute and stability gain over OFF on the frozen held-out evidence, hand off ENHANCEMENT OFF."
+  "final_decision_rule": "If neither strict bilateral nor strict current_adaptive_cached shows a convincing post-fusion quality-per-compute and stability gain over OFF on the frozen held-out evidence, hand off ENHANCEMENT OFF.",
+  "final_decision_gate": {
+    "locked_before_heldout_postfusion_results": true,
+    "candidate_must": [
+      "satisfy selective_gate=weak-person, max_enhanced_rois_per_source_frame=1, and raw corroboration",
+      "have post-fusion recall strictly greater than OFF",
+      "have post-fusion F1 strictly greater than OFF",
+      "have post-fusion precision not lower than OFF",
+      "have bbox localization IoU not lower than OFF",
+      "not regress core bbox stability: center/width/height jitter must not increase and temporal IoU must not decrease when measurable",
+      "show positive recovered-GT per extra enhancement call with all incremental compute explicitly reported"
+    ],
+    "tie_policy": "If both enhancement candidates clear the gate but neither gives a clear multidimensional quality+stability+compute dominance, retain OFF rather than choose from one metric.",
+    "fallback": "ENHANCEMENT OFF"
+  }
 }
