@@ -670,3 +670,36 @@ Plan:
 6. defer real replay acceptance/rejection until target-PC artifacts are again readable.
 
 No production branch or runtime behavior will be changed.
+
+
+### IN PROGRESS — A2 ambiguity-scoped assignment candidate implemented
+
+A2 research branch advanced:
+
+- code commit: `662da384551c9573016da41403019340f6022252`
+- test commit / current head: `711ed1c476d26db7beca99a3d049ec4741202a8d`
+
+New research-only candidate:
+
+`current-ambiguity-guard`
+
+Design:
+
+- keeps current SpectraTrack two-stage high/low association, gates, lifecycle, CMC, appearance, dormant recovery, and strong-only creation;
+- preserves current greedy association when no close score competition exists;
+- detects connected ambiguous association components where top alternatives are within the existing research margin (0.08);
+- applies global maximum-score assignment only inside those ambiguous components;
+- falls back to current greedy ordering for the remaining edges.
+
+This specifically targets the observed failure pattern without adopting wholesale global assignment.
+
+Added deterministic tests:
+
+- nearby-same-class synthetic greedy conflict must be resolved with 0 ID switches;
+- non-ambiguous camera-pan / weak-detection / dormant-reactivation scenarios must remain metric-identical to current tracker.
+
+GitHub Actions run:
+
+`36240587164`
+
+State: **IN PROGRESS**. Do not mark candidate validated until CI completes.
