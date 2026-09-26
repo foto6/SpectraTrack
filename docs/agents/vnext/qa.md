@@ -925,3 +925,48 @@ Official documentation says pedestrian, bicycledriver, motorbikedriver, and igno
 - decide whether non-pedestrian person-like classes should become ignore regions only after checking official evaluation semantics/SDK;
 - preserve official occlusion/difficulty/pose/truncation metadata as source-backed attributes;
 - set `tracking_supported=true` only after the official identity field/SDK behavior is validated in real annotations.
+## Round 2 A5 — DanceTrack importer implementation checkpoint
+
+Status at code HEAD before this state update:
+
+`7ca5c6aacfc75752ce850d9e2d635713ebd33e85`
+
+Dataset/source:
+
+- DanceTrack official project/repository: `https://github.com/DanceTrack/DanceTrack`
+- annotation license: CC BY 4.0
+- dataset media: non-commercial research only
+- code: MIT
+- intended frozen revision: `dancetrack-public-r1`
+- Round-2 held-out split: `val`
+
+Implemented:
+
+- isolated `import-dancetrack` command through the existing A5 CLI;
+- canonical output remains `qa_benchmark.py` JSONL;
+- importer reuses existing `_read_seqinfo()`, `_parse_mot_gt()`, `_mot_bbox_to_canonical()`, source SHA/provenance helpers;
+- stable IDs are namespaced as `DanceTrack:<sequence>:<id>`;
+- original 1-based frame, source sequence, split, FPS, bbox and source metadata are preserved;
+- every sequence cross-checks seqinfo frame count and image dimensions;
+- source `seqinfo.ini`, `gt.txt`, every imported frame and aggregate provenance are hashed;
+- official DanceTrack trailing MOT fields are required to be constant `1,1,1` and are not interpreted as MOT17 class/visibility semantics;
+- no MOT17 distractor classes, visibility bins or semantic scene tags are inherited;
+- test split import is rejected because public test GT is unavailable.
+
+Focused synthetic-format tests added for:
+
+- stable identity / source provenance;
+- absence of MOT17-specific semantics;
+- rejection of non-constant DanceTrack trailing fields;
+- seqinfo/image-dimension mismatch.
+
+Validation result at this checkpoint:
+
+- code written: **YES**
+- CI for this checkpoint: **NOT YET CONFIRMED**
+- real DanceTrack dataset import: **NOT RUN**
+- real artifact path/hash: **NOT AVAILABLE**
+- frozen `dancetrack-public-r1`: **NOT FROZEN**
+- frozen corpus hash: **NOT AVAILABLE**
+
+Reason real freeze is not claimed: raw DanceTrack dataset bytes are intentionally external/gitignored and are not present in the agent's GitHub-only execution environment.
