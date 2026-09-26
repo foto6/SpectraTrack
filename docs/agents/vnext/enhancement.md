@@ -405,3 +405,64 @@ Next evidence gate:
 5. pass measured A3 costs/signals to A4;
 6. compare final frame-level quality through A5/A1-owned evaluation/fusion;
 7. only then decide which operations or gates deserve integrator review.
+
+
+## Round 2 supplement — explicit per-frame enhancement budget
+
+Validated research code HEAD before this documentation update:
+
+`898caa9c6ecff4d15b0d5cbabaae9390b8e86fd8`
+
+Round-2 tooling now supports an explicit research budget:
+
+`--max-enhanced-rois-per-frame N`
+
+Semantics:
+
+- `0` preserves the previous unlimited research-profiler behavior;
+- positive values cap actual enhanced follow-up inference independently for each operation and source frame;
+- operation/selective gate counts are still recorded even when the budget blocks the expensive follow-up;
+- blocked follow-ups are reported as `budget_skipped_rois`;
+- raw probe calls remain unchanged and separately counted;
+- production enhancement/runtime behavior is unchanged.
+
+This makes the strict weak-evidence experiment reproducible in the profiler itself instead of relying only on a specially pre-filtered ROI manifest.
+
+The intended first Round-2 setting remains:
+
+- selective gate: `weak-person`;
+- max enhanced ROIs per source frame: `1`;
+- raw corroboration mandatory;
+- compact operation set: bilateral / current_adaptive_cached / sharpen;
+- no-enhancement remains the baseline outside this profiler.
+
+### CI
+
+GitHub Actions run:
+
+`36241047867`
+
+Result: **SUCCESS**
+
+Observed:
+
+- ruff: passed;
+- compile + pytest: **154 passed in 2.66 s**;
+- tracker smoke: 500 frames / 24 targets / 11970 observations;
+- tracker smoke throughput: 1798.9 tracker FPS;
+- crossing/reappearance smoke ID switches: 0;
+- diagnostics/self-check: passed;
+- Windows standalone build/smoke/package/upload: passed.
+
+A deterministic test verifies that two eligible ROIs in one source frame produce:
+
+- 2 raw probe calls;
+- only 1 enhanced inference call when the cap is 1;
+- 1 affected ROI;
+- 1 budget-skipped ROI.
+
+### Decision status
+
+**TOOLING READY; QUALITY DECISION STILL PENDING.**
+
+The target-PC strict weak-person result must still be verified or rerun after the Remote Desktop Commander control channel is reliable. This code change does not by itself prove that any enhancement operation should be enabled in production.
