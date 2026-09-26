@@ -703,3 +703,46 @@ GitHub Actions run:
 `36240587164`
 
 State: **IN PROGRESS**. Do not mark candidate validated until CI completes.
+
+
+### FAILED — first A2 ambiguity-guard implementation did not trigger on the synthetic conflict
+
+GitHub Actions run `36240587164` failed one deterministic test:
+
+`test_global_assignment_probe_exposes_current_greedy_conflict`
+
+Observed:
+
+- current tracker: known greedy conflict;
+- full global candidate: 0 switches;
+- first ambiguity-guard candidate: **4 switches**, so it did not improve the target case.
+
+Cause:
+
+- the first component builder only connected score-close edges;
+- in the known 2x2 conflict, one detection had two near-equal track scores, but the alternative second detection was not itself within the 0.08 margin;
+- the candidate therefore saw a 2-track/1-detection component and never invoked the local global solve.
+
+Rejected result: the failed implementation is not evidence of candidate quality.
+
+### IN PROGRESS — A2 ambiguity component fix
+
+A2 advanced to:
+
+`c552b0f45e033628e188f91df11839025c2ed359`
+
+Fix:
+
+- ambiguity is still seeded only by close-score competition;
+- component context now expands through each participating node's two best accepted alternatives;
+- this supplies the missing one-to-one alternative without globally replacing assignment on every frame.
+
+GitHub Actions run `36240708158`:
+
+- lint: passed;
+- compile + pytest: passed;
+- synthetic benchmark: passed;
+- diagnostics/self-check: passed;
+- Windows build was still running at the last check.
+
+Do not mark fully validated until the workflow concludes successfully.
