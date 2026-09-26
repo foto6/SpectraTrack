@@ -1964,3 +1964,20 @@ Final A1 Round-2 decision is now durable in both coordination and specialist rec
 **RETAIN CURRENT HARD-NMS / REJECT NEW FUSION CHALLENGERS.**
 
 No held-out retuning and no A1 production integration is authorized.
+
+
+## 2026-09-27 — next major step: A3 strict-profile audit while NightOwls downloads
+
+### IN PROGRESS — analyze existing A3 artifact without new inference
+
+With A1 closed and the single official NightOwls downloader still active, the coordinator will use the wait period to audit the already-existing A3 strict weak-person artifact and A3 specialist handoff.
+
+Safety boundaries for this step:
+
+- do not restart A3;
+- do not run duplicate enhancement inference;
+- do not touch NightOwls downloader;
+- do not use/alter GOLDEN data;
+- inspect existing A3 metrics/provenance only;
+- determine the pre-NightOwls shortlist and exactly which final decision evidence remains missing;
+- persist outcome before any new A3 experiment.
