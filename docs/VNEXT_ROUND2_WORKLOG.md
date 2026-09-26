@@ -2345,3 +2345,22 @@ Safety/result:
 - ZIP/parts were not modified;
 - no additional downloader was started;
 - retry via a temporary read-only `.ps1` script.
+
+
+## 2026-09-27 — NightOwls download near completion
+
+Live target-PC verification:
+
+- official NightOwls validation ZIP expected bytes: 57,481,286,834
+- observed local bytes increased from 53,795,135,488 to 53,864,194,048 over five seconds
+- curl PID 15200 remains alive with established TCP connection
+- import/freeze artifacts for `nightowls-public-slice5000-r1` are not present yet
+- A3 NightOwls result artifacts are not present yet
+
+A5 has already locked the deterministic 5000-frame held-out slice before any NightOwls candidate result:
+- planned revision: `nightowls-public-slice5000-r1`
+- seed: `spectratrack-round2-nightowls-v1`
+- official SDK commit: `ad0f18fc95e093e86036f055ab210a3de46021b7`
+- `tracking_supported=false`
+
+Decision: preserve the active download. No import, freeze, A3 run, or duplicate download until the ZIP completes and passes size/hash/testzip verification.
