@@ -2431,3 +2431,38 @@ Decision:
 - A3 enhancement held-out gate is now unblocked.
 - A3 must compare exactly OFF / bilateral / current_adaptive_cached on this frozen corpus with no NightOwls threshold retuning.
 - A1 does not need NightOwls to rescue evidence-aware in this Round-2 cycle because the candidate already failed the frozen CrowdHuman no-recall-loss gate.
+
+
+## 2026-09-27 — A3 NightOwls gate execution observed in progress
+
+Coordinator verification after A3 gate bind:
+
+- `agent/vnext-enhancement @ 22fbf840e7a8d3e57e90f4c77aab6bbde498d664`
+- CI run `36280983453`: SUCCESS
+- A3 worktree clean and aligned with origin
+- immutable refs unchanged:
+  - `integration @ 3ebc4d50213593cac62b97399447fccf6bbc1755`
+  - `main @ 2012eaae2f4ffe820a66d12e40346d911616cd03`
+- A1/A2/A5 specialist final heads unchanged
+
+Target-PC process/artifact inspection was performed before any restart. An existing NightOwls OFF-baseline process is already active and therefore was NOT duplicated:
+
+- parent PowerShell PID 19784
+- Python worker chain PID 14444 -> 26304
+- command: `spectratrack.research.vnext_detection_corpus`
+- exact frozen GT: `E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-val-slice.jsonl`
+- corpus revision: `nightowls-public-slice5000-r1`
+- output target: `E:\SpectraTrack-data\runs\a3-nightowls-off.json`
+- prefusion dir: `E:\SpectraTrack-data\runs\a3-nightowls-prefusion-off`
+- replay dir: `E:\SpectraTrack-data\runs\a3-nightowls-replays-off`
+- model: `E:\SpectraTrack\yolo11x.onnx`
+- input size 960, person confidence 0.12, hard-NMS
+- `--resume --per-video` enabled
+- source commit bound to A1 frozen hard-NMS control `3dc31c8fa8b323ce86afc14c3105a0c2247a2c48`
+
+No final `a3-nightowls-off.json` artifact existed at inspection time; the active job is still substantive. Existing MOT17 A3 artifacts remain unchanged.
+
+Decision:
+- do not restart or duplicate the active OFF baseline;
+- bilateral/current_adaptive_cached remain downstream of this baseline under the locked A3 contract;
+- A4 remains parked until A3 publishes its final NightOwls decision and artifact provenance.
