@@ -956,3 +956,398 @@ post-fusion quality-per-compute/stability gain, the required A3 recommendation
 remains:
 
 `ENHANCEMENT OFF`
+
+
+## Round 2 NightOwls frozen held-out final decision
+
+Status: **DONE — ENHANCEMENT OFF**
+
+Frozen A5 corpus was independently coordinator-verified before A3 inference.
+
+### Frozen corpus provenance
+
+- revision: `nightowls-public-slice5000-r1`
+- corpus SHA-256: `1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8`
+- canonical GT: `E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-val-slice.jsonl`
+- GT SHA-256: `6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc`
+- frozen manifest: `E:\SpectraTrack-data\imports\nightowls-public-slice5000-r1\nightowls-public-slice5000-r1.manifest.json`
+- manifest SHA-256: `6d609998ec12eebe908056ed08019208e6b954befb2fa4cca3974f1bf31990da`
+- source root: `E:\SpectraTrack-data\public\NightOwls`
+- A5 final HEAD: `95d0b389efcd46030634ec6005c0bc18098f4aa5`
+- A5 final CI: `36279609347` SUCCESS
+- frames: 5000
+- positive frames: 605
+- true negatives: 4395
+- scored pedestrians: 969
+- official ignore objects: 552
+- tracking_supported: false
+
+Target-PC verification reproduced the exact corpus revision, corpus SHA, GT SHA,
+manifest SHA and source-root presence before any NightOwls A3 candidate run.
+
+### Locked A3/A1 configuration
+
+No threshold/gate/config was changed after NightOwls candidate results became
+available.
+
+- selective gate: `weak-person`
+- max enhanced ROIs/source frame: 1
+- person acceptance: 0.12
+- raw probe: 0.08
+- raw corroboration: mandatory
+- corroboration IoU: 0.10
+- detector input: 960
+- detector conf: 0.35
+- decoder-local NMS IoU: 0.45
+- tile: 640
+- overlap: 0.20
+- final fusion: A1 current hard-NMS
+- fusion IoU: 0.55
+- match IoU: 0.50
+- model: `E:\SpectraTrack\yolo11x.onnx`
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`
+- provider order: `DmlExecutionProvider, CPUExecutionProvider`
+
+A1 current hard-NMS is the retained Round-2 fusion control after the CrowdHuman
+dense-safety gate. A3 did not implement or tune fusion.
+
+### Weak-person ROI selection invariant
+
+OFF prefusion was generated once on all 5000 frozen frames and persisted as 143
+per-recording artifacts.
+
+Strict weak manifest:
+
+`E:\SpectraTrack-data\runs\a3-nightowls-weak1-manifest.jsonl`
+
+SHA-256:
+
+`202aa063dc9342618194fbf992878cac3abdfd646517d7f8577bf5910ec1f707`
+
+Selection audit:
+
+- selected weak-person frames: 590
+- unique selected frame keys: 590
+- all selected rows: `weak_person=true`
+- max selected ROIs/source frame: exactly 1
+- source kind: detector-owned tile
+- selection source: frozen A1 detector evidence
+- GT objects/tags used for runtime selection: **false**
+- canonical GT was consulted only for immutable `source/source_frame` byte lookup
+
+Therefore held-out labels were not runtime hints.
+
+### Protocol correction before final scoring
+
+The older strict A3 helper reused >=0.12 frozen raw support without a fresh raw
+probe. The Round-2 lock explicitly required raw probe 0.08, so this was corrected
+**before final NightOwls post-fusion candidate scoring**:
+
+- fresh same-ROI raw pass at 0.08;
+- enhanced pass at person acceptance 0.12;
+- enhanced detection must have raw support;
+- same-source alternate cannot add an independent evidence source.
+
+A second handoff bug was then exposed before final candidate scoring:
+an enhanced ROI can contain both a strong person and the selected weak person.
+The old apply path could attempt to replace one frozen weak source measurement
+more than once.
+
+Final semantics were corrected without threshold/gate changes:
+
+1. fresh raw 0.08 corroboration is mandatory;
+2. candidate must also overlap a distinct frozen weak measurement at IoU >= 0.10;
+3. mapping is one-to-one;
+4. one frozen raw measurement can be replaced at most once;
+5. unmatched enhanced detections are not appended as new evidence sources.
+
+Focused A3 tests after the correction:
+
+**21 passed in 0.52 s**
+
+Final evidence source commit:
+
+`39e82689e8d9671f365cea4d2f4f440b3ca603ea`
+
+### OFF baseline
+
+Canonical result:
+
+`E:\SpectraTrack-data\runs\a3-nightowls-off.json`
+
+SHA-256:
+
+`8f529444b15e8157c4ac7480628433eddc7aa098228d040a3aff16aba2bcee00`
+
+Completion marker SHA-256:
+
+`573ba7f3c407f818c2d261a1da0ea2273f7d09ab0796e9232216cc4169481045`
+
+Detailed QA result SHA-256:
+
+`6d2e1f6d84f97b9f1d87f81be6ad6a793d73b8a37b42dae9dc7b585a923d8f00`
+
+OFF metrics:
+
+| metric | OFF |
+| --- | ---: |
+| TP | 798 |
+| FP | 1329 |
+| FN | 171 |
+| precision | 0.375176305 |
+| recall | 0.823529412 |
+| F1 | 0.515503876 |
+| bbox localization IoU | 0.758590168 |
+| raw ONNX calls | 15000 |
+| extra enhancement ONNX calls | 0 |
+| benchmark wall | 1741.640176 s |
+
+OFF metadata has enhancement disabled. It receives no A3 raw-probe or enhanced
+inference work.
+
+### Final strict comparison
+
+| metric | OFF | bilateral | current_adaptive_cached |
+| --- | ---: | ---: | ---: |
+| TP | 798 | 798 | 797 |
+| FP | 1329 | 1329 | 1323 |
+| FN | 171 | 171 | 172 |
+| precision | 0.375176305 | 0.375176305 | 0.375943396 |
+| recall | 0.823529412 | 0.823529412 | 0.822497420 |
+| F1 | 0.515503876 | 0.515503876 | 0.516024603 |
+| bbox localization IoU | 0.758590168 | 0.758590168 | 0.758974483 |
+| recovered GT vs OFF | — | 0 | 0 |
+| lost GT vs OFF | — | 0 | 1 |
+| FP delta | — | 0 | -6 |
+| selected weak ROIs | — | 590 | 590 |
+| operation gate active | — | 0 | 461 |
+| additional raw 0.08 calls | 0 | 0 | 461 |
+| extra enhanced 0.12 calls | 0 | 0 | 461 |
+| total ONNX calls including A3 work | 15000 | 15000 | 15922 |
+| recovered GT / extra enhanced call | — | n/a | 0.0 |
+| FP cost / recovered GT | — | n/a | n/a: recovered GT = 0 |
+| strict candidate experiment wall | — | 13.541972 s | 119.747124 s |
+
+Cached deltas vs OFF:
+
+- TP: -1
+- FP: -6
+- FN: +1
+- precision: +0.000767092
+- recall: -0.001031992
+- F1: +0.000520727
+- bbox localization IoU: +0.000384315
+- total extra ONNX calls: +922 = +6.1467% vs OFF
+- strict held-out experiment wall: +119.747124 s = 6.8755% of OFF benchmark wall
+- operation preprocessing: 2822.742301 ms
+- raw-probe detector wall: 51825.793201 ms
+- enhanced detector wall: 51146.147699 ms
+
+The strict experiment wall includes research source-image read/hash overhead and
+is not claimed as a pure production latency estimate. ONNX call deltas and
+detector/preprocessing timing are reported separately for that reason.
+
+### Bilateral
+
+Final evidence:
+
+`E:\SpectraTrack-data\runs\a3-nightowls-bilateral-evidence.jsonl`
+
+SHA-256:
+
+`a5d486937c6770f7c0bdf09bf67ee6c755fcae640717a4c42a04213558e21d32`
+
+Apply manifest SHA-256:
+
+`a5f6419e876d1aff653bc1676d25ea2f818f434a8b406e932392e9562a932401`
+
+Post-fusion result SHA-256:
+
+`7ed2e0a0d0f43dc9b8d490eb79aabaf49821f457dac5e2ed244926421f50e82b`
+
+Completion marker SHA-256:
+
+`a3added6613248f7a80090e35f73c7a2e2a6c1b2397183c80fa8cc20299e3771`
+
+Detailed QA SHA-256:
+
+`f2d7c44955f8b77f6b93e3017ab081f79d9bd740fe407fa8589f1f2ebdc9e1c0`
+
+Locked bilateral gate activated on **0 / 590** selected weak-person ROIs:
+
+- raw probes: 0
+- enhanced calls: 0
+- replacements: 0
+- quality change: none
+- post-fusion result: identical to OFF
+
+This candidate provides no NightOwls benefit.
+
+### current_adaptive_cached
+
+Final evidence:
+
+`E:\SpectraTrack-data\runs\a3-nightowls-current-adaptive-cached-evidence.jsonl`
+
+SHA-256:
+
+`fb25cc378db44fb58b7b8a4f92dd1ae2144c9709cec3c3a6959c4ecedd71c9c7`
+
+Apply manifest SHA-256:
+
+`08ab74bde9da608e17cafda13b90fbb0b57ae10673b57fd1541cc5658a980dbc`
+
+Post-fusion result SHA-256:
+
+`3a93611e99674edd2b568aeb355c95d14bf885f88a6e5ed8b82fec6031422837`
+
+Completion marker SHA-256:
+
+`49e266f26d67b9e8286f50f557e3fcbdc4f17595f8e42e89e93862b99ff77a2f`
+
+Detailed QA SHA-256:
+
+`4de971c35f4ed02ad134c8e7fac9bb21aa4c2983a4c7b7e00e5f8eee8b5940b6`
+
+Execution:
+
+- selected weak ROIs: 590
+- active operation gate: 461
+- fresh raw 0.08 calls: 461
+- enhanced 0.12 calls: 461
+- final one-to-one same-source replacements: 409
+- independent evidence sources added: 0
+- recovered GT: **0**
+- lost GT: **1**
+
+Lost GT key:
+
+`golden/public/nightowls-val-slice/recording-36#647#index:0`
+
+Because recovered GT = 0, both FP-cost/recovered-GT and any claimed
+quality-recovery efficiency are undefined. Recovered-GT/extra-enhanced-call is
+exactly 0.
+
+### Requested NightOwls condition checks
+
+Low light:
+
+- official A5 tag available: `night_dark`
+- OFF: 798 TP / 171 FN, recall 0.823529412
+- cached: 797 TP / 172 FN, recall 0.822497420
+- result: no gain; one loss
+
+Small / distant proxy from frozen height bins:
+
+| height | GT | OFF TP / recall | cached TP / recall |
+| --- | ---: | ---: | ---: |
+| <24 px | 4 | 0 / 0.000000 | 0 / 0.000000 |
+| 24–47 px | 108 | 64 / 0.592593 | 64 / 0.592593 |
+| 48–95 px | 477 | 375 / 0.786164 | 374 / 0.784067 |
+| >=96 px | 380 | 359 / 0.944737 | 359 / 0.944737 |
+
+No small/distant bin improved. The only size-bin change is one lost TP in
+48–95 px.
+
+Occlusion:
+
+- official `nightowls_occluded_true`: 158 scored GT
+- OFF: 102 TP / 56 FN, recall 0.645569620
+- cached: 101 TP / 57 FN, recall 0.639240506
+- delta: -0.006329114 recall
+
+The single lost GT is in the occluded subset.
+
+Blur / low contrast:
+
+A5 frozen NightOwls GT exposes no dedicated blur or low-contrast tag/attribute.
+A3 did **not** invent a post-hoc held-out classifier or tune a new threshold after
+seeing results. These two requested strata are therefore explicitly
+**not independently scoreable from canonical frozen labels** in this cycle.
+
+### Stability
+
+NightOwls freeze has `tracking_supported=false` and the scored GT does not
+provide stable tracking identities for this benchmark.
+
+Therefore:
+
+- center jitter: not applicable / null
+- width jitter: not applicable / null
+- height jitter: not applicable / null
+- temporal IoU stability: not applicable / null
+
+BBox localization remains valid detection-only evidence:
+
+- OFF: 0.758590168
+- bilateral: 0.758590168
+- cached: 0.758974483
+- cached delta: +0.000384315
+
+This tiny localization improvement does not compensate for lost recall and
+incremental compute.
+
+### Same-data / same-policy verification
+
+Verified for OFF, bilateral and cached:
+
+- exact same 5000 frozen frames
+- exact same canonical GT SHA
+- exact same model SHA
+- exact same provider order
+- exact same detector settings
+- exact same A1 hard-NMS fusion/scoring settings
+- no NightOwls threshold retuning
+- no GT-derived runtime hint
+- cap=1 ROI/frame
+- raw corroboration mandatory
+- candidate same-source alternates add zero independent evidence sources
+- OFF gets no enhancement work
+
+Candidate hard-NMS replay/scoring was executed from persisted prefusion with
+`--resume`; post-fusion candidate runs recorded 0 new baseline detector
+inferences and reused the same represented 15000 OFF detector calls.
+
+### Superseded/failure evidence retained
+
+Superseded bilateral evidence:
+
+`ea08218ecb412cec05ea838fd47dba99041d41132f1f5b37f52611db2f3479d3`
+
+Superseded cached evidence:
+
+`73fb6e577d1a21f55093dc66718e8f32459dc02db9a4c5dbe8a14a53f75d5c2b`
+
+The first cached apply failed at recording-34 frame 304 because multiple
+enhanced detections attempted to replace one frozen weak measurement. The
+failure was preserved and fixed by one-to-one same-source mapping. No candidate
+threshold/gate/config was altered.
+
+### Canonical compact evidence in Git
+
+`pc/benchmarks/vnext/enhancement/round2_nightowls_strict_final.json`
+
+This file binds the final decision, target-PC artifact hashes, frozen
+provenance, locked configuration, metrics, subgroup results and superseded
+evidence.
+
+## Final A3 Round-2 decision
+
+**ENHANCEMENT OFF**
+
+Reason:
+
+- bilateral performs no enhancement on the frozen strict weak-person set and is
+  quality-identical to OFF;
+- current_adaptive_cached recovers **zero** new GT persons;
+- it loses one GT person, specifically in the occluded subset;
+- it adds 461 raw probes + 461 enhanced inferences;
+- FP drops by only 6;
+- F1/localization gains are very small;
+- no small/distant subgroup improves;
+- the quality-per-compute/stability trade-off is therefore not convincing.
+
+Per the predeclared A3 rule, no enhancement candidate is retained for
+production/integrator progression.
+
+Production/integration/main/RC remain untouched.
