@@ -24,7 +24,7 @@ from spectratrack.research.enhancement_efficiency import (
 )
 
 SCHEMA = "spectratrack-vnext-enhancement-alternates-v1"
-STRICT_OPERATIONS = ("bilateral", "current_adaptive_cached")
+STRICT_OPERATIONS = ("bilateral", "current_adaptive_cached", "lime_maxrgb_bounded")
 PERSON_CONF = 0.12
 RAW_PROBE_CONF = 0.08
 WEAK_MIN = 0.12

@@ -77,6 +77,20 @@ def test_current_operation_set_exposes_combination_members():
     assert "clahe" in operations
 
 
+def test_lime_maxrgb_bounded_is_shape_safe_and_shadow_weighted():
+    dark = np.full((120, 160, 3), 20, dtype=np.uint8)
+    bright = np.full((120, 160, 3), 200, dtype=np.uint8)
+
+    dark_out, _ = apply_operation("lime_maxrgb_bounded", dark, assess_frame_quality(dark))
+    bright_out, _ = apply_operation("lime_maxrgb_bounded", bright, assess_frame_quality(bright))
+
+    assert dark_out.shape == dark.shape
+    assert dark_out.dtype == dark.dtype
+    assert float(dark_out.mean()) > float(dark.mean()) * 1.8
+    assert float(bright_out.mean()) < float(bright.mean()) * 1.03
+    assert operation_gate("lime_maxrgb_bounded", bright, assess_frame_quality(bright))
+
+
 def test_selective_gate_uses_external_evidence_without_own_scheduler():
     quality = {
         "darkness": 0.0,

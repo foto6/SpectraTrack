@@ -1,0 +1,80 @@
+{
+  "schema": "spectratrack-vnext-a3-smoke400-candidate-lock-v1",
+  "status": "LOCKED_BEFORE_SMOKE_SCORING",
+  "parent_head": "d9fe3efb9ab022e2cd6600e1118be8d1ce1a0af0",
+  "production_enhancement": "OFF",
+  "scope": {
+    "corpus_revision": "nightowls-public-slice5000-r1",
+    "frame_selection": "consume A5 exact smoke400 manifest only",
+    "selection_must_be_independent_of_candidate_outcomes": true,
+    "full5000_automatic": false
+  },
+  "ruled_out": [
+    "gamma/CLAHE adaptive low-light path",
+    "bilateral denoise/deblock",
+    "mild sharpen",
+    "current_adaptive_cached",
+    "retuning the strict weak-person gate from held-out outcomes"
+  ],
+  "candidate": {
+    "name": "lime_maxrgb_bounded",
+    "family": "illumination-map division",
+    "research_only": true,
+    "operation_gate": "strict weak-person only; no secondary quality gate",
+    "parameters": {
+      "illumination_initial": "max(B,G,R)/255",
+      "illumination_smoothing": "Gaussian sigma=5.0, BORDER_REFLECT101",
+      "illumination_floor": 0.12,
+      "division_exponent": 0.65,
+      "raw_gain_cap": 2.5,
+      "shadow_weight": "(1-illumination)^2",
+      "output": "clip to [0,1], round to uint8"
+    }
+  },
+  "strict_configuration": {
+    "selective_gate": "weak-person",
+    "max_enhanced_rois_per_source_frame": 1,
+    "person_acceptance": 0.12,
+    "raw_probe": 0.08,
+    "corroboration_iou": 0.1,
+    "raw_corroboration_required": true,
+    "same_source_replacement_only": true,
+    "independent_evidence_increment": 0,
+    "detector_input_size": 960,
+    "detector_conf": 0.35,
+    "decoder_iou": 0.45,
+    "fusion": "hard-nms",
+    "fusion_iou": 0.55,
+    "match_iou": 0.5
+  },
+  "promotion_gate": {
+    "minimum_recovered_gt": 2,
+    "lost_gt_must_equal": 0,
+    "net_tp_gain_minimum": 2,
+    "recall_strictly_greater_than_off": true,
+    "f1_strictly_greater_than_off": true,
+    "precision_not_lower_than_off": true,
+    "fp_delta_must_be_lte": 0,
+    "minimum_recovered_gt_per_extra_enhancement_call": 0.02,
+    "accepted_alternates_must_be_raw_corroborated": true,
+    "failure_action": "REJECT without FULL5000",
+    "success_action": "PROMOTE_TO_FULL request only; do not run FULL5000 automatically"
+  },
+  "literature_basis": [
+    {
+      "work": "LIME: A Method for Low-light IMage Enhancement",
+      "arxiv": "1605.05034",
+      "basis": "estimate illumination from the per-pixel maximum RGB channel"
+    },
+    {
+      "work": "Single-Stage Face Detection Under Extremely Low-Light Conditions",
+      "venue": "ICCVW 2021",
+      "basis": "Retinex-family illumination normalization can be evaluated as detector preprocessing"
+    }
+  ],
+  "notes": [
+    "This is not an implementation of full LIME optimization; it is a bounded LIME-inspired rescue probe.",
+    "No candidate parameter may change after smoke scoring begins.",
+    "Production enhancement remains OFF regardless of smoke outcome."
+  ]
+}

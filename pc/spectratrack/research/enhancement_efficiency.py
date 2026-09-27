@@ -30,6 +30,7 @@ OPERATIONS = (
     "sharpen",
     "current_adaptive",
     "current_adaptive_cached",
+    "lime_maxrgb_bounded",
 )
 SELECTIVE_GATES = (
     "quality",
@@ -218,6 +219,8 @@ def current_operation_set(
 def operation_gate(operation: str, frame: np.ndarray, quality: dict[str, float]) -> bool:
     if operation not in OPERATIONS:
         raise ValueError(f"unknown operation: {operation}")
+    if operation == "lime_maxrgb_bounded":
+        return True
     active = set(current_operation_set(frame, quality))
     if operation in {"gamma", "clahe", "gamma_clahe"}:
         return "gamma" in active
@@ -246,6 +249,32 @@ def _clahe(frame: np.ndarray, quality: dict[str, float]) -> np.ndarray:
         tileGridSize=(8, 8),
     )
     return cv2.cvtColor(cv2.merge([clahe.apply(lightness), a, b]), cv2.COLOR_LAB2BGR)
+
+
+LIME_MAXRGB_SIGMA = 5.0
+LIME_MAXRGB_FLOOR = 0.12
+LIME_MAXRGB_EXPONENT = 0.65
+LIME_MAXRGB_MAX_GAIN = 2.5
+
+
+def _lime_maxrgb_bounded(frame: np.ndarray) -> np.ndarray:
+    """Bounded LIME-inspired illumination lift for research-only smoke triage."""
+    image = frame.astype(np.float32) / 255.0
+    illumination = np.max(image, axis=2)
+    illumination = cv2.GaussianBlur(
+        illumination,
+        (0, 0),
+        sigmaX=LIME_MAXRGB_SIGMA,
+        sigmaY=LIME_MAXRGB_SIGMA,
+        borderType=cv2.BORDER_REFLECT101,
+    )
+    illumination = np.clip(illumination, LIME_MAXRGB_FLOOR, 1.0)
+    raw_gain = np.power(illumination, -LIME_MAXRGB_EXPONENT)
+    raw_gain = np.minimum(raw_gain, LIME_MAXRGB_MAX_GAIN)
+    shadow_weight = np.square(1.0 - illumination)
+    gain = 1.0 + (raw_gain - 1.0) * shadow_weight
+    out = np.clip(image * gain[:, :, None], 0.0, 1.0)
+    return np.rint(out * 255.0).astype(np.uint8)
 
 
 def _current_adaptive_from_quality(
@@ -303,6 +332,8 @@ def apply_operation(
         out, _quality, _operations = adaptive_analysis_frame(frame)
     elif operation == "current_adaptive_cached":
         out = _current_adaptive_from_quality(frame, quality)
+    elif operation == "lime_maxrgb_bounded":
+        out = _lime_maxrgb_bounded(frame)
     else:
         raise ValueError(f"unknown operation: {operation}")
     return out, _elapsed_ms(started)
