@@ -16,6 +16,13 @@ EXPECTED_SELECTED_FRAMES = 400
 EXPECTED_SOURCE_FRAMES = 600
 EXPECTED_CORPUS_REVISION = "mot17-public-r1"
 EXPECTED_CORPUS_SHA256 = "8bfa6e54ab7a0160c133d8c7d0a2896b7ba254a23cf06afee2d4c9c453836759"
+EXPECTED_SELECTION_MANIFEST_SHA256 = "cc26aa3a37f5830912e576d9475d83b231b1842519bcd9a22baab8c06c3c4844"
+EXPECTED_SOURCE_REPLAY_SHA256 = "b2719a2c93c353123437497ac9513033898d3d65750a32ed633d05e8fb65b2d4"
+EXPECTED_SOURCE_REPLAY_CANONICAL_SHA256 = "d27d45172a2df0a5c81ff83be2ceed03d2ed1eef922d3fde06f72b3126a89c59"
+EXPECTED_SOURCE_GT_SHA256 = "28dcb9d197e0a098a1efb097f1589177350192a8f5f1be3e2ab5cd18d8f205c7"
+EXPECTED_SOURCE_COMMIT = "943abee566c45116cee2b0e72b7d2c48753891ef"
+EXPECTED_MODEL_SHA256 = "e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73"
+EXPECTED_PROVIDER = "DmlExecutionProvider,CPUExecutionProvider"
 
 
 def _canonical_json_bytes(value: Any) -> bytes:
@@ -63,6 +70,19 @@ def _read_selection_manifest(path: str | Path) -> dict[str, Any]:
         raise ValueError("tracking selection manifest must describe exactly 600 source frames")
     if value.get("selected_frame_count") != EXPECTED_SELECTED_FRAMES:
         raise ValueError("tracking selection manifest must select exactly 400 frames")
+    if value.get("source_replay_file_sha256") != EXPECTED_SOURCE_REPLAY_SHA256:
+        raise ValueError("tracking selection source replay SHA-256 changed")
+    if value.get("source_replay_canonical_sha256") != EXPECTED_SOURCE_REPLAY_CANONICAL_SHA256:
+        raise ValueError("tracking selection canonical replay SHA-256 changed")
+    if value.get("ground_truth_sha256") != EXPECTED_SOURCE_GT_SHA256:
+        raise ValueError("tracking selection ground-truth SHA-256 changed")
+    selection = value.get("selection")
+    if not isinstance(selection, dict):
+        raise ValueError("tracking selection policy is missing")
+    if selection.get("tracker_reset_between_windows") is not True:
+        raise ValueError("tracking selection must reset tracker between windows")
+    if selection.get("candidate_outcome_independent") is not True:
+        raise ValueError("tracking selection must remain candidate-outcome independent")
     windows = value.get("windows")
     if not isinstance(windows, list) or len(windows) != len(EXPECTED_WINDOWS):
         raise ValueError("tracking selection manifest must contain exactly two windows")
@@ -270,6 +290,8 @@ def build_contiguous_pack(
     observations_path: str | Path,
     output_dir: str | Path,
 ) -> dict[str, Any]:
+    if _sha256_path(selection_manifest_path) != EXPECTED_SELECTION_MANIFEST_SHA256:
+        raise ValueError("selection manifest SHA-256 does not match frozen smoke gate")
     selection = _read_selection_manifest(selection_manifest_path)
     if _sha256_path(replay_path) != selection.get("source_replay_file_sha256"):
         raise ValueError("source replay file SHA-256 does not match frozen selection")
@@ -288,6 +310,14 @@ def build_contiguous_pack(
     for field in ("video", "model_sha256", "provider", "width", "height"):
         if replay_metadata.get(field) != observation_metadata.get(field):
             raise ValueError(f"replay/observation metadata mismatch: {field}")
+    if replay_metadata.get("source_commit") != EXPECTED_SOURCE_COMMIT:
+        raise ValueError("replay source commit mismatch")
+    if observation_metadata.get("source_commit") != EXPECTED_SOURCE_COMMIT:
+        raise ValueError("observation source commit mismatch")
+    if replay_metadata.get("model_sha256") != EXPECTED_MODEL_SHA256:
+        raise ValueError("replay model SHA-256 mismatch")
+    if replay_metadata.get("provider") != EXPECTED_PROVIDER:
+        raise ValueError("replay provider mismatch")
 
     target = Path(output_dir)
     target.mkdir(parents=True, exist_ok=True)
@@ -414,6 +444,25 @@ def validate_contiguous_pack(pack_dir: str | Path) -> dict[str, Any]:
     if selection.get("nightowls_tracking_gt_used") is not False:
         raise ValueError("NightOwls must not be used as tracking GT")
 
+    source = manifest.get("source")
+    if not isinstance(source, dict):
+        raise ValueError("contiguous pack source provenance missing")
+    expected_source = {
+        "selection_manifest_sha256": EXPECTED_SELECTION_MANIFEST_SHA256,
+        "source_replay_file_sha256": EXPECTED_SOURCE_REPLAY_SHA256,
+        "source_replay_canonical_sha256": EXPECTED_SOURCE_REPLAY_CANONICAL_SHA256,
+        "source_ground_truth_sha256": EXPECTED_SOURCE_GT_SHA256,
+        "corpus_revision": EXPECTED_CORPUS_REVISION,
+        "corpus_sha256": EXPECTED_CORPUS_SHA256,
+        "replay_source_commit": EXPECTED_SOURCE_COMMIT,
+        "observation_source_commit": EXPECTED_SOURCE_COMMIT,
+        "model_sha256": EXPECTED_MODEL_SHA256,
+        "provider": EXPECTED_PROVIDER,
+    }
+    for key, expected in expected_source.items():
+        if source.get(key) != expected:
+            raise ValueError(f"contiguous pack frozen source provenance changed: {key}")
+
     windows = manifest.get("windows")
     if not isinstance(windows, list) or len(windows) != 2:
         raise ValueError("contiguous pack must contain exactly two windows")
@@ -449,6 +498,9 @@ def validate_contiguous_pack(pack_dir: str | Path) -> dict[str, Any]:
                 raise ValueError(f"contiguous pack {kind} frame leakage or ordering mismatch")
             if entry.get("frame_count") != len(frame_ids):
                 raise ValueError(f"contiguous pack {kind} frame count metadata mismatch")
+            expected_records = len(frame_ids) + (1 if kind in {"replay", "observations"} else 0)
+            if entry.get("record_count") != expected_records:
+                raise ValueError(f"contiguous pack {kind} record count metadata mismatch")
             observed_sets.append(frame_ids)
         if not (observed_sets[0] == observed_sets[1] == observed_sets[2]):
             raise ValueError("contiguous pack replay/GT/observation frame sets differ")
