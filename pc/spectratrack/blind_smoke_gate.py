@@ -21,7 +21,6 @@ from .smoke_gate import (
     _identity,
     _json_dump,
     _load_locked_parent,
-    _read_jsonl,
     _serialize_rows,
 )
 
