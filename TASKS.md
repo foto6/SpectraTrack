@@ -190,7 +190,7 @@ Completed on `agent/vnext-smoke-stats`:
 
 Completed on `agent/vnext-smoke-stats`:
 
-- versioned `spectratrack-research-stage-policy-v1` with r1 bound to existing A5 provenance and r2/holdout4200 explicitly unpublished until A5 handoff;
+- versioned `spectratrack-research-stage-policy-v1` with r1 preserved and the published disjoint A5 r2/holdout4200 partition bound to exact hashes;
 - deterministic candidate-history validator enforcing freeze provenance, data exposure, stage order, no repeated peeking, no post-result mutation, and FULL5000 characterization-only semantics;
 - strict semantics-preserving performance exception with semantic-config equality and equivalence evidence;
 - legal/illegal history tests and machine-readable history schema/fixture.
