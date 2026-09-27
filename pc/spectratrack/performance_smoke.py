@@ -127,6 +127,7 @@ def _selection_items(payload: Any) -> list[Any]:
             "items",
             "selected",
             "frame_keys",
+            "entries",
         ):
             if key in payload:
                 return _selection_items(payload[key])
