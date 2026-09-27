@@ -396,3 +396,235 @@ Wait for:
 Then run only 1-3 surviving scheduler configurations and produce the final quality-vs-cost Pareto evidence on the target PC.
 
 Do not select the fastest configuration without quality evidence.
+
+## Round 2 A4 — Smoke400 cost model and bottleneck gate — 2026-09-27
+
+Status: **DONE / NO FULL5000 PERFORMANCE RUN PROMOTED**
+
+This checkpoint obeys the A5 smoke gate and does not alter production thresholds, enhancement policy, frozen
+corpus bytes, or the full-corpus selection.
+
+### Frozen input consumed
+
+A4 waited for A5 rather than selecting its own NightOwls frames.
+
+- parent: `nightowls-public-slice5000-r1`
+- parent corpus SHA-256:
+  `1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8`
+- A5 triage revision: `nightowls-public-smoke400-r1`
+- A5 smoke corpus SHA-256:
+  `70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162`
+- smoke GT SHA-256:
+  `45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8`
+- selection-proof SHA-256:
+  `0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940`
+- 400 unique frames, 143/143 logical sequences represented, `tracking_supported=false`
+- A4 selection-key SHA-256:
+  `c3be95af68e0674facfe8f66f242e4dba9a86de0ac077aa7662d2e688fbf3cf9`
+
+The A4 runner consumes A5's selection proof by source identity and rejects unresolved, duplicate, or wrong-count
+selections. Candidate-result data is not an input to selection.
+
+### Locked detector configuration
+
+Both measured variants used identical inputs and:
+
+- model: `yolo11x.onnx`
+- model SHA-256:
+  `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`
+- provider priority: `DmlExecutionProvider, CPUExecutionProvider`
+- input size: 960
+- person confidence: 0.12
+- tile size: 640
+- tile overlap: 0.20
+- merge IoU: 0.55
+- enhancement: **off**
+- source code used for the measured pair:
+  `16982bddcf6474052afbdb70ef5bf784fe288c36`
+
+A3's frozen enhancement decision remains authoritative. A4 did not rerun adaptive enhancement and did not
+silently re-enable it.
+
+### Instrumentation added
+
+`spectratrack.performance_smoke` records per frame:
+
+- image decode;
+- camera-motion estimation;
+- detector policy wall time;
+- detector preprocess, synchronous `session.run`, and postprocess;
+- full-frame pass, raw ROI passes, enhanced ROI passes, enhancement-router residual, and fusion;
+- appearance extraction;
+- tracker update;
+- canonical result serialization;
+- frame wall time and process CPU time;
+- system CPU idle when `psutil` is available;
+- ONNX/full/raw/enhanced invocation counts;
+- a synchronous-inference host-wait residual (wall minus process CPU, floored at zero).
+
+That residual intentionally is **not** labeled transfer-only time: with DirectML, `session.run` includes
+accelerator execution, host/device movement, synchronization, and provider fallback behavior. DirectML exposes
+provider selection here but no trustworthy portable per-process GPU-utilization percentage, so A4 records GPU
+utilization as unavailable instead of fabricating a value.
+
+The comparison gate now also rejects mismatched providers, model hashes, frame counts, corpus hashes, selection
+hashes, or detector settings.
+
+### CONTROL — exact A5 Smoke400
+
+Measured artifact:
+
+`E:\SpectraTrack-data\runs\a4-nightowls-smoke400-control.json`
+
+Results:
+
+- frames: 400
+- wall: **152.009 s**
+- throughput: **2.631 frames/s**
+- ONNX calls: **1200 = 3.0/frame**
+  - full-frame: 400
+  - raw ROI: 800
+  - enhanced ROI: 0
+- quality at the unchanged scorer: TP 135 / FP 126 / FN 48 / GT 183
+- precision: **0.517241**
+- recall: **0.737705**
+- output hash:
+  `e09e930084b2384d80860a33693669adb306ad38ee382c4d8e832d7574db76be`
+
+Per-frame stage distributions:
+
+| Stage | Mean ms | p50 ms | p95 ms | Share of measured frame total |
+| --- | ---: | ---: | ---: | ---: |
+| detector policy | 347.205 | 344.737 | 374.340 | 91.4% |
+| ONNX inference (inside detector) | 292.085 | 289.994 | 309.827 | 76.9% |
+| raw ROI policy passes (2/frame; overlaps detector internals) | 231.460 | 230.155 | 250.036 | 60.9% |
+| full-frame policy pass (1/frame; overlaps detector internals) | 115.438 | 114.151 | 126.283 | 30.4% |
+| detector preprocess | 30.387 | 29.245 | 39.072 | 8.0% |
+| detector postprocess | 20.234 | 19.800 | 27.520 | 5.3% |
+| image decode | 16.686 | 16.726 | 20.349 | 4.4% |
+| motion | 14.450 | 19.114 | 28.530 | 3.8% |
+| appearance | 0.544 | 0.465 | 1.150 | 0.14% |
+| tracker | 0.513 | 0.196 | 1.864 | 0.13% |
+| serialization | 0.156 | 0.138 | 0.319 | 0.04% |
+| fusion | 0.203 | 0.166 | 0.519 | 0.05% |
+
+The nested rows above are not additive: raw/full-pass rows include their detector internals, and inference /
+preprocess / postprocess are components of detector policy.
+
+Additional host evidence:
+
+- frame total: mean **379.982 ms**, p50 **377.072 ms**, p95 **421.460 ms**
+- synchronous inference host-wait residual: mean **9.604 ms/frame**, p95 **37.838 ms/frame**
+- system CPU idle: mean **21.23%**, p50 **18.78%**, p95 **49.46%**
+- GPU utilization: **not observable through the chosen ONNX Runtime DirectML interface**
+
+Linear Smoke400 -> FULL5000 projection, with the smoke-representativeness caveat:
+
+- projected wall: **1899.9 s = 31.67 min = 0.528 h**
+- scale factor: **12.5x**
+
+### Dominant-cost conclusion
+
+The first optimization target remains detector invocation/inference, not Python/UI bookkeeping.
+
+On the exact Smoke400 control:
+
+1. detector policy consumed **91.4%** of measured frame time;
+2. synchronous ONNX inference alone consumed **76.9%**;
+3. the two raw ROI passes consumed **60.9%** of frame time versus **30.4%** for the one full pass.
+
+Preprocess and postprocess were the next detector-internal costs at 8.0% and 5.3%. Decode, motion, tracker,
+appearance, fusion, and serialization are not first-order blockers.
+
+### Candidate 1 — person-only tile postprocess
+
+Research toggle:
+
+`tile_person_only_postprocess=true`
+
+This is semantics-preserving for the people-recall path because non-person tile detections were already discarded
+before final fusion. Mixed-class unit coverage verifies identical final detections and unchanged ONNX-call count.
+
+It was killed before an expensive candidate Smoke400 pass using the **measured control Smoke400 Amdahl ceiling**:
+even deleting *all* detector postprocess time (a stronger improvement than this candidate can provide) would yield
+only **1.056x**, below the locked **1.10x** promotion gate.
+
+Decision: **STOP / no FULL5000**.
+
+### Candidate 2 — contiguous NCHW input
+
+Research toggle:
+
+`force_contiguous_input=true`
+
+The current preprocess path creates an NCHW transpose view. This candidate materializes it as contiguous before
+`session.run`, moving any implicit input-layout copy into the measured preprocess stage without changing tensor
+values.
+
+Measured artifact:
+
+`E:\SpectraTrack-data\runs\a4-nightowls-smoke400-contiguous.json`
+
+Exact Smoke400 result:
+
+| Metric | CONTROL | contiguous-input | Delta |
+| --- | ---: | ---: | ---: |
+| wall seconds | 152.009 | 148.056 | -3.953 s |
+| throughput frames/s | 2.631 | 2.702 | +2.7% |
+| speedup | 1.000x | **1.027x** | below 1.10x gate |
+| ONNX calls | 1200 | 1200 | 0 |
+| inference total | 116.834 s | 108.251 s | -8.583 s |
+| preprocess total | 12.155 s | 18.220 s | +6.065 s |
+| detector-policy total | 138.882 s | 135.752 s | -3.130 s |
+| TP / FP / FN | 135 / 126 / 48 | 135 / 126 / 48 | 0 / 0 / 0 |
+| precision / recall | 0.517241 / 0.737705 | 0.517241 / 0.737705 | 0 / 0 |
+| output SHA-256 | `e09e9300...76be` | `e09e9300...76be` | **identical** |
+
+The candidate clearly moves work out of synchronous inference into explicit preprocessing, but the net end-to-end
+gain is only **2.7%**. The sequential host-load difference is therefore irrelevant to the decision: even the
+observed favorable result is far below the 10% gate.
+
+Candidate FULL5000 linear projection: **1850.5 s = 30.84 min**.
+
+Decision: **STOP ON SMOKE / no FULL5000**.
+
+### Smoke-first cost model
+
+A5's 400/5000 slice is 8% of the parent frame count, so any candidate rejected on smoke avoids approximately 92%
+of variable frame work versus naively running that candidate on FULL5000.
+
+For the measured control + contiguous pair:
+
+- naive projected FULL5000 pair: **3750.5 s = 62.51 min**
+- actual Smoke400 pair: **300.1 s = 5.00 min**
+- avoided projected work because no candidate survived: **3450.4 s = 57.51 min**
+- avoided fraction: **92.0%**
+
+If two research candidates are smoked and exactly one survives to a FULL5000 run, the frame-count model is
+10,000 naive full frames versus 5,800 smoke-first frame-equivalents, approximately **42%** less variable work.
+If none survives, the reduction is **92%**.
+
+### Provider sanity check
+
+An early three-frame run used the packaged `.yolo` Python environment and exposed only
+`CPUExecutionProvider`. Its absolute latency was deliberately excluded from target-PC promotion evidence.
+The authoritative Smoke400 pair above used the system environment with
+`DmlExecutionProvider, CPUExecutionProvider`. The comparison gate now rejects cross-provider comparisons.
+
+### Promotion recommendation
+
+No new A4 optimization is promoted to FULL5000:
+
+- person-only tile postprocess cannot reach the 1.10x gate even under an impossible all-postprocess-eliminated
+  upper bound;
+- contiguous-input is exact-output preserving but measured only **1.027x**, below the gate.
+
+The remaining material performance lever is detector-call reduction. Existing bounded scheduler/call-budget
+research remains a **future quality-gated hypothesis**, not a production change. NightOwls is
+`tracking_supported=false` and Smoke400 is a sparse metadata-selected slice, so it must not be misused as
+temporal tracking/scheduler ground truth. Any future cadence/ROI scheduler must be evaluated on a valid contiguous
+tracking corpus with explicit recall/FN/discovery evidence before speed can justify promotion.
+
+No production quality threshold, detector policy, enhancement policy, merge/release branch, or frozen corpus was
+changed.
+
