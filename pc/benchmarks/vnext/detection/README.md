@@ -151,3 +151,39 @@ python -m spectratrack.research.vnext_detection_corpus `
 ```
 
 Do not add `MOT17-04` to that held-out command.
+
+
+## NightOwls SMOKE400 triage
+
+A1 has a separate research-only triage runner; canonical `qa_benchmark.py` semantics are unchanged.
+
+Locked matrix:
+
+`benchmarks/vnext/detection/smoke400_candidate_matrix.json`
+
+Validate it before scoring:
+
+```powershell
+python -m spectratrack.research.vnext_detection_triage validate-matrix `
+  --matrix benchmarks/vnext/detection/smoke400_candidate_matrix.json
+```
+
+Run only after A5 supplies the exact externally frozen selection proof/revision/hash:
+
+```powershell
+python -m spectratrack.research.vnext_detection_triage run `
+  --matrix benchmarks/vnext/detection/smoke400_candidate_matrix.json `
+  --frame-manifest E:\SpectraTrack-data\imports\nightowls-public-smoke400-r1\nightowls-public-smoke400-r1.selection-proof.json `
+  --frame-manifest-sha256 0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940 `
+  --frame-manifest-revision nightowls-public-smoke400-r1 `
+  --model E:\SpectraTrack\yolo11x.onnx `
+  --ground-truth E:\SpectraTrack-data\imports\nightowls-public-smoke400-r1\nightowls-public-smoke400-r1.jsonl `
+  --video-root E:\SpectraTrack-data\public\NightOwls `
+  --output-dir E:\SpectraTrack-data\runs\a1-nightowls-smoke400 `
+  --summary E:\SpectraTrack-data\runs\a1-nightowls-smoke400\summary.json `
+  --source-commit <exact-A1-code-SHA> `
+  --corpus-revision nightowls-public-smoke400-r1 `
+  --resume
+```
+
+The runner hashes result/completion/replay artifacts, records the exact committed matrix configuration, emits static bbox/center quality and an error taxonomy, and never launches FULL5000. Enhancement is locked OFF. The current smoke candidate changes only source tile size 640 -> 512; thresholds and hard-NMS fusion are unchanged.

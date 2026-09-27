@@ -26,9 +26,45 @@ from .vnext_detector_backend_lab import (
     _image_sequence_path,
     _load_benchmark_source_records,
 )
+from .vnext_detection_selector import (
+    load_frozen_frame_selector,
+    select_ground_truth_frames,
+    selector_record,
+)
 
 
 METHODS = ("hard-nms", "conservative-nmm", "weighted", "evidence-aware")
+
+def _apply_frame_selector(
+    args: argparse.Namespace,
+    annotations: list[GroundTruthFrame],
+) -> tuple[list[GroundTruthFrame], dict[str, Any] | None]:
+    manifest = getattr(args, "frame_manifest", None)
+    manifest_sha = getattr(args, "frame_manifest_sha256", None)
+    expected_count = int(getattr(args, "frame_manifest_count", 0) or 0)
+    expected_revision = getattr(args, "frame_manifest_revision", None)
+
+    if not manifest:
+        if manifest_sha or expected_count or expected_revision:
+            raise ValueError("frame-manifest binding options require --frame-manifest")
+        return annotations, None
+    if getattr(args, "include_video", None):
+        raise ValueError("--include-video cannot be combined with an exact frame manifest")
+    if int(getattr(args, "frame_limit_per_video", 0) or 0) != 0:
+        raise ValueError("--frame-limit-per-video cannot be combined with an exact frame manifest")
+    if not manifest_sha:
+        raise ValueError("--frame-manifest-sha256 is required with --frame-manifest")
+    if expected_count <= 0:
+        raise ValueError("--frame-manifest-count must be > 0 with --frame-manifest")
+
+    selector = load_frozen_frame_selector(
+        manifest,
+        expected_sha256=manifest_sha,
+        expected_count=expected_count,
+        expected_revision=expected_revision,
+    )
+    return select_ground_truth_frames(annotations, selector), selector_record(selector)
+
 
 
 def _timestamp_s(record: Mapping[str, Any], frame_index: int) -> float:
@@ -240,6 +276,7 @@ def _write_completion_marker(output_path: str | Path, report: Mapping[str, Any])
         "ground_truth_sha256": report["ground_truth_sha256"],
         "model_sha256": report["model_sha256"],
         "output": _artifact_record(target),
+        "frame_selector": report.get("frame_selector"),
     }
     marker.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return marker
@@ -326,6 +363,7 @@ def _prefusion_metadata(
         },
         "width": frame.width,
         "height": frame.height,
+        "frame_selector": getattr(args, "_frame_selector_record", None),
     }
 
 
@@ -347,6 +385,8 @@ def _validate_reusable_prefusion(
         raise ValueError(f"prefusion ground-truth hash mismatch for {video}")
     if metadata.get("model_sha256") != model_sha256:
         raise ValueError(f"prefusion model hash mismatch for {video}")
+    if metadata.get("frame_selector") != getattr(args, "_frame_selector_record", None):
+        raise ValueError(f"prefusion frame selector mismatch for {video}")
     config = metadata.get("config")
     if not isinstance(config, dict):
         raise ValueError(f"prefusion config missing for {video}")
@@ -374,6 +414,8 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
 
     annotations = load_ground_truth(args.ground_truth)
     source_records = _load_benchmark_source_records(args.ground_truth)
+    annotations, frame_selector = _apply_frame_selector(args, annotations)
+    setattr(args, "_frame_selector_record", frame_selector)
     selected = set(args.include_video or [])
     available = {item.video for item in annotations}
     missing = selected - available
@@ -515,6 +557,7 @@ def run_corpus_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         "source_commit": args.source_commit,
         "corpus_revision": args.corpus_revision,
         "ground_truth_sha256": gt_sha,
+        "frame_selector": frame_selector,
         "model": str(model_path),
         "model_sha256": model_sha,
         "providers": detector.providers,
@@ -555,6 +598,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--corpus-revision", required=True)
     parser.add_argument("--include-video", action="append", default=[])
+    parser.add_argument("--frame-manifest")
+    parser.add_argument("--frame-manifest-sha256")
+    parser.add_argument("--frame-manifest-count", type=int, default=0)
+    parser.add_argument("--frame-manifest-revision")
     parser.add_argument("--prefusion-dir")
     parser.add_argument("--replay-dir")
     parser.add_argument("--resume", action="store_true")

@@ -647,6 +647,8 @@ def evaluate_fusion(
     duplicate_count = 0
     fusion_mistakes = 0
     localization_ious: list[float] = []
+    center_errors_px: list[float] = []
+    center_errors_gt_diag: list[float] = []
 
     for frame in items:
         fused = fuse_candidates(frame.candidates, method, config)
@@ -667,7 +669,16 @@ def evaluate_fusion(
                 fusion_mistakes += 1
 
         for gt_index, pred_index in _match_gt(frame.ground_truth, fused, match_iou).items():
-            localization_ious.append(bbox_iou(frame.ground_truth[gt_index].bbox, fused[pred_index].bbox))
+            gt_box = frame.ground_truth[gt_index].bbox
+            pred_box = fused[pred_index].bbox
+            localization_ious.append(bbox_iou(gt_box, pred_box))
+            gt_center = _center(gt_box)
+            pred_center = _center(pred_box)
+            error_px = hypot(pred_center[0] - gt_center[0], pred_center[1] - gt_center[1])
+            gt_width, gt_height = _size(gt_box)
+            gt_diag = hypot(gt_width, gt_height)
+            center_errors_px.append(error_px)
+            center_errors_gt_diag.append(error_px / max(gt_diag, 1e-9))
 
     metrics = evaluate_frames(qa_frames, predictions, label="person", iou_threshold=match_iou)
     precision = float(metrics["precision"])
@@ -691,8 +702,26 @@ def evaluate_fusion(
         "precision": precision,
         "f1": f1,
         "bbox_localization_iou": (sum(localization_ious) / len(localization_ious) if localization_ious else None),
+        "center_error_px": (sum(center_errors_px) / len(center_errors_px) if center_errors_px else None),
+        "center_error_gt_diag_ratio": (
+            sum(center_errors_gt_diag) / len(center_errors_gt_diag) if center_errors_gt_diag else None
+        ),
         "duplicate_count_before_fusion": duplicate_count,
         "fusion_mistakes": fusion_mistakes,
+        "error_taxonomy": {
+            "false_positive_total": metrics["false_positives"],
+            "false_negative_total": metrics["false_negatives"],
+            "false_negative_by_size": {
+                name: values["fn"] for name, values in metrics.get("by_size", {}).items()
+            },
+            "false_negative_by_tag": {
+                name: values["fn"] for name, values in metrics.get("by_tag", {}).items()
+            },
+            "false_negative_by_attribute": {
+                name: values["fn"] for name, values in metrics.get("by_attribute", {}).items()
+            },
+            "representative_false_negatives": metrics.get("missed_ground_truth", [])[:12],
+        },
         **_jitter_metrics(items, fused_by_key, match_iou),
     }
 

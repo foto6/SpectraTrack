@@ -1509,3 +1509,49 @@ No threshold/config retuning is allowed from this held-out result. A1 has no sur
 A1 Round-2 handoff decision:
 
 **RETAIN CURRENT HARD-NMS / REJECT NEW FUSION CHALLENGERS.**
+
+
+## NightOwls SMOKE400 triage harness
+
+Starting A1 branch state for this milestone:
+
+`agent/vnext-detection @ 3dc31c8fa8b323ce86afc14c3105a0c2247a2c48`
+
+The existing Round-2 evidence is preserved. Evidence-aware remains valid positive MOT17 held-out research evidence, but it failed the predeclared CrowdHuman dense-safety recall condition. Conservative-NMM and weighted also remain rejected. Therefore this smoke cycle does not resurrect any rejected fusion policy.
+
+The remaining low-light/detection hypothesis selected before SMOKE400 scoring is intentionally narrow:
+
+- CONTROL: current hard-NMS policy, input 960, tile 640, overlap 0.20, existing detector/person/NMS thresholds, enhancement OFF.
+- CANDIDATE: identical policy except source tile size 512. Hypothesis: smaller source tiles increase apparent pedestrian scale at the unchanged detector input and may recover small/dim people without changing thresholds or fusion.
+- No detector threshold, person confidence, decoder/fusion IoU, evidence threshold, enhancement mode, or production behavior is tuned or changed.
+- A3's prior NightOwls enhancement outcome remains ENHANCEMENT OFF.
+
+The locked candidate matrix is:
+
+`pc/benchmarks/vnext/detection/smoke400_candidate_matrix.json`
+
+It contains the exact candidate configuration and predeclared triage decision rules. The smoke runner refuses enhancement != off, refuses non-hard-NMS methods in this cycle, and only permits `tile_size` to differ from control.
+
+A1 now accepts an externally frozen exact frame selector without modifying `qa_benchmark.py`. The selector binds manifest/proof file SHA-256, revision, exact frame count, selected identities, parent revision/hash when present, and deterministic selection identity. It fails closed on hash/count/revision mismatch, duplicate/foreign IDs, or attempts to combine the exact manifest with per-video truncation/ad-hoc video filters. Cached prefusion evidence is also bound to the selector record.
+
+A5 subsequently froze the external gate unchanged from the parent FULL5000:
+
+- smoke revision: `nightowls-public-smoke400-r1`
+- smoke corpus SHA-256: `70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162`
+- frames: 400
+- selection proof SHA-256: `0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940`
+- selection identity SHA-256: `2a4da42830400b14405de01a82e3b3bee3d17a07db0be067f752545664fc6186`
+- smoke GT SHA-256: `45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8`
+- parent revision: `nightowls-public-slice5000-r1`
+- parent corpus SHA-256: `1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8`
+- tracking_supported: false
+
+Local selector verification resolved 400/400 smoke identities against the canonical A5 JSONL and reproduced the exact A5 selection identity and parent binding.
+
+Validation before any smoke inference:
+
+- focused A1 selector/corpus/fusion/triage tests: 21 passed;
+- full PC pytest suite: 172 passed;
+- candidate matrix SHA-256: `394df1038c060a483a4695b6511c379389f2503df39cbf352f1b93a4a1732063`.
+
+SMOKE400 remains triage evidence only. The harness never launches FULL5000 automatically. A clearly inferior candidate is rejected without FULL5000; only a material internally consistent signal or a genuinely ambiguous trade-off can justify requesting the unchanged FULL5000 gate.
