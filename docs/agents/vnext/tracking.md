@@ -1189,3 +1189,39 @@ Latest full Windows CI on that code:
 - standalone Windows build and both CLI smoke tests: PASS.
 
 Final role-state documentation commit is intentionally reported by the external handoff because a commit cannot contain its own SHA.
+
+
+## Cheap-first tracking smoke gate — 2026-09-27
+
+The previous Round-2 question is already resolved: `current-ambiguity-guard` failed the full
+identical A1 MOT17-04 replay and production remains the current tracker. This follow-up adds a
+candidate-independent cheap rejection gate; it does not reopen or retune that failed candidate.
+
+Frozen smoke provenance:
+
+- source replay: `a1-replay-mot17-04-600-hard-nms.jsonl`;
+- source replay file SHA-256: `b2719a2c93c353123437497ac9513033898d3d65750a32ed633d05e8fb65b2d4`;
+- canonical replay SHA-256: `d27d45172a2df0a5c81ff83be2ceed03d2ed1eef922d3fde06f72b3126a89c59`;
+- canonical GT SHA-256: `28dcb9d197e0a098a1efb097f1589177350192a8f5f1be3e2ab5cd18d8f205c7`;
+- frozen windows: 0-199 and 400-599, 200 contiguous frames each;
+- manifest SHA-256: `cc26aa3a37f5830912e576d9475d83b231b1842519bcd9a22baab8c06c3c4844`;
+- detector policy runs: 0; ONNX inference calls: 0.
+
+Smoke result, current -> current-ambiguity-guard:
+
+- tracking recall: 0.8566065639 -> 0.8546726580;
+- ID switches: 252 -> 267;
+- fragmentation: 228 -> 234;
+- false track creations: 133 -> 134;
+- recovery events: 228 -> 234;
+- mean recovery latency: 5.2544 -> 5.2778 frames;
+- same-ID recovery: 138 -> 145;
+- wrong-ID recovery: 90 -> 89;
+- mean uninterrupted track length: 31.0515 -> 29.6371 frames.
+
+Smoke decision: `REJECT BEFORE FULL CANONICAL REPLAY`.
+The candidate is therefore not rerun through the full replay in this follow-up and is not promoted.
+The deterministic result SHA-256 is
+`09710d5f4c278d8ef5a6c64beefcdc92e916433d4751dc3fee12cd4ca69b720b`.
+The 400-frame smoke uses 800 candidate-frame steps versus 1200 for the full comparison, saving
+400 steps / 33.33% when it rejects. NightOwls is not used for tracking evaluation.

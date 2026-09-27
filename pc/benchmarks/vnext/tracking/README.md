@@ -140,3 +140,31 @@ The smoothing probe compares raw boxes, bounded EMA, and a motion-state alpha/be
 At the time this harness was created, A5 had not published a frozen real CCTV corpus revision in its role state.
 
 When A5 publishes an immutable corpus/hash, rerun all finalists on exactly that revision before recommending production integration.
+
+
+## A2 cheap tracking triage smoke
+
+A deterministic tracker-only smoke gate now precedes any expensive full canonical replay.
+It never uses NightOwls because that corpus has `tracking_supported=false`.
+
+For the existing `mot17-public-r1` / `golden/public/mot17/MOT17-04` canonical A1 replay,
+the frozen smoke is `mot17-04-smoke400-v1.json`:
+
+- source replay: 600 frames, unchanged;
+- selected frames: exactly 400;
+- windows: frames 0-199 and 400-599;
+- tracker state resets between windows so gaps are never treated as one continuous sequence;
+- selection is derived from replay order only and is frozen before candidate scoring;
+- manifest SHA-256: `cc26aa3a37f5830912e576d9475d83b231b1842519bcd9a22baab8c06c3c4844`.
+
+The smoke is rejection-only. A candidate that shows an obvious regression in recall tolerance,
+ID switches, fragmentation tolerance, or false-track creation is rejected before full replay.
+A survivor or ambiguous result must still run the existing full canonical gate; smoke never promotes
+a tracker to production by itself.
+
+The known `current-ambiguity-guard` candidate is rejected by this smoke:
+ID switches 252 -> 267 and false track creations 133 -> 134. The deterministic result artifact is
+`mot17-04-smoke400-current-vs-ambiguity-v1.json`, SHA-256
+`09710d5f4c278d8ef5a6c64beefcdc92e916433d4751dc3fee12cd4ca69b720b`.
+Nominal tracker candidate-frame steps are 800 instead of 1200 for the full 600-frame comparison,
+a 33.33% reduction when smoke rejects. Production `tracker.py` is unchanged.
