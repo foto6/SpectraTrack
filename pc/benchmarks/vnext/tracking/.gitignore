@@ -1,1 +1,6 @@
 *.json\n*.jsonl\n*.csv\n*.npz\n!README.md\n
+# A2->A8 frozen contiguous tracking evidence bytes are intentionally versioned.
+!canonical/
+!canonical/mot17-04-contiguous-smoke400-r1/
+!canonical/mot17-04-contiguous-smoke400-r1/*.json
+!canonical/mot17-04-contiguous-smoke400-r1/*.jsonl
