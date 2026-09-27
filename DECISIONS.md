@@ -198,3 +198,18 @@ Decision:
 Reason: the current graph already provides conservative complete-link grouping and manual SAME/DIFFERENT/UNSURE review. Extending it minimizes schema and architecture duplication while preserving ambiguity.
 
 
+
+
+## 2026-09-27 — Failure taxonomy is evidence-bounded and smoke-first
+
+Decision:
+
+- post-process canonical QA evidence offline instead of changing detector/model thresholds;
+- require an externally frozen frame manifest and fail closed when a subset result cannot prove the same selected-frame hash;
+- keep failure categories multi-label because causes such as small scale, darkness and occlusion can coexist;
+- use detection geometry only when an exact-frame observation sidecar is supplied;
+- leave geometry-dependent attribution unknown when the evidence is absent;
+- cap ranked representative IDs and do not render the full corpus by default.
+
+Reason: failure analysis should explain measured smoke failures without turning ambiguous cases into invented causes or encouraging threshold tuning from a small sample. Full-corpus NightOwls remains a separate promotion benchmark.
+

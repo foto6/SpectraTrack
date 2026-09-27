@@ -1,0 +1,119 @@
+{
+  "evaluation": {
+    "label": "person",
+    "match_iou": 0.5
+  },
+  "ground_truth_sha256": "af200c3bc1c601022cfe5435a5b39acea96fb40d6c8987691e1d1dcd47183f0f",
+  "metrics": {
+    "by_attribute": {
+      "occluded": {
+        "fn": 1,
+        "gt": 1,
+        "recall": 0.0,
+        "tp": 0
+      },
+      "small": {
+        "fn": 2,
+        "gt": 2,
+        "recall": 0.0,
+        "tp": 0
+      }
+    },
+    "by_size": {
+      "height_24_47": {
+        "fn": 2,
+        "fp": 0,
+        "gt": 2,
+        "precision": 1.0,
+        "predictions": 0,
+        "recall": 0.0,
+        "tp": 0
+      },
+      "height_ge_96": {
+        "fn": 1,
+        "fp": 0,
+        "gt": 1,
+        "precision": 1.0,
+        "predictions": 0,
+        "recall": 0.0,
+        "tp": 0
+      }
+    },
+    "by_tag": {
+      "background_confuser": {
+        "fn": 0,
+        "fp": 0,
+        "gt": 0,
+        "precision": 1.0,
+        "predictions": 0,
+        "recall": 1.0,
+        "tp": 0
+      },
+      "compression": {
+        "fn": 2,
+        "fp": 0,
+        "gt": 2,
+        "precision": 1.0,
+        "predictions": 0,
+        "recall": 0.0,
+        "tp": 0
+      },
+      "dark": {
+        "fn": 2,
+        "fp": 0,
+        "gt": 2,
+        "precision": 1.0,
+        "predictions": 0,
+        "recall": 0.0,
+        "tp": 0
+      },
+      "good": {
+        "fn": 1,
+        "fp": 0,
+        "gt": 1,
+        "precision": 1.0,
+        "predictions": 0,
+        "recall": 0.0,
+        "tp": 0
+      },
+      "small_people": {
+        "fn": 2,
+        "fp": 0,
+        "gt": 2,
+        "precision": 1.0,
+        "predictions": 0,
+        "recall": 0.0,
+        "tp": 0
+      }
+    },
+    "false_negatives": 3,
+    "false_positives": 0,
+    "fn": 3,
+    "fp": 0,
+    "gt": 3,
+    "matched_ground_truth": [],
+    "missed_ground_truth": [
+      "good_daylight.mp4#0#p1",
+      "night_small_people.mp4#120#p1",
+      "night_small_people.mp4#120#p2"
+    ],
+    "missing_prediction_frames": [],
+    "precision": 1.0,
+    "predictions": 0,
+    "recall": 0.0,
+    "tp": 0,
+    "tracking": {
+      "fragmentations": 0,
+      "id_switches": 0,
+      "matched_gt": 0,
+      "missed_gt": 0,
+      "note": "ID metrics use stable GT ids across annotated frames; unannotated intervals are not scored.",
+      "recall": null
+    }
+  },
+  "performance": {},
+  "revision": "fixture-only",
+  "run_name": "TINY_FIXTURE_CONTROL",
+  "schema_version": 1,
+  "settings": {}
+}

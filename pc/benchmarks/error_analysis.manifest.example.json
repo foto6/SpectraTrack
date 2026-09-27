@@ -1,0 +1,16 @@
+{
+  "frames": [
+    {
+      "frame": 0,
+      "video": "good_daylight.mp4"
+    },
+    {
+      "frame": 120,
+      "video": "night_small_people.mp4"
+    },
+    {
+      "frame": 150,
+      "video": "night_small_people.mp4"
+    }
+  ]
+}

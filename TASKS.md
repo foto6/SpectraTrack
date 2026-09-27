@@ -30,6 +30,7 @@ Baseline: `main@2012eaae2f4ffe820a66d12e40346d911616cd03`.
 - Headless processing and class filters.
 - Synthetic tracker benchmark, diagnostics and self-check.
 - Annotated detector/tracker QA benchmark harness with saved result comparison and NEW FALSE NEGATIVE regression gates.
+- Deterministic offline benchmark error taxonomy with frozen-frame selection proof, representative failure IDs, candidate/control deltas, and evidence-bounded unknown handling.
 - Standalone Windows PyInstaller CI with CLI smoke tests.
 - Native Android CameraX + ONNX Runtime client.
 - Cross-video batch analysis.
@@ -137,7 +138,7 @@ Engineering targets for the first offline validation set are recorded in `docs/P
 - automatic model manager/downloader; current runtime intentionally does not silently download models;
 - adaptive tile scheduling based on scene content;
 - GPU/VRAM telemetry overlay;
-- best-frame/miss-review export specifically for detector benchmark iteration;
+- optional bounded top-K contact-sheet export for detector benchmark failure review; current error analysis emits representative IDs only;
 - stereo/multi-camera calibrated depth.
 
 ## Suggested parallel-agent split
