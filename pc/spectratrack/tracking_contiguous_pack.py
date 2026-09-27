@@ -94,46 +94,113 @@ def _canonicalize_records(records: Iterable[dict[str, Any]]) -> bytes:
     return bytes(payload)
 
 
+def _split_selected_stream(
+    path: str | Path,
+    *,
+    schema: str,
+    video: str,
+    windows: tuple[tuple[int, ...], ...],
+    source_name: str,
+    allow_trailing_records: bool = False,
+) -> tuple[dict[str, Any], tuple[tuple[dict[str, Any], ...], ...]]:
+    """Parse only metadata plus selected frame positions from the frozen 600-frame source."""
+    source = Path(path)
+    selected_by_position = {
+        position: frame_id
+        for frame_ids in windows
+        for position, frame_id in zip(frame_ids, frame_ids)
+    }
+    by_frame: dict[int, dict[str, Any]] = {}
+    metadata: dict[str, Any] | None = None
+    source_position = 0
+    trailing_records = 0
+
+    with source.open("r", encoding="utf-8-sig") as handle:
+        for line_number, raw in enumerate(handle, start=1):
+            stripped = raw.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if metadata is None:
+                try:
+                    value = json.loads(stripped)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"{source}:{line_number}: invalid metadata JSON") from exc
+                if not isinstance(value, dict) or value.get("type") != "metadata":
+                    raise ValueError(f"{source}:{line_number}: first record must be metadata")
+                if value.get("schema") != schema:
+                    raise ValueError(f"{source_name} schema mismatch")
+                if value.get("video") != video:
+                    raise ValueError(f"{source_name} metadata video mismatch")
+                metadata = value
+                continue
+
+            if source_position >= EXPECTED_SOURCE_FRAMES:
+                trailing_records += 1
+                if not allow_trailing_records:
+                    raise ValueError(
+                        f"{source_name} contains records beyond the frozen "
+                        f"{EXPECTED_SOURCE_FRAMES}-frame source"
+                    )
+                continue
+
+            expected_frame = selected_by_position.get(source_position)
+            if expected_frame is not None:
+                try:
+                    value = json.loads(stripped)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        f"{source}:{line_number}: invalid selected-frame JSON"
+                    ) from exc
+                if not isinstance(value, dict) or value.get("type") != "frame":
+                    raise ValueError(
+                        f"{source}:{line_number}: selected {source_name} record must be frame"
+                    )
+                frame = value.get("frame")
+                if frame != expected_frame:
+                    raise ValueError(
+                        f"{source_name} selected position {source_position} "
+                        f"has frame {frame!r}, expected {expected_frame}"
+                    )
+                if value.get("video") != video:
+                    raise ValueError(f"selected {source_name} frame video mismatch")
+                if frame in by_frame:
+                    raise ValueError(f"duplicate selected {source_name} frame {frame}")
+                by_frame[frame] = value
+            # Excluded source positions are deliberately not JSON-decoded.
+            source_position += 1
+
+    if metadata is None:
+        raise ValueError(f"{source_name} metadata is missing")
+    if source_position != EXPECTED_SOURCE_FRAMES:
+        raise ValueError(
+            f"{source_name} has {source_position} source frame records; "
+            f"expected {EXPECTED_SOURCE_FRAMES}"
+        )
+    if allow_trailing_records and trailing_records > 1:
+        raise ValueError(f"{source_name} has unexpected trailing records")
+
+    output: list[tuple[dict[str, Any], ...]] = []
+    for window in windows:
+        missing = [frame for frame in window if frame not in by_frame]
+        if missing:
+            raise ValueError(f"{source_name} is missing selected frames: {missing[:10]}")
+        output.append(tuple(by_frame[frame] for frame in window))
+    return metadata, tuple(output)
+
+
 def _split_replay(
     path: str | Path,
     *,
     video: str,
     windows: tuple[tuple[int, ...], ...],
 ) -> tuple[dict[str, Any], tuple[tuple[dict[str, Any], ...], ...]]:
-    metadata: dict[str, Any] | None = None
-    wanted = {frame_id for window in windows for frame_id in window}
-    by_frame: dict[int, dict[str, Any]] = {}
-    for record in _jsonl_records(path):
-        kind = record.get("type")
-        if kind == "metadata":
-            if metadata is not None:
-                raise ValueError("replay contains multiple metadata records")
-            if record.get("schema") != REPLAY_SCHEMA:
-                raise ValueError("replay schema mismatch")
-            if record.get("video") != video:
-                raise ValueError("replay metadata video mismatch")
-            metadata = record
-            continue
-        if kind != "frame":
-            raise ValueError(f"replay contains unexpected record type {kind!r}")
-        frame = record.get("frame")
-        if isinstance(frame, bool) or not isinstance(frame, int):
-            raise ValueError("replay frame must be an integer")
-        if frame in wanted:
-            if record.get("video") != video:
-                raise ValueError("selected replay frame video mismatch")
-            if frame in by_frame:
-                raise ValueError(f"duplicate selected replay frame {frame}")
-            by_frame[frame] = record
-    if metadata is None:
-        raise ValueError("replay metadata is missing")
-    output = []
-    for window in windows:
-        missing = [frame for frame in window if frame not in by_frame]
-        if missing:
-            raise ValueError(f"replay is missing selected frames: {missing[:10]}")
-        output.append(tuple(by_frame[frame] for frame in window))
-    return metadata, tuple(output)
+    return _split_selected_stream(
+        path,
+        schema=REPLAY_SCHEMA,
+        video=video,
+        windows=windows,
+        source_name="replay",
+    )
 
 
 def _split_ground_truth(
@@ -169,42 +236,14 @@ def _split_observations(
     video: str,
     windows: tuple[tuple[int, ...], ...],
 ) -> tuple[dict[str, Any], tuple[tuple[dict[str, Any], ...], ...]]:
-    metadata: dict[str, Any] | None = None
-    wanted = {frame_id for window in windows for frame_id in window}
-    by_frame: dict[int, dict[str, Any]] = {}
-    for record in _jsonl_records(path):
-        kind = record.get("type")
-        if kind == "metadata":
-            if metadata is not None:
-                raise ValueError("observations contain multiple metadata records")
-            if record.get("schema") != OBSERVATION_SCHEMA:
-                raise ValueError("observation schema mismatch")
-            if record.get("video") != video:
-                raise ValueError("observation metadata video mismatch")
-            metadata = record
-            continue
-        if kind == "summary":
-            continue
-        if kind != "frame":
-            raise ValueError(f"observations contain unexpected record type {kind!r}")
-        frame = record.get("frame")
-        if isinstance(frame, bool) or not isinstance(frame, int):
-            raise ValueError("observation frame must be an integer")
-        if frame in wanted:
-            if record.get("video") != video:
-                raise ValueError("selected observation frame video mismatch")
-            if frame in by_frame:
-                raise ValueError(f"duplicate selected observation frame {frame}")
-            by_frame[frame] = record
-    if metadata is None:
-        raise ValueError("observation metadata is missing")
-    output = []
-    for window in windows:
-        missing = [frame for frame in window if frame not in by_frame]
-        if missing:
-            raise ValueError(f"observations are missing selected frames: {missing[:10]}")
-        output.append(tuple(by_frame[frame] for frame in window))
-    return metadata, tuple(output)
+    return _split_selected_stream(
+        path,
+        schema=OBSERVATION_SCHEMA,
+        video=video,
+        windows=windows,
+        source_name="observations",
+        allow_trailing_records=True,
+    )
 
 
 def _payload_entry(path: Path, frame_count: int, record_count: int) -> dict[str, Any]:
