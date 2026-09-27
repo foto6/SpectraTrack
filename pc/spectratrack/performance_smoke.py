@@ -120,14 +120,14 @@ def _selection_items(payload: Any) -> list[Any]:
         return payload
     if isinstance(payload, dict):
         for key in (
+            "entries",
             "selected_frames",
             "frame_ids",
             "frames",
-            "selection",
             "items",
             "selected",
             "frame_keys",
-            "entries",
+            "selection",
         ):
             if key in payload:
                 return _selection_items(payload[key])
