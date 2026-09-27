@@ -212,3 +212,17 @@ Decision:
 - the authoritative frozen full corpus remains required for any acceptance claim.
 
 Reason: 400 frames cost only 8% of the 5000-frame corpus, but rare-event and small-effect resolution can be weak. The gate must save compute without turning a cheap screen into overstated evidence.
+
+
+## 2026-09-27 - Repeated NightOwls research uses irreversible staged exposure
+
+Decision:
+
+- `spectratrack-research-stage-policy-v1` separates statistical effect-size triage from data-exposure eligibility;
+- candidates frozen before r1 may triage on r1; candidates or hyperparameters created after r1 exposure must advance to r2 without reusing r1;
+- after r2 exposure, tuned candidates may next use only holdout4200;
+- holdout4200 is the final independent NightOwls evidence in this research cycle; post-holdout tuning requires a new external/future corpus;
+- FULL5000 after component-slice exposure is aggregate characterization only, never independent held-out confirmation;
+- a semantics-preserving performance-only descendant may inherit the parent's freeze eligibility only with unchanged semantic configuration, no quality-result inspiration, and hashed equivalence evidence; already-consumed stages remain consumed.
+
+Reason: candidate-level freeze provenance and irreversible exposure accounting prevent adaptive tuning from laundering observed smoke results into apparently independent promotion evidence while retaining the original conservative effect-size policy.
