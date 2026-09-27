@@ -32,14 +32,22 @@
       "role": "blinded_confirmation_after_r1_exposure",
       "independent_heldout_for_eligible_candidate": true,
       "dataset": {
-        "status": "UNPUBLISHED",
+        "status": "published",
         "expected_frames": 400,
-        "revision": null,
-        "corpus_sha256": null,
-        "jsonl_sha256": null,
-        "manifest_sha256": null,
-        "identity_sha256": null,
-        "a5_source_commit": null
+        "revision": "nightowls-public-smoke400-r2",
+        "corpus_sha256": "9d145b4dda780052388f3b663203c519ded48f61457adef14654f84fb5549eff",
+        "jsonl_sha256": "75eba2c9dc3b36d0a2389bfbb080a709621ef690680ae655d85d8732e7bc6097",
+        "manifest_sha256": "9270d46c2776aa531e1b979a1a7ebc16eaed0f6483b2c1095da834af383c4e83",
+        "identity_sha256": "9f2afa165f294a4bce1e7c842b8a135a98876e1a0c4db4b0cbd0b8c583151cce",
+        "frames": 400,
+        "seed": "spectratrack-round2-nightowls-smoke400-r2-v1",
+        "parent_revision": "nightowls-public-slice5000-r1",
+        "parent_corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
+        "parent_ground_truth_sha256": "6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc",
+        "ground_truth_sha256": "75eba2c9dc3b36d0a2389bfbb080a709621ef690680ae655d85d8732e7bc6097",
+        "selection_proof_sha256": "df11e9dc6ca1f63019cba071ed82420de27c706b41d1d3b46df880bb3ce50faf",
+        "hash_bundle_sha256": "9f2afa165f294a4bce1e7c842b8a135a98876e1a0c4db4b0cbd0b8c583151cce",
+        "identity_kind": "hash_bundle_sha256"
       }
     },
     {
@@ -47,14 +55,21 @@
       "role": "final_independent_nightowls_evidence",
       "independent_heldout_for_eligible_candidate": true,
       "dataset": {
-        "status": "UNPUBLISHED",
+        "status": "published",
         "expected_frames": 4200,
-        "revision": null,
-        "corpus_sha256": null,
-        "jsonl_sha256": null,
-        "manifest_sha256": null,
-        "identity_sha256": null,
-        "a5_source_commit": null
+        "revision": "nightowls-public-holdout4200-r1",
+        "corpus_sha256": "c2e5091fe4e1c146301f6d411c7a9c4d816380f94515e226b25e28e90dfc190a",
+        "jsonl_sha256": "cda56abf7bd48b9849d5b10467be7e192d0fea9abc3ae31fac5a2f180605c621",
+        "manifest_sha256": "19ea73abf8d97265b3b0a3e46657c09bac370c31835b7414886156994fefc901",
+        "identity_sha256": "011242dbdc155e28dbae90e48cb2f6162abaf49ec793619936f86b78f41ebc9a",
+        "frames": 4200,
+        "parent_revision": "nightowls-public-slice5000-r1",
+        "parent_corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
+        "parent_ground_truth_sha256": "6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc",
+        "ground_truth_sha256": "cda56abf7bd48b9849d5b10467be7e192d0fea9abc3ae31fac5a2f180605c621",
+        "selection_proof_sha256": "4f1f8e977871ce3c134a4c72029035760f4377d3bddfd7a99cd3cebe568dab3d",
+        "hash_bundle_sha256": "011242dbdc155e28dbae90e48cb2f6162abaf49ec793619936f86b78f41ebc9a",
+        "identity_kind": "hash_bundle_sha256"
       }
     },
     {
