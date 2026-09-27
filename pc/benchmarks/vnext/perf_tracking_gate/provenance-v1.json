@@ -1,0 +1,68 @@
+{
+  "schema": "spectratrack-perf-tracking-provenance-v1",
+  "research_only": true,
+  "base_commit": "d03af3ae6425d3ea2e4d52e25389fecc09957394",
+  "a2": {
+    "branch": "agent/vnext-tracking",
+    "source_commit": "d73b5d5a8268586ee963df9de901d3fd6ff6fcca",
+    "manifest": {
+      "source_path": "pc/benchmarks/vnext/tracking/mot17-04-smoke400-v1.json",
+      "git_blob_sha1": "980ea6a38b2e3c1c6c011f0264295e57c3a6a882",
+      "sha256": "cc26aa3a37f5830912e576d9475d83b231b1842519bcd9a22baab8c06c3c4844",
+      "copied_path": "pc/benchmarks/vnext/perf_tracking_gate/source/a2-mot17-04-smoke400-v1.json"
+    },
+    "prior_control_result": {
+      "source_path": "pc/benchmarks/vnext/tracking/mot17-04-smoke400-current-vs-ambiguity-v1.json",
+      "git_blob_sha1": "a19cc05d24092531626f03564a72930940424f1a",
+      "sha256": "09710d5f4c278d8ef5a6c64beefcdc92e916433d4751dc3fee12cd4ca69b720b",
+      "copied_path": "pc/benchmarks/vnext/perf_tracking_gate/source/a2-mot17-04-smoke400-current-vs-ambiguity-v1.json"
+    },
+    "replay": {
+      "logical_corpus": "mot17-public-r1 / golden/public/mot17/MOT17-04",
+      "source_frame_count": 600,
+      "selected_frame_count": 400,
+      "windows": [
+        [
+          0,
+          199
+        ],
+        [
+          400,
+          599
+        ]
+      ],
+      "source_replay_file_sha256": "b2719a2c93c353123437497ac9513033898d3d65750a32ed633d05e8fb65b2d4",
+      "source_replay_canonical_sha256": "d27d45172a2df0a5c81ff83be2ceed03d2ed1eef922d3fde06f72b3126a89c59",
+      "ground_truth_sha256": "28dcb9d197e0a098a1efb097f1589177350192a8f5f1be3e2ab5cd18d8f205c7",
+      "payload_committed_at_source_head": false,
+      "source_tree_check": "full recursive source tree inspected; no canonical MOT17 replay/GT payload is committed"
+    }
+  },
+  "a4": {
+    "branch": "agent/vnext-performance",
+    "source_commit": "5c880267498a18b51b2e5c5f92f6c5360fafc212",
+    "cost_evidence": {
+      "source_path": "docs/agents/vnext/performance.md",
+      "git_blob_sha1": "37a74cf9c4886a54cb64155d30addabf94fa1781",
+      "copied_path": "pc/benchmarks/vnext/perf_tracking_gate/source/a4-performance-evidence.md"
+    },
+    "smoke400_control": {
+      "frames": 400,
+      "wall_seconds": 152.009,
+      "onnx_calls": 1200,
+      "detector_calls_per_frame": 3,
+      "detector_policy_frame_time_share": 0.914,
+      "onnx_inference_frame_time_share": 0.769,
+      "model_sha256": "e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73",
+      "providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ]
+    },
+    "normalized_25fps_control_projection": {
+      "basis": "3.0 measured calls/frame and 152.009 s / 400 frames projected to 25 source fps",
+      "calls_per_source_second": 75,
+      "processing_seconds_per_source_second": 9.5005625
+    }
+  }
+}

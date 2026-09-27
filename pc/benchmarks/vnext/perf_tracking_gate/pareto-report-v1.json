@@ -1,0 +1,112 @@
+{
+  "schema": "spectratrack-perf-tracking-pareto-report-v1",
+  "research_only": true,
+  "base_commit": "d03af3ae6425d3ea2e4d52e25389fecc09957394",
+  "manifest_sha256": "cc26aa3a37f5830912e576d9475d83b231b1842519bcd9a22baab8c06c3c4844",
+  "tracking_windows": [
+    [
+      0,
+      199
+    ],
+    [
+      400,
+      599
+    ]
+  ],
+  "tracking_control": {
+    "source": "exact A2 smoke control",
+    "metrics": {
+      "false_track_creations": 133,
+      "fragmentations": 228,
+      "gt": 17581,
+      "id_switches": 252,
+      "matched_gt": 15060,
+      "mean_recovery_latency_frames": 5.254385964912281,
+      "mean_uninterrupted_track_length": 31.051546391752577,
+      "recovered_same_id": 138,
+      "recovery_events": 228,
+      "tracking_recall": 0.8566065639042147,
+      "uninterrupted_segments": 485,
+      "wrong_recovery": 90
+    },
+    "detector_fn": "unavailable in committed A2 result",
+    "discovery_latency": "unavailable in committed A2 result"
+  },
+  "cost_control": {
+    "source": "exact A4 Smoke400 control, deterministic 25fps projection",
+    "detector_calls_per_frame": 3,
+    "calls_per_source_second": 75,
+    "processing_seconds_per_source_second": 9.5005625,
+    "projection_not_quality_evidence": true
+  },
+  "candidate_results": [
+    {
+      "id": "detect-every-3-max-calls-1",
+      "schedule": {
+        "id": "detect-every-3-max-calls-1",
+        "detect_every": 3,
+        "max_calls_per_detector_frame": 1,
+        "global_period": 8,
+        "periodic_global_bound_frames": 24,
+        "a4_measured_source_fps": 25,
+        "a4_calls_per_source_second": 8.4,
+        "a4_processing_seconds_per_source_second": 0.994,
+        "a4_periodic_global_bound_seconds": 0.96
+      },
+      "cost": {
+        "calls_per_source_second": 8.4,
+        "processing_seconds_per_source_second": 0.994,
+        "calls_reduction_fraction_vs_projected_control": 0.888,
+        "processing_reduction_fraction_vs_projected_control": 0.8953746159766856
+      },
+      "quality": null,
+      "hard_gates": {
+        "tracking_recall_loss_max_0_25pp": null,
+        "fragmentation_increase_max_5pct": null,
+        "no_id_switch_increase": null,
+        "recovery_latency_increase_max_1_frame": null,
+        "observed_discovery_latency_within_24_frames": null
+      },
+      "decision": "STOP_INSUFFICIENT_QUALITY_EVIDENCE",
+      "reason": "A2 canonical replay/GT payload bytes are not committed; cost reduction alone cannot promote."
+    },
+    {
+      "id": "detect-every-5-max-calls-3",
+      "schedule": {
+        "id": "detect-every-5-max-calls-3",
+        "detect_every": 5,
+        "max_calls_per_detector_frame": 3,
+        "global_period": 5,
+        "periodic_global_bound_frames": 25,
+        "a4_measured_source_fps": 25,
+        "a4_calls_per_source_second": 15,
+        "a4_processing_seconds_per_source_second": 1.751,
+        "a4_periodic_global_bound_seconds": 1
+      },
+      "cost": {
+        "calls_per_source_second": 15,
+        "processing_seconds_per_source_second": 1.751,
+        "calls_reduction_fraction_vs_projected_control": 0.8,
+        "processing_reduction_fraction_vs_projected_control": 0.8156951233150669
+      },
+      "quality": null,
+      "hard_gates": {
+        "tracking_recall_loss_max_0_25pp": null,
+        "fragmentation_increase_max_5pct": null,
+        "no_id_switch_increase": null,
+        "recovery_latency_increase_max_1_frame": null,
+        "observed_discovery_latency_within_25_frames": null
+      },
+      "decision": "STOP_INSUFFICIENT_QUALITY_EVIDENCE",
+      "reason": "A2 canonical replay/GT payload bytes are not committed; cost reduction alone cannot promote."
+    }
+  ],
+  "pareto": {
+    "aggregation": "none",
+    "scalar_magic_score": false,
+    "genuine_survivors": [],
+    "request_larger_contiguous_tracking_replay": false,
+    "nightowls_used_for_tracking": false,
+    "conclusion": "No Pareto survivor can be asserted without candidate quality on the exact A2 contiguous windows."
+  }
+}

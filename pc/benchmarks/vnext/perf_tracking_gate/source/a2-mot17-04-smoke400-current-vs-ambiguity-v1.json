@@ -1,0 +1,86 @@
+{
+  "candidate": {
+    "false_track_creations": 134,
+    "fragmentations": 234,
+    "gt": 17581,
+    "id_switches": 267,
+    "matched_gt": 15026,
+    "mean_recovery_latency_frames": 5.277777777777778,
+    "mean_uninterrupted_track_length": 29.6370808678501,
+    "recovered_same_id": 145,
+    "recovery_events": 234,
+    "tracking_recall": 0.8546726579830499,
+    "uninterrupted_segments": 507,
+    "wrong_recovery": 89
+  },
+  "candidate_names": [
+    "current",
+    "current-ambiguity-guard"
+  ],
+  "compute_savings_estimate": {
+    "full_steps": 1200,
+    "saved_fraction_if_rejected": 0.33333333333333337,
+    "saved_steps_if_rejected": 400,
+    "smoke_steps": 800,
+    "unit": "tracker_candidate_frame_steps"
+  },
+  "control": {
+    "false_track_creations": 133,
+    "fragmentations": 228,
+    "gt": 17581,
+    "id_switches": 252,
+    "matched_gt": 15060,
+    "mean_recovery_latency_frames": 5.254385964912281,
+    "mean_uninterrupted_track_length": 31.051546391752577,
+    "recovered_same_id": 138,
+    "recovery_events": 228,
+    "tracking_recall": 0.8566065639042147,
+    "uninterrupted_segments": 485,
+    "wrong_recovery": 90
+  },
+  "detector_policy_runs": 0,
+  "ground_truth_sha256": "28dcb9d197e0a098a1efb097f1589177350192a8f5f1be3e2ab5cd18d8f205c7",
+  "manifest_sha256": "cc26aa3a37f5830912e576d9475d83b231b1842519bcd9a22baab8c06c3c4844",
+  "onnx_inference_calls": 0,
+  "schema": "spectratrack-tracking-smoke-result-v1",
+  "selected_frame_count": 400,
+  "smoke_gate": {
+    "classification": "reject_obvious_harm",
+    "decision": "REJECT BEFORE FULL CANONICAL REPLAY",
+    "delta": {
+      "false_track_creations": 1,
+      "fragmentation_increase_fraction": 0.02631578947368421,
+      "fragmentations": 6,
+      "id_switch_improvement_fraction": -0.05952380952380952,
+      "id_switches": 15,
+      "mean_recovery_latency_frames": 0.023391812865496853,
+      "mean_uninterrupted_track_length": -1.4144655239024786,
+      "recovered_same_id": 7,
+      "recovery_events": 6,
+      "tracking_recall": -0.0019339059211648246,
+      "tracking_recall_loss_percentage_points": 0.19339059211648246,
+      "wrong_recovery": -1
+    },
+    "full_promotion_gate_signal_only": {
+      "gates": {
+        "fragmentation_increase_max_5pct": true,
+        "id_switch_improvement_min_10pct": false,
+        "no_false_track_increase": false,
+        "tracking_recall_loss_max_0_25pp": true
+      },
+      "passed": false
+    },
+    "gates": {
+      "fragmentation_increase_max_5pct": true,
+      "no_false_track_increase": false,
+      "no_id_switch_regression": false,
+      "tracking_recall_loss_max_0_25pp": true
+    }
+  },
+  "source_frame_count": 600,
+  "source_replay_canonical_sha256": "d27d45172a2df0a5c81ff83be2ceed03d2ed1eef922d3fde06f72b3126a89c59",
+  "source_replay_file_sha256": "b2719a2c93c353123437497ac9513033898d3d65750a32ed633d05e8fb65b2d4",
+  "subject_commit": "d1470454129024d3767b6cb91a7d6ba66102d52d",
+  "video": "golden/public/mot17/MOT17-04",
+  "window_count": 2
+}
