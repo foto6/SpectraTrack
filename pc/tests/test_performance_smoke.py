@@ -247,9 +247,11 @@ def _profile(candidate, wall_seconds, output_hash):
         "wall_seconds": wall_seconds,
         "output_sha256": output_hash,
         "quality": None,
+        "frames": 400,
         "provenance": {
             "model_sha256": "a" * 64,
             "video_sha256": "b" * 64,
+            "providers": ["DmlExecutionProvider", "CPUExecutionProvider"],
         },
         "settings": {
             "input_size": 960,
@@ -259,6 +261,15 @@ def _profile(candidate, wall_seconds, output_hash):
             "merge_iou": 0.55,
         },
     }
+
+
+def test_compare_profiles_rejects_provider_mismatch():
+    control = _profile("control", 100.0, "same")
+    candidate = _profile("contiguous-input", 80.0, "same")
+    candidate["provenance"]["providers"] = ["CPUExecutionProvider"]
+
+    with pytest.raises(ValueError, match="provenance.providers"):
+        compare_profiles(control, candidate, minimum_speedup=1.10)
 
 
 def test_compare_profiles_requires_meaningful_speedup_and_equal_output_hash():
