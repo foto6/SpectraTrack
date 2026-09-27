@@ -106,3 +106,8 @@ Production integration is deferred to a later:
 ## A6 smoke statistics
 
 `smoke_stats.md` defines the reusable statistical promotion gate for the 400-frame smoke-first policy. It does not select frames or alter A1-A5 benchmark behavior.
+
+
+## A6 staged research policy
+
+`smoke_stats.md` also defines the anti-leakage r1 -> r2 -> holdout4200 research-stage policy and validator. This layer preserves the existing smoke uncertainty gate while preventing observed-stage reuse after candidate or hyperparameter tuning.
