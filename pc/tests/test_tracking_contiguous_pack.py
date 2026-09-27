@@ -197,6 +197,34 @@ def test_build_pack_bytes_and_hashes_are_stable(tmp_path):
         assert left_path.read_bytes() == (right / left_path.name).read_bytes()
 
 
+
+def test_builder_does_not_decode_excluded_middle_replay_or_observation_payloads(tmp_path):
+    selection, replay, gt, observations = _fixture(tmp_path)
+
+    replay_lines = replay.read_text(encoding="utf-8").splitlines(keepends=True)
+    replay_lines[1 + 250] = "{excluded replay payload intentionally not inspected}\n"
+    replay.write_text("".join(replay_lines), encoding="utf-8")
+
+    observation_lines = observations.read_text(encoding="utf-8").splitlines(keepends=True)
+    observation_lines[1 + 250] = "{excluded observation payload intentionally not inspected}\n"
+    observations.write_text("".join(observation_lines), encoding="utf-8")
+
+    frozen = json.loads(selection.read_text(encoding="utf-8"))
+    frozen["source_replay_file_sha256"] = _sha(replay)
+    selection.write_text(json.dumps(frozen, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    output = tmp_path / "pack"
+    manifest = build_contiguous_pack(
+        selection_manifest_path=selection,
+        replay_path=replay,
+        ground_truth_path=gt,
+        observations_path=observations,
+        output_dir=output,
+    )
+
+    assert manifest["selection"]["excluded_middle_window"] == [200, 399]
+    validate_contiguous_pack(output)
+
 def test_pack_validation_fails_closed_on_payload_tamper(tmp_path):
     selection, replay, gt, observations = _fixture(tmp_path)
     output = tmp_path / "pack"
