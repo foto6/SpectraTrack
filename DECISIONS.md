@@ -213,3 +213,16 @@ Decision:
 
 Reason: failure analysis should explain measured smoke failures without turning ambiguous cases into invented causes or encouraging threshold tuning from a small sample. Full-corpus NightOwls remains a separate promotion benchmark.
 
+
+
+## 2026-09-27 — R1 failure taxonomy is frozen as discovery-only lineage evidence
+
+Decision:
+
+- bind the A7 discovery report to exact A5 smoke400-r1 hashes and exact rejected A1/A3 r1 artifact hashes;
+- separate candidate-independent baseline clusters from A1-specific regression evidence and A3-specific no-recall/compute evidence;
+- set `discovery_only=true` and forbid candidate evaluation or threshold scoring from the r1 report;
+- expose a canonical report digest plus cluster/finding IDs for future A1/A3 `inspired_by` lineage;
+- keep representative IDs bounded to top-K and preserve the existing taxonomy vocabulary.
+
+Reason: rejected r1 experiments are useful for hypothesis provenance, but must not become an implicit tuning surface or be re-scored as future candidates.

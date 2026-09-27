@@ -1,0 +1,14 @@
+﻿{
+  "schema": "spectratrack-error-hypothesis-lineage-v1",
+  "hypothesis_id": "EXAMPLE_ONLY",
+  "role": "A1",
+  "inspired_by": {
+    "discovery_report_digest": "sha256:ad51f9b7c3f4629155298215a52004092ea1b95bd220c4ed6a608e464971afec",
+    "cluster_ids": ["baseline:missed_small_person"]
+  },
+  "hypothesis": "Example lineage record only; replace with a future preregistered hypothesis.",
+  "mechanism": "Example only; this record is not a candidate evaluation or recommendation.",
+  "expected_taxonomy_effects": [
+    {"category": "missed_small_person", "direction": "decrease"}
+  ]
+}

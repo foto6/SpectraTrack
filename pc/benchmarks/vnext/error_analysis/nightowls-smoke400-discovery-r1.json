@@ -1,0 +1,277 @@
+{
+  "a1_specific": {
+    "candidate_totals": {
+      "duplicate_count_before_fusion": 291,
+      "fn": 47,
+      "fp": 201,
+      "tp": 136
+    },
+    "control_totals": {
+      "duplicate_count_before_fusion": 129,
+      "fn": 48,
+      "fp": 126,
+      "tp": 135
+    },
+    "new_missed_gt_count": 3,
+    "new_missed_gt_representatives": [
+      "golden/public/nightowls-val-slice/recording-unassigned-image-7000005#0#index:1",
+      "golden/public/nightowls-val-slice/recording-unassigned-image-7000979#0#index:2",
+      "golden/public/nightowls-val-slice/recording-unassigned-image-7001030#0#index:2"
+    ],
+    "recovered_gt_count": 4,
+    "recovered_gt_representatives": [
+      "golden/public/nightowls-val-slice/recording-37#5#index:0",
+      "golden/public/nightowls-val-slice/recording-unassigned-image-7001031#0#index:2",
+      "golden/public/nightowls-val-slice/recording-unassigned-image-7001060#0#index:1",
+      "golden/public/nightowls-val-slice/recording-unassigned-image-7001211#0#index:0"
+    ],
+    "regression_clusters": [
+      {
+        "cluster_id": "a1_r1:new_miss:missed_small_person",
+        "count": 1,
+        "evidence_scope": "candidate_new_false_negatives_vs_control",
+        "note": "New tile512 miss relative to identical smoke400 control frames; source candidate remains REJECTED.",
+        "rate": 0.3333333333333333,
+        "rate_denominator": 3,
+        "representative_ids": [
+          "golden/public/nightowls-val-slice/recording-unassigned-image-7000005#0#index:1"
+        ],
+        "taxonomy_category": "missed_small_person"
+      },
+      {
+        "cluster_id": "a1_r1:new_miss:low_contrast_night_darkness",
+        "count": 3,
+        "evidence_scope": "candidate_new_false_negatives_vs_control",
+        "note": "New tile512 miss relative to identical smoke400 control frames; source candidate remains REJECTED.",
+        "rate": 1.0,
+        "rate_denominator": 3,
+        "representative_ids": [
+          "golden/public/nightowls-val-slice/recording-unassigned-image-7000005#0#index:1",
+          "golden/public/nightowls-val-slice/recording-unassigned-image-7000979#0#index:2",
+          "golden/public/nightowls-val-slice/recording-unassigned-image-7001030#0#index:2"
+        ],
+        "taxonomy_category": "low_contrast_night_darkness"
+      },
+      {
+        "cluster_id": "a1_r1:new_miss:occlusion_crowd",
+        "count": 1,
+        "evidence_scope": "candidate_new_false_negatives_vs_control",
+        "note": "New tile512 miss relative to identical smoke400 control frames; source candidate remains REJECTED.",
+        "rate": 0.3333333333333333,
+        "rate_denominator": 3,
+        "representative_ids": [
+          "golden/public/nightowls-val-slice/recording-unassigned-image-7000979#0#index:2"
+        ],
+        "taxonomy_category": "occlusion_crowd"
+      },
+      {
+        "cluster_id": "a1_r1:aggregate_fp_delta",
+        "count": 75,
+        "evidence_scope": "aggregate_postfusion_false_positive_delta",
+        "note": "No post-fusion prediction geometry is available to assign the FP delta to background/duplicate/localization categories.",
+        "rate": 0.5952380952380952,
+        "rate_denominator": 126,
+        "representative_ids": [],
+        "taxonomy_category": "unknown"
+      },
+      {
+        "cluster_id": "a1_r1:prefusion_duplicate_pressure",
+        "count": 162,
+        "evidence_scope": "prefusion_duplicate_count_diagnostic",
+        "note": "Diagnostic pre-fusion duplicate pressure only; it is not a post-fusion false-positive attribution.",
+        "rate": 1.255813953488372,
+        "rate_denominator": 129,
+        "representative_ids": [],
+        "taxonomy_category": "duplicate_fragmented_detection"
+      }
+    ],
+    "source_disposition": "REJECT"
+  },
+  "a3_specific": {
+    "findings": [
+      {
+        "false_negative_delta": 0,
+        "finding_id": "a3_r1:no_recall_gain",
+        "lost_gt": 0,
+        "note": "LIME recovered zero frozen GT; baseline discovery clusters therefore remain unresolved.",
+        "recall_delta": 0.0,
+        "recovered_gt": 0,
+        "related_taxonomy_categories": [
+          "low_contrast_night_darkness",
+          "missed_small_person",
+          "occlusion_crowd"
+        ],
+        "representative_ids": [
+          "golden/public/nightowls-val-slice/recording-unassigned-image-7000206#0#index:2",
+          "golden/public/nightowls-val-slice/recording-unassigned-image-7001091#0#index:2",
+          "golden/public/nightowls-val-slice/recording-unassigned-image-7000498#0#index:0",
+          "golden/public/nightowls-val-slice/recording-unassigned-image-7000118#0#index:0",
+          "golden/public/nightowls-val-slice/recording-unassigned-image-7000002#0#index:1"
+        ]
+      },
+      {
+        "activation_rate_vs_smoke_frames": 0.15,
+        "additional_raw_onnx_calls": 60,
+        "extra_enhancement_onnx_calls": 60,
+        "extra_onnx_calls_total": 120,
+        "finding_id": "a3_r1:compute_cost",
+        "note": "Measured r1 compute cost only; this discovery report does not score or retune the rejected candidate.",
+        "recovered_gt_per_extra_enhancement_call": 0.0,
+        "related_taxonomy_categories": [],
+        "representative_ids": []
+      },
+      {
+        "false_positive_delta": -1,
+        "finding_id": "a3_r1:unlocalized_fp_reduction",
+        "note": "One fewer aggregate FP is observed, but absent per-detection geometry it is not labeled background false positive.",
+        "related_taxonomy_categories": [
+          "unknown"
+        ],
+        "representative_ids": []
+      }
+    ],
+    "operation": "lime_maxrgb_bounded",
+    "source_disposition": "REJECT"
+  },
+  "a5_smoke": {
+    "corpus_sha256": "70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162",
+    "frame_count": 400,
+    "ground_truth_sha256": "45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8",
+    "manifest_sha256": "3f65339609de78e7ef255e94875727a4bb26c4769231763a2660e1bb8f15905e",
+    "revision": "nightowls-public-smoke400-r1",
+    "selected_frame_ids_sha256": "60e4c4e75685e79f05c64ad0e0e5e9c61e0380f97b9597afcbaf04fc166d87c6",
+    "selection_proof_sha256": "0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940"
+  },
+  "baseline_control_totals": {
+    "fn": 48,
+    "fp": 126,
+    "tp": 135
+  },
+  "baseline_failure_clusters": [
+    {
+      "cluster_id": "baseline:missed_small_person",
+      "count": 10,
+      "evidence_scope": "control_false_negative_gt_geometry_metadata",
+      "note": "Candidate-independent control miss cluster from frozen GT and A1 control miss IDs.",
+      "rate": 0.20833333333333334,
+      "rate_denominator": 48,
+      "representative_ids": [
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7000206#0#index:2",
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7001091#0#index:2",
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7000498#0#index:0",
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7000118#0#index:0",
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7000002#0#index:1"
+      ],
+      "taxonomy_category": "missed_small_person"
+    },
+    {
+      "cluster_id": "baseline:low_contrast_night_darkness",
+      "count": 48,
+      "evidence_scope": "control_false_negative_gt_geometry_metadata",
+      "note": "Candidate-independent control miss cluster from frozen GT and A1 control miss IDs.",
+      "rate": 1.0,
+      "rate_denominator": 48,
+      "representative_ids": [
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7000206#0#index:2",
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7001091#0#index:2",
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7000498#0#index:0",
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7000118#0#index:0",
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7000002#0#index:1"
+      ],
+      "taxonomy_category": "low_contrast_night_darkness"
+    },
+    {
+      "cluster_id": "baseline:occlusion_crowd",
+      "count": 17,
+      "evidence_scope": "control_false_negative_gt_geometry_metadata",
+      "note": "Candidate-independent control miss cluster from frozen GT and A1 control miss IDs.",
+      "rate": 0.3541666666666667,
+      "rate_denominator": 48,
+      "representative_ids": [
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7000206#0#index:2",
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7001091#0#index:2",
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7000498#0#index:0",
+        "golden/public/nightowls-val-slice/recording-unassigned-image-7000017#0#index:1",
+        "golden/public/nightowls-val-slice/recording-36#47#index:0"
+      ],
+      "taxonomy_category": "occlusion_crowd"
+    },
+    {
+      "cluster_id": "baseline:unknown_false_positive",
+      "count": 126,
+      "evidence_scope": "aggregate_false_positive_count_only",
+      "note": "A1 control exposes aggregate FP count without post-fusion per-detection geometry; cause remains unknown.",
+      "rate": 1.0,
+      "rate_denominator": 126,
+      "representative_ids": [],
+      "taxonomy_category": "unknown"
+    }
+  ],
+  "candidate_evaluation": "forbidden_on_r1_discovery_report",
+  "discovery_only": true,
+  "limits": {
+    "all_frame_rendering": false,
+    "threshold_proposals": false,
+    "threshold_scoring": false,
+    "top_k_representative_ids": 5
+  },
+  "lineage_interface": {
+    "allowed_roles": [
+      "A1",
+      "A3"
+    ],
+    "inspired_by": {
+      "required_cluster_ids_field": "cluster_ids",
+      "required_report_digest_field": "discovery_report_digest"
+    },
+    "schema": "spectratrack-error-hypothesis-lineage-v1"
+  },
+  "report_digest": "sha256:ad51f9b7c3f4629155298215a52004092ea1b95bd220c4ed6a608e464971afec",
+  "report_revision": "nightowls-smoke400-discovery-r1",
+  "schema": "spectratrack-error-discovery-taxonomy-v1",
+  "source_artifacts": {
+    "a1_control": {
+      "schema": "spectratrack-vnext-fusion-corpus-v1",
+      "sha256": "35ed2221875c91416c17970eeb8d560c8e38c3b3f8241e8a9052c1b56696fee9",
+      "source_commit": "c55c265189404b68f641c860defff4b6092a2e4d"
+    },
+    "a1_summary": {
+      "schema": "spectratrack-a1-triage-result-v1",
+      "sha256": "e7ec752be2e59157d5dae273c5bdae7352e32e9b14ea8a4f1c167f7fd365c6a8",
+      "source_commit": "c55c265189404b68f641c860defff4b6092a2e4d",
+      "source_disposition": "REJECT"
+    },
+    "a1_tile512": {
+      "schema": "spectratrack-vnext-fusion-corpus-v1",
+      "sha256": "6cdeb1b7414c5dda2a59148a4230993ce51db6ab546e0e79707137706dbe1719",
+      "source_commit": "c55c265189404b68f641c860defff4b6092a2e4d",
+      "source_disposition": "REJECT"
+    },
+    "a3_evidence": {
+      "schema": "spectratrack-vnext-enhancement-alternates-v1",
+      "sha256": "57e058d5a184274afd85387b3073fd9c50ca93f8c3d8b9736f8482fc3c651a49"
+    },
+    "a3_final": {
+      "schema": "spectratrack-vnext-a3-smoke400-final-v1",
+      "sha256": "6b71df6bded41a3964cc461a242f534973c8f9b39c7e3a69f4343c9ed2ea3c08",
+      "source_commit": "af6b636ceb1a32b55383bcb5260fdc6af9307440",
+      "source_disposition": "REJECT"
+    },
+    "a3_score": {
+      "a1_fusion_source_commit": "3dc31c8fa8b323ce86afc14c3105a0c2247a2c48",
+      "schema": "spectratrack-vnext-a3-smoke400-score-v1",
+      "sha256": "21ab0f792f84deee5926b999ade865a4d6e166d8bf469f95dbc832613a0da294"
+    }
+  },
+  "taxonomy_categories": [
+    "missed_small_person",
+    "low_contrast_night_darkness",
+    "occlusion_crowd",
+    "localization_iou_miss",
+    "duplicate_fragmented_detection",
+    "background_false_positive",
+    "edge_of_frame",
+    "scale_extreme_aspect",
+    "unknown"
+  ]
+}
