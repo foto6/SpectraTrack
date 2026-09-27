@@ -423,6 +423,16 @@ def _projection(records: list[dict[str, Any]], full_frames: int = 5000) -> dict[
     }
 
 
+def amdahl_upper_bound(*, affected_ms: float, total_ms: float) -> float:
+    """Maximum speedup if the affected work were made free."""
+    if total_ms <= 0.0:
+        raise ValueError("total_ms must be > 0")
+    if affected_ms < 0.0 or affected_ms > total_ms:
+        raise ValueError("affected_ms must be in [0, total_ms]")
+    remaining = total_ms - affected_ms
+    return float("inf") if remaining <= 0.0 else total_ms / remaining
+
+
 def research_cost_model(
     *,
     smoke_wall_seconds: float,
