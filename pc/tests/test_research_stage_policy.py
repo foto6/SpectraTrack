@@ -339,6 +339,9 @@ def test_parent_hash_mismatch_is_rejected():
 
 def test_unpublished_r2_cannot_be_scored():
     policy = _policy()
+    r2 = next(row for row in policy["stages"] if row["stage"] == "r2")
+    r2["dataset"]["status"] = "UNPUBLISHED"
+    r2["dataset"]["identity_sha256"] = None
     candidate = _candidate(
         "r1-tuned",
         "2026-09-27T11:00:00Z",
@@ -359,6 +362,31 @@ def test_unpublished_r2_cannot_be_scored():
     history = _history([candidate], [_exposure("r1", "2026-09-27T10:00:00Z", "4")])
     with pytest.raises(ValueError, match="not yet hash-bound"):
         validate_history(history, policy)
+
+
+def test_committed_policy_binds_exact_a5_r1_r2_and_holdout_hashes():
+    policy = _policy()
+    stages = {row["stage"]: row["dataset"] for row in policy["stages"]}
+
+    assert stages["r1"]["identity_sha256"] == "2a4da42830400b14405de01a82e3b3bee3d17a07db0be067f752545664fc6186"
+    assert stages["r1"]["corpus_sha256"] == "70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162"
+    assert stages["r1"]["jsonl_sha256"] == "45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8"
+
+    assert stages["r2"]["status"] == "published"
+    assert stages["r2"]["ground_truth_sha256"] == "75eba2c9dc3b36d0a2389bfbb080a709621ef690680ae655d85d8732e7bc6097"
+    assert stages["r2"]["corpus_sha256"] == "9d145b4dda780052388f3b663203c519ded48f61457adef14654f84fb5549eff"
+    assert stages["r2"]["manifest_sha256"] == "9270d46c2776aa531e1b979a1a7ebc16eaed0f6483b2c1095da834af383c4e83"
+    assert stages["r2"]["selection_proof_sha256"] == "df11e9dc6ca1f63019cba071ed82420de27c706b41d1d3b46df880bb3ce50faf"
+    assert stages["r2"]["identity_sha256"] == "9f2afa165f294a4bce1e7c842b8a135a98876e1a0c4db4b0cbd0b8c583151cce"
+
+    assert stages["holdout4200"]["status"] == "published"
+    assert stages["holdout4200"]["ground_truth_sha256"] == "cda56abf7bd48b9849d5b10467be7e192d0fea9abc3ae31fac5a2f180605c621"
+    assert stages["holdout4200"]["corpus_sha256"] == "c2e5091fe4e1c146301f6d411c7a9c4d816380f94515e226b25e28e90dfc190a"
+    assert stages["holdout4200"]["manifest_sha256"] == "19ea73abf8d97265b3b0a3e46657c09bac370c31835b7414886156994fefc901"
+    assert stages["holdout4200"]["selection_proof_sha256"] == "4f1f8e977871ce3c134a4c72029035760f4377d3bddfd7a99cd3cebe568dab3d"
+    assert stages["holdout4200"]["identity_sha256"] == "011242dbdc155e28dbae90e48cb2f6162abaf49ec793619936f86b78f41ebc9a"
+    assert stages["r2"]["a5_source_commit"] == "a339da324ea0df682179097d7d6810b6fc250240"
+    assert stages["holdout4200"]["a5_source_commit"] == "a339da324ea0df682179097d7d6810b6fc250240"
 
 
 def test_p_values_are_rejected_as_promotion_inputs():
