@@ -1,0 +1,41 @@
+{
+  "schema": "spectratrack-research-stage-history-v1",
+  "policy_schema": "spectratrack-research-stage-policy-v1",
+  "research_cycle_id": "nightowls-r1-r2-holdout-v1",
+  "research_exposure_log": [
+    {
+      "stage": "r1",
+      "exposed_at": "2026-09-27T10:00:00Z",
+      "evidence_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  ],
+  "candidates": [
+    {
+      "candidate_id": "fixture-pre-r1",
+      "parent_candidate_id": null,
+      "parent_candidate_spec_sha256": null,
+      "candidate_spec_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "semantic_config_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "hypothesis_frozen_at": "2026-09-27T09:00:00Z",
+      "freeze_provenance": {
+        "record_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "source_revision": "fixture-revision",
+        "source_path": "fixtures/preregistered_candidate.json"
+      },
+      "data_exposure": [],
+      "inspired_by_stages": [],
+      "change_kind": "research_candidate",
+      "allowed_next_evaluation_stage": "r2",
+      "evaluations": [
+        {
+          "stage": "r1",
+          "scored_at": "2026-09-27T09:30:00Z",
+          "candidate_spec_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "dataset_identity_sha256": "2a4da42830400b14405de01a82e3b3bee3d17a07db0be067f752545664fc6186",
+          "decision": "PROMOTE_TO_NEXT",
+          "evidence_sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+        }
+      ]
+    }
+  ]
+}
