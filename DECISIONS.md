@@ -198,3 +198,17 @@ Decision:
 Reason: the current graph already provides conservative complete-link grouping and manual SAME/DIFFERENT/UNSURE review. Extending it minimizes schema and architecture duplication while preserving ambiguity.
 
 
+
+
+## 2026-09-27 - Smoke400 is triage only and promotion uses effect-size intervals
+
+Decision:
+
+- a smoke selection must be frozen before candidate scoring and before full-corpus composition is used to judge smoke representativeness;
+- smoke promotion uses predeclared material-effect and harm tolerances with conservative uncertainty intervals, not p-value thresholds;
+- `CLEAR_REJECT`, `PROMOTE_TO_FULL`, and `AMBIGUOUS` are triage categories only;
+- `PROMOTE_TO_FULL` never constitutes a final benchmark pass or acceptance claim;
+- zero/rare event counts remain bounded by explicit upper uncertainty, so observing zero smoke regressions does not prove the full corpus has none;
+- the authoritative frozen full corpus remains required for any acceptance claim.
+
+Reason: 400 frames cost only 8% of the 5000-frame corpus, but rare-event and small-effect resolution can be weak. The gate must save compute without turning a cheap screen into overstated evidence.

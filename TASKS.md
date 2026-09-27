@@ -174,3 +174,13 @@ Implemented on the branch, pending integration review:
 5. regression coverage for long reappearance, false reactivation, missing appearance, dormant expiry/reset, same-video fragments, overlap rejection, CMC during dormancy and graph compatibility.
 
 Deliberately not implemented in this pass: a new neural Re-ID dependency, biometric/person identification, detector changes, UI redesign, global/Hungarian assignment, Kalman-filter replacement, or a wholesale ByteTrack/BoT-SORT/OC-SORT rewrite. Those require representative real-video benchmark evidence first.
+
+
+## vNext A6 smoke statistics / promotion gate
+
+Completed on `agent/vnext-smoke-stats`:
+
+- deterministic smoke statistics module with Wilson/binomial, paired-transition, Poisson-style, rare-event, and compute-budget calculations;
+- candidate-independent `CLEAR_REJECT / PROMOTE_TO_FULL / AMBIGUOUS` policy with smoke results explicitly non-final;
+- JSON result schema, policy artifact, deterministic input/result fixtures, and monotonicity/zero-count regression tests;
+- A5 smoke400 provenance hook: NightOwls-specific observed coverage is recorded only after A5 freezes/publishes the exact selection.

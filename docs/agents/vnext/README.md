@@ -101,3 +101,8 @@ After A5 freezes a usable corpus revision, all roles rerun on the same revision.
 Production integration is deferred to a later:
 
 `agent/vnext-integrator`
+
+
+## A6 smoke statistics
+
+`smoke_stats.md` defines the reusable statistical promotion gate for the 400-frame smoke-first policy. It does not select frames or alter A1-A5 benchmark behavior.

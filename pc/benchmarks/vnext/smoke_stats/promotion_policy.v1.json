@@ -1,0 +1,40 @@
+{
+  "schema": "spectratrack-smoke-promotion-policy-v1",
+  "confidence": 0.95,
+  "benefit_orientation": "positive values always favor the candidate after metric direction normalization",
+  "primary_metric_states": {
+    "PROMISING": "lower confidence bound is at or above the predeclared minimum material improvement",
+    "TOO_SMALL": "interval excludes unacceptable harm but its upper bound is below the minimum material improvement",
+    "HARMFUL": "upper confidence bound is below the negative maximum tolerable harm",
+    "AMBIGUOUS": "interval overlaps a material benefit or harm boundary",
+    "INSUFFICIENT_EVIDENCE": "the denominator/exposure is zero or otherwise not estimable"
+  },
+  "guardrail_metric_states": {
+    "SAFE": "lower confidence bound is at or above the negative maximum tolerable harm",
+    "HARMFUL": "upper confidence bound is below the negative maximum tolerable harm",
+    "AMBIGUOUS": "interval overlaps the harm boundary",
+    "INSUFFICIENT_EVIDENCE": "the denominator/exposure is zero or otherwise not estimable"
+  },
+  "overall_categories": {
+    "CLEAR_REJECT": [
+      "any metric is HARMFUL",
+      "or every primary metric is TOO_SMALL"
+    ],
+    "PROMOTE_TO_FULL": [
+      "every primary metric is PROMISING",
+      "and every guardrail metric is SAFE"
+    ],
+    "AMBIGUOUS": [
+      "all remaining cases, including insufficient evidence"
+    ]
+  },
+  "constraints": {
+    "metric_effect_thresholds_must_be_declared_before_candidate_scoring": true,
+    "selection_must_be_frozen_before_candidate_scoring": true,
+    "selection_inference_design_must_be_reported": true,
+    "non_srs_hypergeometric_values_are_reference_only": true,
+    "p_values_are_not_used_for_promotion": true,
+    "smoke_pass_is_final_benchmark_claim": false,
+    "full_frozen_corpus_required_for_acceptance": true
+  }
+}
