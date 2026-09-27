@@ -875,8 +875,11 @@ def compare_profiles(
 ) -> dict[str, Any]:
     if minimum_speedup <= 1.0:
         raise ValueError("minimum_speedup must be > 1")
+    if int(control["frames"]) != int(candidate["frames"]):
+        raise ValueError("profile mismatch at frames")
     for path in (
         ("provenance", "model_sha256"),
+        ("provenance", "providers"),
         ("settings", "input_size"),
         ("settings", "person_conf"),
         ("settings", "tile_size"),
@@ -890,7 +893,12 @@ def compare_profiles(
             right = right[key]
         if left != right:
             raise ValueError(f"profile mismatch at {'.'.join(path)}")
-    for optional in ("selection_manifest_sha256", "selection_keys_sha256", "video_sha256"):
+    for optional in (
+        "ground_truth_sha256",
+        "selection_manifest_sha256",
+        "selection_keys_sha256",
+        "video_sha256",
+    ):
         left = control.get("provenance", {}).get(optional)
         right = candidate.get("provenance", {}).get(optional)
         if left is not None or right is not None:
