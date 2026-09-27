@@ -1555,3 +1555,71 @@ Validation before any smoke inference:
 - candidate matrix SHA-256: `394df1038c060a483a4695b6511c379389f2503df39cbf352f1b93a4a1732063`.
 
 SMOKE400 remains triage evidence only. The harness never launches FULL5000 automatically. A clearly inferior candidate is rejected without FULL5000; only a material internally consistent signal or a genuinely ambiguous trade-off can justify requesting the unchanged FULL5000 gate.
+
+
+## NightOwls SMOKE400 A1 result
+
+Experiment source commit:
+
+`c55c265189404b68f641c860defff4b6092a2e4d`
+
+Exact frozen inputs:
+
+- A5 smoke revision: `nightowls-public-smoke400-r1`
+- A5 smoke corpus SHA-256: `70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162`
+- A5 selection-proof SHA-256: `0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940`
+- A5 selection identity SHA-256: `2a4da42830400b14405de01a82e3b3bee3d17a07db0be067f752545664fc6186`
+- A5 smoke GT SHA-256: `45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8`
+- parent FULL5000 revision/hash: `nightowls-public-slice5000-r1` / `1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8`
+- model SHA-256: `e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73`
+- candidate-matrix SHA-256: `394df1038c060a483a4695b6511c379389f2503df39cbf352f1b93a4a1732063`
+- enhancement: OFF for control and candidate
+- thresholds/fusion: unchanged
+- tracking metrics: not applicable; smoke tracking_supported=false
+
+Identical 400-frame result:
+
+| metric | hard-NMS tile640 control | hard-NMS tile512 candidate | delta |
+| --- | ---: | ---: | ---: |
+| TP | 135 | 136 | +1 |
+| FP | 126 | 201 | +75 |
+| FN | 48 | 47 | -1 |
+| precision | 0.517241379 | 0.403560831 | -0.113680548 |
+| recall | 0.737704918 | 0.743169399 | +0.005464481 |
+| F1 | 0.608108108 | 0.523076923 | -0.085031185 |
+| bbox localization IoU | 0.713629919 | 0.712952385 | -0.000677534 |
+| center error, px | 2.644101862 | 2.756235658 | +0.112133797 |
+| center error / GT diagonal | 0.031420272 | 0.032514186 | +0.001093914 |
+| duplicate count before fusion | 129 | 291 | +162 |
+| fusion mistakes | 0 | 0 | 0 |
+
+Sparse smoke has no valid temporal adjacency for canonical tracking/stability claims, so jitter-pair count is 0 and temporal/center-jitter metrics are null. Static matched-box localization and center error above are applicable.
+
+Error taxonomy:
+
+- control FN by height: 24-47 px = 10; 48-95 px = 34; >=96 px = 4;
+- candidate FN by height: 24-47 px = 11; 48-95 px = 32; >=96 px = 4;
+- the candidate therefore trades two fewer medium-height misses for one additional 24-47 px miss, for only one net FN recovery;
+- difficult-person FN is unchanged at 3; occluded-person FN is unchanged at 17;
+- non-occluded FN falls only 31 -> 30, while false positives increase 126 -> 201;
+- representative misses remain concentrated in the frozen NightOwls recording-34/35/36/37 and unassigned-image examples recorded in the hashed result JSON.
+
+Deterministic artifacts:
+
+- smoke summary SHA-256: `e7ec752be2e59157d5dae273c5bdae7352e32e9b14ea8a4f1c167f7fd365c6a8`
+- summary completion-marker SHA-256: `b226ff3ac89f7bc42c6ca9ad2c128ecaf9f4636e2c72b58c91e0cb1de52befb2`
+- control result SHA-256: `35ed2221875c91416c17970eeb8d560c8e38c3b3f8241e8a9052c1b56696fee9`
+- control completion-marker SHA-256: `beb1766cab1836375a6b7649c1b06c4c093ac728e3c10982305a18e52613d89c`
+- candidate result SHA-256: `6cdeb1b7414c5dda2a59148a4230993ce51db6ab546e0e79707137706dbe1719`
+- candidate completion-marker SHA-256: `915c3ffbcaefb079c00034028d04dc25777c80f55e4b120bfd341444bb03f817`
+- each result embeds SHA-256 records for its canonical per-sequence replay artifacts.
+
+Decision under the pre-locked A1 matrix: **REJECT** `candidate-hard-nms-tile512`.
+
+Reason: the +0.546 pp recall change / one net recovered person is not a material, internally consistent gain because it comes with +75 FP, -11.368 pp precision, -8.503 pp F1, slightly worse bbox IoU/center error, and substantially more pre-fusion duplicates. This is a smoke triage rejection, not a 400-frame claim about all possible low-light detector changes.
+
+**FULL5000 is explicitly NOT RUN / NOT REQUESTED for this candidate.**
+
+Production/control behavior remains unchanged. The earlier MOT17 evidence-aware result remains valid historical research evidence; the later CrowdHuman rejection remains binding for that fusion candidate. No threshold or enhancement retuning was performed from smoke outcomes.
+
+Exact-head CI for the experiment source commit: GitHub Actions run `36314888816` вЂ” SUCCESS.

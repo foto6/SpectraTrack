@@ -187,3 +187,12 @@ python -m spectratrack.research.vnext_detection_triage run `
 ```
 
 The runner hashes result/completion/replay artifacts, records the exact committed matrix configuration, emits static bbox/center quality and an error taxonomy, and never launches FULL5000. Enhancement is locked OFF. The current smoke candidate changes only source tile size 640 -> 512; thresholds and hard-NMS fusion are unchanged.
+
+
+### SMOKE400 result вЂ” tile512 scale hypothesis
+
+Experiment source commit `c55c265189404b68f641c860defff4b6092a2e4d`; exact-head CI run `36314888816` SUCCESS.
+
+On A5 `nightowls-public-smoke400-r1`, tile512 versus the unchanged tile640 hard-NMS control moved TP/FP/FN from 135/126/48 to 136/201/47. Precision/recall/F1 moved 0.517241/0.737705/0.608108 -> 0.403561/0.743169/0.523077. Static bbox IoU moved 0.713630 -> 0.712952 and normalized center error 0.031420 -> 0.032514.
+
+Pre-locked triage decision: **REJECT**. The one net FN recovery is outweighed by +75 FP and an 8.50 pp F1 loss. FULL5000 is not run/requested. Summary SHA-256: `e7ec752be2e59157d5dae273c5bdae7352e32e9b14ea8a4f1c167f7fd365c6a8`.
