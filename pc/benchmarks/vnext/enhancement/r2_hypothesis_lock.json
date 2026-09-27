@@ -1,0 +1,83 @@
+{
+  "a7_discovery": {
+    "cluster_counts_may_overlap": true,
+    "digest_sha256": "ad51f9b7c3f4629155298215a52004092ea1b95bd220c4ed6a608e464971afec",
+    "discovery_only": true,
+    "observed_clusters": {
+      "low_contrast_night_darkness_false_negatives": 48,
+      "occlusion_or_crowd_false_negatives": 17,
+      "small_false_negatives": 10
+    },
+    "r1_baseline_false_negatives": 48
+  },
+  "closed_or_non_admissible_families": [
+    "generic gamma remapping or gamma sweeps",
+    "CLAHE or local-histogram contrast sweeps",
+    "Retinex or illumination-division variants materially equivalent to rejected LIME",
+    "bilateral denoise/deblock",
+    "mild sharpening or unsharp-mask variants",
+    "post-R1 threshold/router tuning justified only by R1 outcomes",
+    "large learned enhancement model or detector-model swap"
+  ],
+  "decision": "NO_NEW_CANDIDATE",
+  "decision_rationale": [
+    "The R1 failure set is not a single image-formation mechanism: small-person and occlusion/crowd failures coexist inside the universal low-contrast/night-dark condition.",
+    "The bounded LIME illumination rescue produced zero recovered ground truth despite raw corroboration and added detector calls.",
+    "A new image-only transform chosen now would either revisit an already closed contrast/illumination/sharpen family or introduce a substantially larger learned model without R1 evidence isolating that mechanism.",
+    "Therefore R1 does not support exposing independent R2 evidence to an A3 enhancement candidate."
+  ],
+  "future_candidate_admission": {
+    "call_budget_definition": "at most one fresh raw corroboration detector call plus one enhanced detector call",
+    "generic_parameter_sweep_forbidden": true,
+    "mandatory_raw_corroboration": true,
+    "max_added_detector_calls_per_selected_source_frame": 2,
+    "max_enhanced_rois_per_source_frame": 1,
+    "must_be_materially_different_from_closed_families": true,
+    "must_cite_mechanism_specific_evidence_not_derived_from_r2": true,
+    "requires_new_lock_before_any_r2_exposure": true
+  },
+  "immutability": {
+    "artifact_is_read_only_for_this_r2_cycle": true,
+    "candidate_must_not_be_inserted_after_r2_exposure": true,
+    "changes_require_new_versioned_lock_and_pre_exposure_provenance": true
+  },
+  "locked_candidate": null,
+  "production_enhancement": "OFF",
+  "r1_enhancement_evidence": {
+    "added_enhanced_detector_calls": 60,
+    "added_raw_corroboration_calls": 60,
+    "fp_after": 125,
+    "fp_before": 126,
+    "lost_gt": 0,
+    "production_decision": "ENHANCEMENT_OFF",
+    "recovered_gt": 0,
+    "rejected_candidate": "lime_maxrgb_bounded"
+  },
+  "r2_execution_policy": {
+    "full5000_scoring_allowed": false,
+    "max_added_detector_calls_for_this_lock": 0,
+    "max_enhanced_rois_per_source_frame_for_this_lock": 0,
+    "production_enable_allowed": false,
+    "r2_gt_inspection_allowed": false,
+    "r2_image_inspection_allowed": false,
+    "r2_result_inspection_allowed": false,
+    "r2_scoring_allowed": false
+  },
+  "reserved_r2_reject_promote_conditions": {
+    "all_accepted_enhanced_measurements_must_be_raw_corroborated": true,
+    "applies_only_if_a_new_pre_exposure_lock_supersedes_this_no-candidate_lock": true,
+    "f1_strictly_greater_than_off": true,
+    "failure_action": "REJECT_WITHOUT_FULL5000",
+    "lost_gt_must_equal": 0,
+    "maximum_absolute_precision_drop": 0.005,
+    "maximum_fp_increase": 2,
+    "minimum_recovered_gt": 2,
+    "minimum_recovered_gt_per_added_detector_call": 0.02,
+    "net_tp_gain_minimum": 2,
+    "recall_strictly_greater_than_off": true,
+    "success_action": "PROMOTE_TO_FULL_REQUEST_ONLY_NO_AUTOMATIC_FULL5000"
+  },
+  "schema": "spectratrack-vnext-a3-r2-hypothesis-lock-v1",
+  "source_head": "993c4a6574d0a6298774a7937ba3daeca8bc2e30",
+  "status": "LOCKED_BEFORE_R2_EXPOSURE"
+}
