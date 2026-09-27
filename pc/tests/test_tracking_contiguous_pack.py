@@ -133,6 +133,12 @@ def _fixture(tmp_path: Path):
                 "ground_truth_sha256": _sha(gt),
                 "source_frame_count": 600,
                 "selected_frame_count": 400,
+                "selection": {
+                    "method": "evenly-spaced-contiguous-windows-v1",
+                    "candidate_outcome_independent": True,
+                    "tracker_reset_between_windows": True,
+                    "full_replay_mutated": False,
+                },
                 "windows": windows,
             },
             indent=2,
