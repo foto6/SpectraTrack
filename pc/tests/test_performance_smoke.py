@@ -14,7 +14,11 @@ from spectratrack.performance_smoke import (
 
 
 class _MixedClassSession:
-    def run(self, _outputs, _feeds):
+    def __init__(self):
+        self.contiguous_flags = []
+
+    def run(self, _outputs, feeds):
+        self.contiguous_flags.append(bool(feeds["images"].flags.c_contiguous))
         rows = []
         for index in range(10):
             if index % 2 == 0:
@@ -169,6 +173,20 @@ def test_manifest_selector_rejects_wrong_exact_count(tmp_path):
 
     with pytest.raises(ValueError, match="expected exactly 2"):
         load_selected_image_frames(ground_truth, manifest, expected_frames=2)
+
+
+def test_contiguous_input_candidate_changes_layout_not_values():
+    frame = np.full((64, 64, 3), 180, dtype=np.uint8)
+    control = _detector()
+    candidate = _detector()
+    candidate.force_contiguous_input = True
+
+    control_output = control.detect(frame)
+    candidate_output = candidate.detect(frame)
+
+    assert control.session.contiguous_flags == [False]
+    assert candidate.session.contiguous_flags == [True]
+    assert _normalized(candidate_output) == _normalized(control_output)
 
 
 def test_tile_person_only_postprocess_preserves_people_recall_outputs():
