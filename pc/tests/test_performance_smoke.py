@@ -142,10 +142,7 @@ def test_manifest_selector_accepts_a5_selection_proof_entries(tmp_path):
 
     selected, _ = load_selected_image_frames(ground_truth, proof, expected_frames=2)
 
-    assert [item.source_frame if hasattr(item, "source_frame") else item.source for item in selected] == [
-        "frames/b.png",
-        "frames/a.png",
-    ]
+    assert [item.source for item in selected] == ["frames/b.png", "frames/a.png"]
 
 
 def test_manifest_selector_rejects_wrong_exact_count(tmp_path):
