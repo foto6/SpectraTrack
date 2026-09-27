@@ -5,6 +5,7 @@ import pytest
 
 from spectratrack.detector import YoloOnnxDetector
 from spectratrack.performance_smoke import (
+    amdahl_upper_bound,
     compare_profiles,
     distribution,
     load_selected_image_frames,
@@ -102,6 +103,51 @@ def test_manifest_selector_resolves_video_frame_and_source_id(tmp_path):
     assert len(provenance["selection_keys_sha256"]) == 64
 
 
+def test_manifest_selector_accepts_a5_selection_proof_entries(tmp_path):
+    ground_truth = tmp_path / "smoke.jsonl"
+    rows = [
+        {
+            "video": "night/a",
+            "frame": 0,
+            "source": "frames/a.png",
+            "source_frame": 100,
+            "source_sequence": "seq-a",
+            "objects": [],
+        },
+        {
+            "video": "night/b",
+            "frame": 0,
+            "source": "frames/b.png",
+            "source_frame": 101,
+            "source_sequence": "seq-b",
+            "objects": [],
+        },
+    ]
+    ground_truth.write_text(
+        "".join(json.dumps(row) + "\n" for row in rows),
+        encoding="utf-8",
+    )
+    proof = tmp_path / "proof.json"
+    proof.write_text(
+        json.dumps(
+            {
+                "entries": [
+                    {"source": "frames/b.png", "source_frame": 101},
+                    {"source": "frames/a.png", "source_frame": 100},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    selected, _ = load_selected_image_frames(ground_truth, proof, expected_frames=2)
+
+    assert [item.source_frame if hasattr(item, "source_frame") else item.source for item in selected] == [
+        "frames/b.png",
+        "frames/a.png",
+    ]
+
+
 def test_manifest_selector_rejects_wrong_exact_count(tmp_path):
     ground_truth = tmp_path / "gt.jsonl"
     ground_truth.write_text(
@@ -152,6 +198,15 @@ def test_tile_person_only_postprocess_preserves_people_recall_outputs():
     assert candidate.last_policy_counts["raw_roi_calls"] == 2
     assert set(candidate.last_stage_cpu_ms) == {"preprocess", "inference", "postprocess"}
     assert candidate.last_policy_ms["fusion"] >= 0.0
+
+
+def test_amdahl_upper_bound_rejects_micro_candidate_below_gate():
+    total_ms = 132477.6077
+    preprocess_plus_postprocess_ms = 1674.9918
+    assert amdahl_upper_bound(
+        affected_ms=preprocess_plus_postprocess_ms,
+        total_ms=total_ms,
+    ) == pytest.approx(1.012806, rel=1e-5)
 
 
 def test_research_cost_model_quantifies_smoke_first_savings():
