@@ -197,4 +197,50 @@ Decision:
 
 Reason: the current graph already provides conservative complete-link grouping and manual SAME/DIFFERENT/UNSURE review. Extending it minimizes schema and architecture duplication while preserving ambiguity.
 
+## 2026-09-26 — vNext QA measurements remain backward-compatible with QA result schema v1
 
+Decision:
+
+- keep `qa_benchmark` result `schema_version = 1` and preserve all existing fields/comparator behavior;
+- add vNext measurement fields only additively:
+  - exact input-video SHA-256/dimensions;
+  - ONNX calls/frame and processing seconds/source second;
+  - GT-relative bbox-stability metrics;
+  - uninterrupted-track length and recovery latency;
+- old consumers may ignore these new fields without changing prior semantics;
+- keep frozen-corpus manifests, stamped experiment runs, replay validation, and leaderboard output in separate research schemas rather than overloading production/session formats;
+- auto-label output is never accepted as golden ground truth without explicit human confirmation.
+
+Reason: A1-A4 need richer common evidence, but the existing QA result contract is already used by regression tooling. Additive measurement fields let vNext experiments share quality/compute evidence without invalidating existing QA consumers or creating a second incompatible evaluator.
+
+## 2026-09-26 — public pedestrian datasets supplement, not replace, private CCTV validation
+
+Decision:
+
+- add isolated importers for MOT17 train ground truth and CrowdHuman validation annotations;
+- importers convert into the existing `qa_benchmark.py` JSONL format; there is no second evaluator or GT schema;
+- public dataset files remain external/local and are never committed by A5;
+- frozen public corpus manifests include dataset/version/split, source-file SHA-256 values, conversion settings, selected sequences, and importer source commit;
+- MOT17 keeps stable pedestrian identities; target-like distractor classes (person-on-vehicle, static person, distractor, reflection) become canonical `ignore=true`; unrelated classes do not enter person scoring;
+- MOT17 original 1-based frame number and source sequence are preserved as source provenance while canonical evaluator frame indices remain zero-based;
+- CrowdHuman uses the official validation split only for detection evaluation;
+- CrowdHuman full-body `fbox` is the default A5 evaluation policy because CrowdHuman explicitly defines a full-body detection task; visible-body `vbox` is an explicit opt-in and must be frozen as a different corpus revision;
+- CrowdHuman objects intentionally have no stable canonical IDs, so tracking metrics remain disabled for its independent images;
+- imported full-body boxes may extend beyond image bounds when the source annotation policy does; validator still requires them to intersect the image;
+- public datasets are a reproducible benchmark layer, not a substitute for the user-owned human-confirmed private CCTV holdout.
+
+Licensing/terms constraints recorded by the importer:
+
+- MOTChallenge datasets: CC BY-NC-SA 3.0;
+- CrowdHuman images: non-commercial research/education only and may not be redistributed.
+
+Reason: public annotations reduce manual labeling cost and improve repeatability, but domain shift means a small private CCTV holdout remains necessary for product-specific evidence.
+
+
+## 2026-09-27 — NightOwls null recording IDs fail safe
+
+Official NightOwls validation metadata contains both integral-float recording IDs and null `recordings_id` values. A null recording ID is not promoted into an invented stable recording namespace. For imported QA evidence, such an image is a standalone logical source keyed by its official image ID, while the original null remains in source metadata. If a scored pedestrian lacks an official recording namespace, full temporal tracking support is false. Sparse deterministic NightOwls slices remain tracking-disabled. This handling is additive to the existing public import manifest and does not alter deterministic slice selection.
+
+## 2026-09-27 — NightOwls duplicate per-image tracking IDs disable temporal support
+
+Official NightOwls validation GT contains a small number of scored pedestrian annotations where the same `tracking_id` occurs more than once in one image. These boxes remain official detection ground truth and are preserved. They are not assigned replacement identities. Any duplicate per-image tracking ID makes the full NightOwls tracking contract unsupported; the importer records this evidence additively and omits canonical stable IDs when temporal support is not confirmed. Deterministic sparse slice selection is unchanged.
