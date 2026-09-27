@@ -67,3 +67,9 @@ The comparison emits category-count deltas plus bounded factual guidance. For ex
 ## Current NightOwls status
 
 A5 subsequently published `nightowls-public-smoke400-r1` with corpus SHA-256 `70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162`, manifest SHA-256 `3f65339609de78e7ef255e94875727a4bb26c4769231763a2660e1bb8f15905e`, and frozen GT SHA-256 `45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8`. A7 now consumes that exact A5 manifest schema directly. The reproducible committed example files remain `pc/benchmarks/error_analysis.manifest.example.json`, `pc/benchmarks/error_analysis.control.example.json`, and `pc/benchmarks/error_analysis.report.example.json`. A real NightOwls taxonomy report still requires canonical qa_benchmark result JSON for control/candidate on this exact GT; specialist summary artifacts alone are not silently reinterpreted as canonical results.
+
+### Current specialist handoff guidance
+
+Existing smoke summaries can still be used as bounded factual context without pretending they are canonical A7 inputs. A1's `summary.json` (SHA-256 `e7ec752be2e59157d5dae273c5bdae7352e32e9b14ea8a4f1c167f7fd365c6a8`) reports control 135 TP / 48 FN / 126 FP versus the 512-tile candidate 136 TP / 47 FN / 201 FP. All 48 control misses and all 47 candidate misses carry `night_dark`; the <48 px missed-person bin moves from 10 to 11 and occluded misses remain 17. The observed single-GT recall gain therefore does not reduce the small-person or occlusion failure counts, while false positives increase by 75.
+
+A3's LIME smoke score (SHA-256 `21ab0f792f84deee5926b999ade865a4d6e166d8bf469f95dbc832613a0da294`) keeps FN at 48, recovers 0 GT, reduces FP from 126 to 125, and adds 60 enhancement ONNX calls. The measured gain is therefore one fewer FP with no recovery of the night-dark GT misses; that evidence does not support threshold retuning or a low-light-rescue claim.

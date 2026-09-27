@@ -42,15 +42,23 @@ _LOW_LIGHT_TERMS = {
     "darkness",
     "night",
     "nighttime",
+    "night_dark",
     "lowlight",
     "low_light",
     "low-contrast",
     "low_contrast",
     "lowcontrast",
 }
-_OCCLUSION_TERMS = {"occluded", "occlusion", "crowd", "crowded", "crowding"}
+_OCCLUSION_TERMS = {
+    "occluded",
+    "occlusion",
+    "crowd",
+    "crowded",
+    "crowding",
+    "nightowls_occluded_true",
+}
 _SMALL_TERMS = {"small", "tiny", "distant", "small_people", "small_person"}
-_EDGE_TERMS = {"edge", "edge_of_frame", "truncated", "cropped"}
+_EDGE_TERMS = {"edge", "edge_of_frame", "truncated", "cropped", "nightowls_truncated_true"}
 _SCALE_TERMS = {"extreme_scale", "extreme_aspect", "unusual_aspect"}
 
 

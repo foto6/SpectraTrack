@@ -120,13 +120,13 @@ def test_taxonomy_uses_geometry_and_metadata_without_guessing(tmp_path: Path):
             {
                 "video": "clip.mp4",
                 "frame": 0,
-                "tags": ["dark", "crowd"],
+                "tags": ["night_dark"],
                 "objects": [
                     {
                         "id": "p0",
                         "label": "person",
                         "bbox": [10, 10, 20, 40],
-                        "attributes": ["small", "occluded"],
+                        "attributes": ["small", "nightowls_occluded_true"],
                     }
                 ],
             },
