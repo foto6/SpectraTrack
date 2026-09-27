@@ -279,6 +279,10 @@ class _CpuIdleSampler:
         else:
             self._psutil = psutil
 
+    @property
+    def available(self) -> bool:
+        return self._psutil is not None
+
     def snapshot(self):
         if self._psutil is None:
             return None
@@ -665,6 +669,11 @@ def profile_selected_images(
         },
         "stages": _stage_summary(records),
         "frames_detail": records,
+        "cpu_idle_sampling": {
+            "available": cpu_idle.available,
+            "source": "psutil.cpu_times" if cpu_idle.available else None,
+            "reason": None if cpu_idle.available else "psutil is not installed in this runtime",
+        },
         "gpu_utilization": {
             "value_pct": None,
             "reason": (
@@ -842,6 +851,11 @@ def profile_video(
         },
         "stages": _stage_summary(records),
         "frames_detail": records,
+        "cpu_idle_sampling": {
+            "available": cpu_idle.available,
+            "source": "psutil.cpu_times" if cpu_idle.available else None,
+            "reason": None if cpu_idle.available else "psutil is not installed in this runtime",
+        },
         "gpu_utilization": {
             "value_pct": None,
             "reason": "DirectML provider exposes no portable per-process utilization metric; no value is guessed.",
