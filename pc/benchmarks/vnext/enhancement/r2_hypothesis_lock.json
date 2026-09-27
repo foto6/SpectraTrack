@@ -39,7 +39,8 @@
   "immutability": {
     "artifact_is_read_only_for_this_r2_cycle": true,
     "candidate_must_not_be_inserted_after_r2_exposure": true,
-    "changes_require_new_versioned_lock_and_pre_exposure_provenance": true
+    "changes_require_new_versioned_lock_and_pre_exposure_provenance": true,
+    "hash_basis": "UTF-8 canonical JSON: json.dumps(sort_keys=True,separators=(',',':'),ensure_ascii=False)"
   },
   "locked_candidate": null,
   "production_enhancement": "OFF",
