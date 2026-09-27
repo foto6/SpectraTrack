@@ -470,3 +470,38 @@ evaluations and a 12.5x frame-count reduction. Fixed model-load/startup/I/O over
 
 Commands are exposed as \`build-smoke-slice\` and \`validate-smoke-slice\` under
 \`python -m spectratrack.vnext_qa\`.
+
+## Blind follow-up partition: smoke400-r2 + holdout4200-r1
+
+After smoke400-r1 became observed by research agents, A5 froze a disjoint blind follow-up from the
+same immutable `nightowls-public-slice5000-r1` universe. FULL5000 and smoke400-r1 bytes/hashes
+remain unchanged.
+
+`nightowls-public-smoke400-r2` uses seed
+`spectratrack-round2-nightowls-smoke400-r2-v1`. Selection first excludes the exact r1 parent
+membership from its frozen selection proof. It then picks one metadata-hash-ranked remaining frame
+per logical sequence where a second frame exists, followed by global metadata-hash fill from the
+remaining unseen frames. GT labels, objects, tags, candidate detections/scores and candidate
+outcomes are forbidden selection inputs.
+
+The parent has 143 logical sequences. Only the five numbered recording sequences have another
+eligible frame after r1; 138 one-frame `unassigned-image-*` sequences cannot supply a second pick.
+Those 138 deterministic fallbacks are listed in the r2 proof. R2 therefore contains 5
+second-per-sequence picks plus 395 disjoint hash-fill picks.
+
+`nightowls-public-holdout4200-r1` is not sampled. It is the exact set complement after frozen r1
+and r2 parent membership, leaving exactly 4200 frames and no further selection freedom.
+
+Partition invariant: r1/r2/holdout pairwise intersections are zero and their union is exactly the
+original 5000 parent frames. Both new canonical JSONLs deterministically reindex only local
+per-sequence frame ordinals while their proofs bind every output row to the exact parent line,
+source frame and row hash. `tracking_supported=false` remains mandatory.
+
+Stage semantics are fixed: r1 is discovery/triage and is no longer blind for r1-inspired work; r2
+is blind validation for r1-inspired hypotheses; holdout4200 is the final disjoint NightOwls
+heldout after decisions are locked. FULL5000 may be used afterward for characterization/aggregate
+reporting, but it is not an independent holdout once any constituent subsets have been observed.
+
+Build/validation CLI:
+`python -m spectratrack.blind_smoke_gate build ...`
+`python -m spectratrack.blind_smoke_gate validate ...`

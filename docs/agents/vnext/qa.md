@@ -1626,3 +1626,50 @@ Compute approximation versus FULL5000:
 Promotion semantics are intentionally conservative: SMOKE400 can reject obvious failures, but every
 survivor, ambiguous result, and actual promotion candidate must be rerun on the unchanged FULL5000
 before any full-corpus quality statement.
+
+## Round 2 A5 — disjoint blind smoke400-r2 + remaining holdout4200
+
+Frozen from the unchanged `nightowls-public-slice5000-r1` parent only. No candidate inference was
+run and no candidate output or GT label participated in selection.
+
+R2:
+- revision: `nightowls-public-smoke400-r2`
+- seed: `spectratrack-round2-nightowls-smoke400-r2-v1`
+- frames: 400
+- parent logical sequences: 143
+- second-per-sequence picks: 5
+- deterministic no-second-frame fallbacks: 138 one-frame `unassigned-image-*` sequences
+- disjoint global hash-fill picks: 395
+- composition derived after proof freeze: 46 positive / 354 true-negative frames, 73 scored
+  pedestrian objects, 44 ignored-person objects
+- canonical GT SHA-256: `75eba2c9dc3b36d0a2389bfbb080a709621ef690680ae655d85d8732e7bc6097`
+- corpus SHA-256: `9d145b4dda780052388f3b663203c519ded48f61457adef14654f84fb5549eff`
+- manifest file SHA-256: `9270d46c2776aa531e1b979a1a7ebc16eaed0f6483b2c1095da834af383c4e83`
+- proof SHA-256: `df11e9dc6ca1f63019cba071ed82420de27c706b41d1d3b46df880bb3ce50faf`
+- hash bundle SHA-256: `9f2afa165f294a4bce1e7c842b8a135a98876e1a0c4db4b0cbd0b8c583151cce`
+
+Holdout:
+- revision: `nightowls-public-holdout4200-r1`
+- exact complement after r1+r2: 4200 frames
+- composition derived after freeze: 450 positive / 3750 true-negative frames, 713 scored
+  pedestrian objects, 448 ignored-person objects
+- canonical GT SHA-256: `cda56abf7bd48b9849d5b10467be7e192d0fea9abc3ae31fac5a2f180605c621`
+- corpus SHA-256: `c2e5091fe4e1c146301f6d411c7a9c4d816380f94515e226b25e28e90dfc190a`
+- manifest file SHA-256: `19ea73abf8d97265b3b0a3e46657c09bac370c31835b7414886156994fefc901`
+- proof SHA-256: `4f1f8e977871ce3c134a4c72029035760f4377d3bddfd7a99cd3cebe568dab3d`
+- hash bundle SHA-256: `011242dbdc155e28dbae90e48cb2f6162abaf49ec793619936f86b78f41ebc9a`
+
+Partition validation: r1∩r2=0, r1∩holdout=0, r2∩holdout=0, union=5000 exactly.
+Deterministic byte regeneration passed for r2 and holdout. Canonical QA validation passed with
+0 errors / 0 warnings for both 400 and 4200 frames. `tracking_supported=false` for both.
+
+Preserved hashes rechecked after freeze:
+- FULL5000 GT `6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc`
+- FULL5000 manifest file `6d609998ec12eebe908056ed08019208e6b954befb2fa4cca3974f1bf31990da`
+- r1 GT `45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8`
+- r1 manifest file `3f65339609de78e7ef255e94875727a4bb26c4769231763a2660e1bb8f15905e`
+- r1 proof `0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940`
+
+Stage semantics: r1 discovery; r2 blind validation for r1-inspired hypotheses; holdout4200 final
+NightOwls heldout; FULL5000 characterization/aggregate only after decisions and not independent
+once subsets have been observed.
