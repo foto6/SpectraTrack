@@ -25,6 +25,7 @@ from spectratrack.research.enhancement_efficiency import (
 SCHEMA = "spectratrack-vnext-enhancement-alternates-v1"
 STRICT_OPERATIONS = ("bilateral", "current_adaptive_cached")
 PERSON_CONF = 0.12
+RAW_PROBE_CONF = 0.08
 WEAK_MIN = 0.12
 WEAK_MAX = 0.35
 CORROBORATION_IOU = 0.10
@@ -117,6 +118,9 @@ def run_strict_evidence(args: argparse.Namespace) -> dict[str, Any]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     alternates: list[dict[str, Any]] = []
     quality_gate_on = 0
+    raw_probe_calls = 0
+    raw_probe_detector_ms = 0.0
+    raw_probe_inference_ms = 0.0
     enhanced_calls = 0
     operation_ms = 0.0
     enhanced_detector_ms = 0.0
@@ -148,6 +152,16 @@ def run_strict_evidence(args: argparse.Namespace) -> dict[str, Any]:
             continue
         quality_gate_on += 1
 
+        raw_local, raw_cost = probe.detect(roi, RAW_PROBE_CONF)
+        raw_probe_calls += int(raw_cost["onnx_calls"])
+        raw_probe_detector_ms += float(raw_cost["wall_ms"])
+        raw_probe_inference_ms += float(raw_cost["inference_ms"])
+        raw_probe_full = [
+            translate_detection(detection, x1, y1)
+            for detection in raw_local
+            if detection.label.lower() == "person"
+        ]
+
         enhanced_roi, preprocess_ms = apply_operation(args.operation, roi, quality)
         operation_ms += preprocess_ms
         enhanced_local, cost = probe.detect(enhanced_roi, PERSON_CONF)
@@ -160,9 +174,8 @@ def run_strict_evidence(args: argparse.Namespace) -> dict[str, Any]:
             for detection in enhanced_local
             if detection.label.lower() == "person"
         ]
-        raw_support = list(record.raw_support)
         accepted = corroborate_enhanced_detections(
-            raw_support,
+            raw_probe_full,
             enhanced_full,
             min_iou=CORROBORATION_IOU,
         )
@@ -170,7 +183,7 @@ def run_strict_evidence(args: argparse.Namespace) -> dict[str, Any]:
         for candidate in accepted:
             supporters = [
                 raw
-                for raw in raw_support
+                for raw in raw_probe_full
                 if detections_corroborate(raw, candidate, min_iou=CORROBORATION_IOU)
             ]
             if not supporters:
@@ -187,7 +200,8 @@ def run_strict_evidence(args: argparse.Namespace) -> dict[str, Any]:
                     "source_region": list(record.bbox),
                     "operation": args.operation,
                     "candidate": _detection_json(candidate),
-                    "raw_support": [_detection_json(raw) for raw in supporters],
+                    "raw_support": [_detection_json(raw) for raw in record.raw_support],
+                    "corroboration_support": [_detection_json(raw) for raw in supporters],
                     "semantics": {
                         "same_raw_source": True,
                         "independent_evidence_increment": 0,
@@ -219,8 +233,10 @@ def run_strict_evidence(args: argparse.Namespace) -> dict[str, Any]:
             "selective_gate": "weak-person",
             "max_enhanced_rois_per_source_frame": 1,
             "raw_corroboration_required": True,
-            "raw_support_source": "frozen A1 prefusion evidence; no additional raw inference",
+            "gate_source": "frozen A1 prefusion weak-person evidence",
+            "raw_corroboration_source": "fresh same-ROI raw probe",
             "person_conf": PERSON_CONF,
+            "raw_probe_conf": RAW_PROBE_CONF,
             "weak_score_min_inclusive": WEAK_MIN,
             "weak_score_max_exclusive": WEAK_MAX,
             "corroboration_iou": CORROBORATION_IOU,
@@ -230,7 +246,9 @@ def run_strict_evidence(args: argparse.Namespace) -> dict[str, Any]:
         "type": "summary",
         "selected_weak_rois": len(records),
         "quality_gate_on_rois": quality_gate_on,
-        "additional_raw_onnx_calls": 0,
+        "additional_raw_onnx_calls": raw_probe_calls,
+        "raw_probe_detector_ms": raw_probe_detector_ms,
+        "raw_probe_inference_ms": raw_probe_inference_ms,
         "extra_enhancement_onnx_calls": enhanced_calls,
         "accepted_alternate_measurements": accepted_measurements,
         "operation_preprocessing_ms": operation_ms,
