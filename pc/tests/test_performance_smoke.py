@@ -131,10 +131,14 @@ def test_manifest_selector_accepts_a5_selection_proof_entries(tmp_path):
     proof.write_text(
         json.dumps(
             {
+                "selection": {
+                    "seed": "spectratrack-round2-nightowls-smoke400-v1",
+                    "frame_count": 2,
+                },
                 "entries": [
                     {"source": "frames/b.png", "source_frame": 101},
                     {"source": "frames/a.png", "source_frame": 100},
-                ]
+                ],
             }
         ),
         encoding="utf-8",
