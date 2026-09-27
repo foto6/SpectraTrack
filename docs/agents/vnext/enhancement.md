@@ -1351,3 +1351,141 @@ Per the predeclared A3 rule, no enhancement candidate is retained for
 production/integrator progression.
 
 Production/integration/main/RC remain untouched.
+
+
+## Smoke-400 bounded low-light rescue follow-up
+
+Status: **DONE — REJECT; ENHANCEMENT REMAINS OFF**
+
+This follow-up did not rerun the frozen full 5000-frame NightOwls experiment.
+
+### Already ruled out before smoke research
+
+The prior full `nightowls-public-slice5000-r1` result remains authoritative.
+Do not retune or recycle these as new candidates:
+
+- gamma / LAB-CLAHE low-light lifting, including the current adaptive chain;
+- bilateral denoise/deblock (the locked NightOwls gate activated on 0/590 ROIs);
+- mild sharpen (already excluded before the final NightOwls gate);
+- `current_adaptive_cached` (0 recovered GT, 1 lost GT, +922 ONNX calls);
+- threshold/gate changes learned from held-out outcomes;
+- enhancement detections without a fresh raw probe and same-source corroboration;
+- more than one enhanced ROI per source frame.
+
+Production enhancement stayed OFF throughout.
+
+### One materially different hypothesis
+
+A single bounded illumination-map candidate was advanced: `lime_maxrgb_bounded`.
+It is inspired by the max-RGB illumination estimate in Guo et al., *LIME: A
+Method for Low-light IMage Enhancement* (arXiv:1605.05034), and by Retinex-family
+preprocessing studied for extremely low-light detection. It is deliberately not
+a full LIME solver, learned enhancer, or model replacement.
+
+The transform estimates illumination from per-pixel max RGB, smooths it with a
+fixed Gaussian, and applies only a capped, shadow-weighted division gain. It is
+outside the previously rejected gamma/CLAHE/bilateral/sharpen family.
+
+Parameters were committed before smoke scoring at
+`af6b636ceb1a32b55383bcb5260fdc6af9307440`.
+The lock file SHA-256 is
+`985d0c097a38cf49a9949071ef38707754ea7eaf41368eaa4d43f74b96d2873d`.
+
+Locked values:
+
+- Gaussian illumination sigma: 5.0;
+- illumination floor: 0.12;
+- division exponent: 0.65;
+- raw gain cap: 2.5;
+- shadow weight: `(1 - illumination)^2`;
+- strict weak-person selection only;
+- at most one enhanced ROI/source frame;
+- person acceptance 0.12;
+- fresh raw probe 0.08;
+- corroboration IoU 0.10;
+- same-source replacement only; independent evidence increment remains zero.
+
+### Exact A5 smoke corpus
+
+A5 subsequently published
+`agent/vnext-qa@2c40b522433b986a213689f7152834d2933e29c5` with the exact
+`nightowls-public-smoke400-r1` selection.
+
+- manifest SHA-256:
+  `3f65339609de78e7ef255e94875727a4bb26c4769231763a2660e1bb8f15905e`;
+- corpus SHA-256:
+  `70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162`;
+- GT SHA-256:
+  `45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8`;
+- selection-proof SHA-256:
+  `0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940`;
+- 400 unique frames, 143/143 parent sequences, 109 positive frames,
+  183 scored persons;
+- candidate-result inputs: none;
+- GT labels used for selection: false;
+- `tracking_supported=false`.
+
+The exact smoke selection intersected the already frozen A3 weak-person manifest
+at 60 ROIs across 42 videos. No competing frame slice was created.
+
+### Smoke result
+
+OFF used the persisted frozen A1 prefusion artifacts and current A1 hard-NMS
+implementation at
+`3dc31c8fa8b323ce86afc14c3105a0c2247a2c48`; baseline detector inference
+was not rerun.
+
+| metric | OFF | lime_maxrgb_bounded | delta |
+| --- | ---: | ---: | ---: |
+| TP | 135 | 135 | 0 |
+| FP | 126 | 125 | -1 |
+| FN | 48 | 48 | 0 |
+| precision | 0.517241379 | 0.519230769 | +0.001989390 |
+| recall | 0.737704918 | 0.737704918 | 0 |
+| F1 | 0.608108108 | 0.609480813 | +0.001372705 |
+| bbox localization IoU | 0.713629919 | 0.713737999 | +0.000108080 |
+| recovered GT | — | 0 | 0 |
+| lost GT | — | 0 | 0 |
+
+Compute / activation:
+
+- represented OFF baseline calls: 1200;
+- selected weak ROIs: 60;
+- operation active: 60/60 weak ROIs = 15% of all smoke frames;
+- fresh raw 0.08 probes: 60;
+- enhanced 0.12 calls: 60;
+- accepted raw-corroborated alternate measurements: 54/60;
+- total represented calls including A3 work: 1320 (+10%);
+- recovered GT / extra enhanced call: 0.0;
+- operation preprocessing: 5123.144 ms;
+- raw-probe detector wall: 243668.709 ms;
+- enhanced detector wall: 248589.505 ms;
+- strict candidate experiment wall: 500.638172 s.
+
+The current research Python exposed `CPUExecutionProvider` only, so wall-clock
+latency is a measured CPU research cost, not a production DirectML estimate.
+The +120 ONNX calls and zero recovered GT are the provider-independent compute
+signal used for the promotion decision.
+
+Every accepted alternate was fresh-raw-corroborated, retained its original A1
+source identity, and added zero independent evidence sources.
+
+### Promotion decision
+
+The predeclared A3 bar required at least 2 recovered GT, zero losses, net TP
+gain >=2, strictly higher recall and F1, non-lower precision, no FP increase,
+and at least 0.02 recovered GT per extra enhanced call.
+
+The candidate met the safety-side conditions (0 lost GT, FP -1, precision/F1
+slightly higher) but failed the essential recall/compute conditions:
+
+- recovered GT: 0 < 2;
+- net TP gain: 0 < 2;
+- recall gain: 0;
+- recovered GT / extra enhanced call: 0.0 < 0.02.
+
+Decision: **REJECT**. No FULL5000 request was made and no FULL5000 candidate run
+was performed. Production enhancement remains **OFF**.
+
+Compact canonical evidence:
+`pc/benchmarks/vnext/enhancement/smoke400_lime_result.json`.
