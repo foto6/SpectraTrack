@@ -57,7 +57,11 @@ def _jsonl_records(path: str | Path) -> Iterable[dict[str, Any]]:
             yield value
 
 
-def _read_selection_manifest(path: str | Path) -> dict[str, Any]:
+def _read_selection_manifest(
+    path: str | Path,
+    *,
+    enforce_frozen_provenance: bool = True,
+) -> dict[str, Any]:
     source = Path(path)
     value = json.loads(source.read_text(encoding="utf-8-sig"))
     if not isinstance(value, dict):
@@ -70,12 +74,13 @@ def _read_selection_manifest(path: str | Path) -> dict[str, Any]:
         raise ValueError("tracking selection manifest must describe exactly 600 source frames")
     if value.get("selected_frame_count") != EXPECTED_SELECTED_FRAMES:
         raise ValueError("tracking selection manifest must select exactly 400 frames")
-    if value.get("source_replay_file_sha256") != EXPECTED_SOURCE_REPLAY_SHA256:
-        raise ValueError("tracking selection source replay SHA-256 changed")
-    if value.get("source_replay_canonical_sha256") != EXPECTED_SOURCE_REPLAY_CANONICAL_SHA256:
-        raise ValueError("tracking selection canonical replay SHA-256 changed")
-    if value.get("ground_truth_sha256") != EXPECTED_SOURCE_GT_SHA256:
-        raise ValueError("tracking selection ground-truth SHA-256 changed")
+    if enforce_frozen_provenance:
+        if value.get("source_replay_file_sha256") != EXPECTED_SOURCE_REPLAY_SHA256:
+            raise ValueError("tracking selection source replay SHA-256 changed")
+        if value.get("source_replay_canonical_sha256") != EXPECTED_SOURCE_REPLAY_CANONICAL_SHA256:
+            raise ValueError("tracking selection canonical replay SHA-256 changed")
+        if value.get("ground_truth_sha256") != EXPECTED_SOURCE_GT_SHA256:
+            raise ValueError("tracking selection ground-truth SHA-256 changed")
     selection = value.get("selection")
     if not isinstance(selection, dict):
         raise ValueError("tracking selection policy is missing")
@@ -289,10 +294,17 @@ def build_contiguous_pack(
     ground_truth_path: str | Path,
     observations_path: str | Path,
     output_dir: str | Path,
+    enforce_frozen_provenance: bool = True,
 ) -> dict[str, Any]:
-    if _sha256_path(selection_manifest_path) != EXPECTED_SELECTION_MANIFEST_SHA256:
+    if (
+        enforce_frozen_provenance
+        and _sha256_path(selection_manifest_path) != EXPECTED_SELECTION_MANIFEST_SHA256
+    ):
         raise ValueError("selection manifest SHA-256 does not match frozen smoke gate")
-    selection = _read_selection_manifest(selection_manifest_path)
+    selection = _read_selection_manifest(
+        selection_manifest_path,
+        enforce_frozen_provenance=enforce_frozen_provenance,
+    )
     if _sha256_path(replay_path) != selection.get("source_replay_file_sha256"):
         raise ValueError("source replay file SHA-256 does not match frozen selection")
     if _sha256_path(ground_truth_path) != selection.get("ground_truth_sha256"):
@@ -310,14 +322,15 @@ def build_contiguous_pack(
     for field in ("video", "model_sha256", "provider", "width", "height"):
         if replay_metadata.get(field) != observation_metadata.get(field):
             raise ValueError(f"replay/observation metadata mismatch: {field}")
-    if replay_metadata.get("source_commit") != EXPECTED_SOURCE_COMMIT:
-        raise ValueError("replay source commit mismatch")
-    if observation_metadata.get("source_commit") != EXPECTED_SOURCE_COMMIT:
-        raise ValueError("observation source commit mismatch")
-    if replay_metadata.get("model_sha256") != EXPECTED_MODEL_SHA256:
-        raise ValueError("replay model SHA-256 mismatch")
-    if replay_metadata.get("provider") != EXPECTED_PROVIDER:
-        raise ValueError("replay provider mismatch")
+    if enforce_frozen_provenance:
+        if replay_metadata.get("source_commit") != EXPECTED_SOURCE_COMMIT:
+            raise ValueError("replay source commit mismatch")
+        if observation_metadata.get("source_commit") != EXPECTED_SOURCE_COMMIT:
+            raise ValueError("observation source commit mismatch")
+        if replay_metadata.get("model_sha256") != EXPECTED_MODEL_SHA256:
+            raise ValueError("replay model SHA-256 mismatch")
+        if replay_metadata.get("provider") != EXPECTED_PROVIDER:
+            raise ValueError("replay provider mismatch")
 
     target = Path(output_dir)
     target.mkdir(parents=True, exist_ok=True)
@@ -413,7 +426,11 @@ def _frame_ids_from_payload(path: Path, *, expected_kind: str) -> tuple[int, ...
     return tuple(frame_ids)
 
 
-def validate_contiguous_pack(pack_dir: str | Path) -> dict[str, Any]:
+def validate_contiguous_pack(
+    pack_dir: str | Path,
+    *,
+    enforce_frozen_provenance: bool = True,
+) -> dict[str, Any]:
     root = Path(pack_dir)
     manifest_path = root / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -447,21 +464,22 @@ def validate_contiguous_pack(pack_dir: str | Path) -> dict[str, Any]:
     source = manifest.get("source")
     if not isinstance(source, dict):
         raise ValueError("contiguous pack source provenance missing")
-    expected_source = {
-        "selection_manifest_sha256": EXPECTED_SELECTION_MANIFEST_SHA256,
-        "source_replay_file_sha256": EXPECTED_SOURCE_REPLAY_SHA256,
-        "source_replay_canonical_sha256": EXPECTED_SOURCE_REPLAY_CANONICAL_SHA256,
-        "source_ground_truth_sha256": EXPECTED_SOURCE_GT_SHA256,
-        "corpus_revision": EXPECTED_CORPUS_REVISION,
-        "corpus_sha256": EXPECTED_CORPUS_SHA256,
-        "replay_source_commit": EXPECTED_SOURCE_COMMIT,
-        "observation_source_commit": EXPECTED_SOURCE_COMMIT,
-        "model_sha256": EXPECTED_MODEL_SHA256,
-        "provider": EXPECTED_PROVIDER,
-    }
-    for key, expected in expected_source.items():
-        if source.get(key) != expected:
-            raise ValueError(f"contiguous pack frozen source provenance changed: {key}")
+    if enforce_frozen_provenance:
+        expected_source = {
+            "selection_manifest_sha256": EXPECTED_SELECTION_MANIFEST_SHA256,
+            "source_replay_file_sha256": EXPECTED_SOURCE_REPLAY_SHA256,
+            "source_replay_canonical_sha256": EXPECTED_SOURCE_REPLAY_CANONICAL_SHA256,
+            "source_ground_truth_sha256": EXPECTED_SOURCE_GT_SHA256,
+            "corpus_revision": EXPECTED_CORPUS_REVISION,
+            "corpus_sha256": EXPECTED_CORPUS_SHA256,
+            "replay_source_commit": EXPECTED_SOURCE_COMMIT,
+            "observation_source_commit": EXPECTED_SOURCE_COMMIT,
+            "model_sha256": EXPECTED_MODEL_SHA256,
+            "provider": EXPECTED_PROVIDER,
+        }
+        for key, expected in expected_source.items():
+            if source.get(key) != expected:
+                raise ValueError(f"contiguous pack frozen source provenance changed: {key}")
 
     windows = manifest.get("windows")
     if not isinstance(windows, list) or len(windows) != 2:
