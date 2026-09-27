@@ -14,6 +14,7 @@ from spectratrack.enhancement_recall import (
     translate_detection,
 )
 from spectratrack.integrity import sha256_file
+from spectratrack.tracker import bbox_iou
 from spectratrack.research.enhancement_efficiency import (
     DetectorProbe,
     apply_operation,
@@ -180,14 +181,26 @@ def run_strict_evidence(args: argparse.Namespace) -> dict[str, Any]:
             min_iou=CORROBORATION_IOU,
         )
 
-        for candidate in accepted:
+        used_candidates: set[int] = set()
+        for frozen_support in record.raw_support:
+            compatible = [
+                (bbox_iou(frozen_support.bbox, candidate.bbox), candidate.score, index, candidate)
+                for index, candidate in enumerate(accepted)
+                if index not in used_candidates
+                and frozen_support.label.lower() == candidate.label.lower()
+                and bbox_iou(frozen_support.bbox, candidate.bbox) >= CORROBORATION_IOU
+            ]
+            if not compatible:
+                continue
+            _overlap, _score, candidate_index, candidate = max(compatible)
             supporters = [
                 raw
                 for raw in raw_probe_full
                 if detections_corroborate(raw, candidate, min_iou=CORROBORATION_IOU)
             ]
             if not supporters:
-                raise AssertionError("corroborated candidate lost its raw supporter")
+                raise AssertionError("corroborated candidate lost its fresh raw supporter")
+            used_candidates.add(candidate_index)
             accepted_measurements += 1
             alternates.append(
                 {
@@ -200,12 +213,13 @@ def run_strict_evidence(args: argparse.Namespace) -> dict[str, Any]:
                     "source_region": list(record.bbox),
                     "operation": args.operation,
                     "candidate": _detection_json(candidate),
-                    "raw_support": [_detection_json(raw) for raw in record.raw_support],
+                    "raw_support": [_detection_json(frozen_support)],
                     "corroboration_support": [_detection_json(raw) for raw in supporters],
                     "semantics": {
                         "same_raw_source": True,
                         "independent_evidence_increment": 0,
                         "raw_corroborated": True,
+                        "frozen_weak_measurement_iou_gte": CORROBORATION_IOU,
                     },
                 }
             )
