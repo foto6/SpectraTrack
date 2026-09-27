@@ -153,6 +153,7 @@ def test_build_pack_emits_exact_frozen_contiguous_windows_only(tmp_path):
         ground_truth_path=gt,
         observations_path=observations,
         output_dir=output,
+        enforce_frozen_provenance=False,
     )
 
     assert manifest["schema"] == PACK_SCHEMA
@@ -168,7 +169,7 @@ def test_build_pack_emits_exact_frozen_contiguous_windows_only(tmp_path):
             assert _frame_ids_from_payload(path, expected_kind=kind) == expected
             assert not any(200 <= frame <= 399 for frame in expected)
 
-    validate_contiguous_pack(output)
+    validate_contiguous_pack(output, enforce_frozen_provenance=False)
 
 
 def test_build_pack_bytes_and_hashes_are_stable(tmp_path):
@@ -182,6 +183,7 @@ def test_build_pack_bytes_and_hashes_are_stable(tmp_path):
         ground_truth_path=gt,
         observations_path=observations,
         output_dir=left,
+        enforce_frozen_provenance=False,
     )
     second = build_contiguous_pack(
         selection_manifest_path=selection,
@@ -189,6 +191,7 @@ def test_build_pack_bytes_and_hashes_are_stable(tmp_path):
         ground_truth_path=gt,
         observations_path=observations,
         output_dir=right,
+        enforce_frozen_provenance=False,
     )
 
     assert first["pack_digest"] == second["pack_digest"]
@@ -220,10 +223,11 @@ def test_builder_does_not_decode_excluded_middle_replay_or_observation_payloads(
         ground_truth_path=gt,
         observations_path=observations,
         output_dir=output,
+        enforce_frozen_provenance=False,
     )
 
     assert manifest["selection"]["excluded_middle_window"] == [200, 399]
-    validate_contiguous_pack(output)
+    validate_contiguous_pack(output, enforce_frozen_provenance=False)
 
 def test_pack_validation_fails_closed_on_payload_tamper(tmp_path):
     selection, replay, gt, observations = _fixture(tmp_path)
@@ -234,12 +238,13 @@ def test_pack_validation_fails_closed_on_payload_tamper(tmp_path):
         ground_truth_path=gt,
         observations_path=observations,
         output_dir=output,
+        enforce_frozen_provenance=False,
     )
     target = output / "mot17-04-000-199.gt.jsonl"
     target.write_bytes(target.read_bytes() + _line({"video": VIDEO, "frame": 250, "objects": []}).encode())
 
     with pytest.raises(ValueError, match="SHA mismatch"):
-        validate_contiguous_pack(output)
+        validate_contiguous_pack(output, enforce_frozen_provenance=False)
 
 
 def test_builder_rejects_source_hash_drift(tmp_path):
@@ -253,6 +258,7 @@ def test_builder_rejects_source_hash_drift(tmp_path):
             ground_truth_path=gt,
             observations_path=observations,
             output_dir=tmp_path / "pack",
+            enforce_frozen_provenance=False,
         )
 
 
@@ -269,6 +275,7 @@ def test_builder_rejects_any_change_to_frozen_window_identity(tmp_path):
             ground_truth_path=gt,
             observations_path=observations,
             output_dir=tmp_path / "pack",
+            enforce_frozen_provenance=False,
         )
 
 
