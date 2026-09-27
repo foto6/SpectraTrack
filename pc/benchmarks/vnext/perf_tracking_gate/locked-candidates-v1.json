@@ -1,0 +1,39 @@
+{
+  "schema": "spectratrack-perf-tracking-candidate-lock-v1",
+  "research_only": true,
+  "base_commit": "d03af3ae6425d3ea2e4d52e25389fecc09957394",
+  "locked_before_scoring": true,
+  "selection_basis": "exact A4 RX 5700 XT bounded cost points only; no tracking outcome used",
+  "parameter_sweep_after_scoring": false,
+  "hard_gates": {
+    "tracking_recall_loss_max_percentage_points": 0.25,
+    "fragmentation_increase_max_fraction": 0.05,
+    "id_switches": "no increase",
+    "mean_recovery_latency_increase_max_frames": 1,
+    "discovery_latency": "must be observed and <= candidate periodic_global_bound_frames"
+  },
+  "candidates": [
+    {
+      "id": "detect-every-3-max-calls-1",
+      "detect_every": 3,
+      "max_calls_per_detector_frame": 1,
+      "global_period": 8,
+      "periodic_global_bound_frames": 24,
+      "a4_measured_source_fps": 25,
+      "a4_calls_per_source_second": 8.4,
+      "a4_processing_seconds_per_source_second": 0.994,
+      "a4_periodic_global_bound_seconds": 0.96
+    },
+    {
+      "id": "detect-every-5-max-calls-3",
+      "detect_every": 5,
+      "max_calls_per_detector_frame": 3,
+      "global_period": 5,
+      "periodic_global_bound_frames": 25,
+      "a4_measured_source_fps": 25,
+      "a4_calls_per_source_second": 15,
+      "a4_processing_seconds_per_source_second": 1.751,
+      "a4_periodic_global_bound_seconds": 1
+    }
+  ]
+}
