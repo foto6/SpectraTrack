@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable
+import time
+from typing import Iterable, Mapping
 
 import cv2
 import numpy as np
 import onnxruntime as ort
 
+from .enhancement_recall import detect_people_with_adaptive_regions
 from .types import Detection
 
 
@@ -52,6 +54,63 @@ def _classwise_nms(boxes: np.ndarray, scores: np.ndarray, classes: np.ndarray, t
     return keep
 
 
+def _threshold_mask(
+    scores: np.ndarray,
+    class_ids: np.ndarray,
+    labels: list[str],
+    default_threshold: float,
+    class_thresholds: Mapping[str, float] | None = None,
+) -> np.ndarray:
+    thresholds = np.full(scores.shape, float(default_threshold), dtype=np.float32)
+    if class_thresholds:
+        normalized = {str(label).lower(): float(value) for label, value in class_thresholds.items()}
+        for cid in np.unique(class_ids):
+            class_id = int(cid)
+            label = labels[class_id] if 0 <= class_id < len(labels) else f"class_{class_id}"
+            override = normalized.get(label.lower())
+            if override is not None:
+                thresholds[class_ids == cid] = override
+    return scores >= thresholds
+
+
+def _merge_detections(detections: list[Detection], iou_threshold: float) -> list[Detection]:
+    if not detections:
+        return []
+    boxes = np.asarray([d.bbox for d in detections], dtype=np.float32)
+    scores = np.asarray([d.score for d in detections], dtype=np.float32)
+    classes = np.asarray([d.class_id for d in detections], dtype=np.int32)
+    keep = _classwise_nms(boxes, scores, classes, iou_threshold)
+    return [detections[i] for i in keep]
+
+
+def _tile_starts(length: int, tile_size: int, overlap: float) -> list[int]:
+    if length <= 0:
+        return [0]
+    tile = min(int(tile_size), int(length))
+    if tile <= 0:
+        raise ValueError("tile_size must be > 0")
+    if not 0.0 <= overlap < 1.0:
+        raise ValueError("tile_overlap must satisfy 0 <= overlap < 1")
+    if tile >= length:
+        return [0]
+    stride = max(1, int(round(tile * (1.0 - overlap))))
+    last = length - tile
+    starts = list(range(0, last + 1, stride))
+    if starts[-1] != last:
+        starts.append(last)
+    return starts
+
+
+def _tile_regions(frame_w: int, frame_h: int, tile_size: int, overlap: float) -> list[tuple[int, int, int, int]]:
+    x_starts = _tile_starts(frame_w, tile_size, overlap)
+    y_starts = _tile_starts(frame_h, tile_size, overlap)
+    return [
+        (x, y, min(frame_w, x + tile_size), min(frame_h, y + tile_size))
+        for y in y_starts
+        for x in x_starts
+    ]
+
+
 def _looks_like_end2end(pred: np.ndarray, label_count: int) -> bool:
     if pred.ndim != 2:
         return False
@@ -87,11 +146,13 @@ def decode_end2end_predictions(
     labels: list[str],
     conf_threshold: float,
     iou_threshold: float,
+    class_thresholds: Mapping[str, float] | None = None,
 ) -> list[Detection]:
     pred = np.asarray(pred, dtype=np.float32)
     if pred.shape[1] == 7:
         pred = pred[:, 1:]
-    mask = pred[:, 4] >= conf_threshold
+    class_ids_all = np.rint(pred[:, 5]).astype(np.int32)
+    mask = _threshold_mask(pred[:, 4], class_ids_all, labels, conf_threshold, class_thresholds)
     pred = pred[mask]
     if len(pred) == 0:
         return []
@@ -137,12 +198,22 @@ class YoloOnnxDetector:
         iou_threshold: float = 0.45,
         labels: Iterable[str] | None = None,
         prefer_gpu: bool = True,
+        class_thresholds: Mapping[str, float] | None = None,
     ) -> None:
         self.model_path = str(model_path)
         self.input_size = int(input_size)
         self.conf_threshold = float(conf_threshold)
         self.iou_threshold = float(iou_threshold)
         self.labels = list(labels or COCO80)
+        self.last_stage_ms: dict[str, float] = {}
+        self.last_inference_calls = 0
+        self.class_thresholds = {
+            str(label).lower(): float(value)
+            for label, value in (class_thresholds or {}).items()
+        }
+        for label, value in self.class_thresholds.items():
+            if not 0.0 <= value <= 1.0:
+                raise ValueError(f"class threshold for {label!r} must be in [0, 1]")
 
         available = ort.get_available_providers()
         providers: list[str] = []
@@ -185,13 +256,108 @@ class YoloOnnxDetector:
         canvas[top:top + nh, left:left + nw] = resized
         return canvas, scale, float(left), float(top)
 
+    def _reset_policy_metrics(self) -> None:
+        self.last_stage_ms = {}
+        self.last_inference_calls = 0
+
+    def _add_stage_ms(self, name: str, started: float) -> None:
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        self.last_stage_ms[name] = self.last_stage_ms.get(name, 0.0) + elapsed_ms
+
     def detect(self, frame_bgr: np.ndarray) -> list[Detection]:
+        self._reset_policy_metrics()
+        return self._detect_once(frame_bgr, self.class_thresholds)
+
+    def detect_people_recall(
+        self,
+        frame_bgr: np.ndarray,
+        person_threshold: float = 0.12,
+        tile_size: int = 640,
+        tile_overlap: float = 0.20,
+        merge_iou_threshold: float = 0.55,
+        enhancement_mode: str = "off",
+    ) -> list[Detection]:
+        if not 0.0 <= person_threshold <= 1.0:
+            raise ValueError("person_threshold must be in [0, 1]")
+        if tile_size <= 0:
+            raise ValueError("tile_size must be > 0")
+        if not 0.0 <= tile_overlap < 1.0:
+            raise ValueError("tile_overlap must satisfy 0 <= overlap < 1")
+        if not 0.0 < merge_iou_threshold <= 1.0:
+            raise ValueError("merge_iou_threshold must be in (0, 1]")
+        if enhancement_mode not in {"off", "adaptive"}:
+            raise ValueError("enhancement_mode must be off or adaptive")
+        if enhancement_mode == "adaptive" and person_threshold <= 0.0:
+            raise ValueError("adaptive people-recall requires person_threshold > 0")
+
+        self._reset_policy_metrics()
+        thresholds = dict(self.class_thresholds)
+        thresholds["person"] = float(person_threshold)
+        combined = self._detect_once(frame_bgr, thresholds)
+
+        h, w = frame_bgr.shape[:2]
+        regions = _tile_regions(w, h, tile_size, tile_overlap)
+        single_full_region = len(regions) == 1 and regions[0] == (0, 0, w, h)
+        if single_full_region and enhancement_mode == "off":
+            return combined
+
+        person_ids = {index for index, label in enumerate(self.labels) if label.lower() == "person"}
+        if not person_ids:
+            return combined
+
+        if enhancement_mode == "adaptive":
+            def detect_at_confidence(tile_bgr: np.ndarray, threshold: float) -> list[Detection]:
+                local_thresholds = dict(self.class_thresholds)
+                local_thresholds["person"] = float(threshold)
+                return self._detect_once(tile_bgr, local_thresholds)
+
+            combined.extend(
+                detect_people_with_adaptive_regions(
+                    frame_bgr,
+                    regions,
+                    detect_at_confidence,
+                    person_conf=float(person_threshold),
+                    probe_conf=min(0.08, float(person_threshold)),
+                    corroboration_iou=0.10,
+                )
+            )
+        else:
+            for x1, y1, x2, y2 in regions:
+                tile = frame_bgr[y1:y2, x1:x2]
+                tile_detections = self._detect_once(tile, thresholds)
+                for detection in tile_detections:
+                    if detection.class_id not in person_ids:
+                        continue
+                    bx1, by1, bx2, by2 = detection.bbox
+                    combined.append(
+                        Detection(
+                            (bx1 + x1, by1 + y1, bx2 + x1, by2 + y1),
+                            detection.score,
+                            detection.class_id,
+                            detection.label,
+                            detection.appearance,
+                        )
+                    )
+        return _merge_detections(combined, merge_iou_threshold)
+
+    def _detect_once(
+        self,
+        frame_bgr: np.ndarray,
+        class_thresholds: Mapping[str, float] | None = None,
+    ) -> list[Detection]:
+        preprocess_started = time.perf_counter()
         image, scale, pad_x, pad_y = self._letterbox(frame_bgr)
         rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         blob = rgb.astype(np.float32) / 255.0
         blob = np.transpose(blob, (2, 0, 1))[None, ...]
+        self._add_stage_ms("preprocess", preprocess_started)
 
+        inference_started = time.perf_counter()
         outputs = self.session.run(None, {self.input_name: blob})
+        self.last_inference_calls += 1
+        self._add_stage_ms("inference", inference_started)
+
+        postprocess_started = time.perf_counter()
         pred = np.asarray(outputs[0])
         pred = np.squeeze(pred)
         if pred.ndim != 2:
@@ -205,18 +371,27 @@ class YoloOnnxDetector:
 
         h, w = frame_bgr.shape[:2]
         if _looks_like_end2end(pred, len(self.labels)):
-            return decode_end2end_predictions(
+            detections = decode_end2end_predictions(
                 pred, w, h, self.input_w, self.input_h,
                 scale, pad_x, pad_y, self.labels,
-                self.conf_threshold, self.iou_threshold,
+                self.conf_threshold, self.iou_threshold, class_thresholds,
             )
+            self._add_stage_ms("postprocess", postprocess_started)
+            return detections
 
         boxes_xywh = pred[:, :4]
         class_scores = pred[:, 4:]
         class_ids = np.argmax(class_scores, axis=1)
         scores = class_scores[np.arange(class_scores.shape[0]), class_ids]
-        mask = scores >= self.conf_threshold
+        mask = _threshold_mask(
+            scores,
+            class_ids,
+            self.labels,
+            self.conf_threshold,
+            class_thresholds,
+        )
         if not np.any(mask):
+            self._add_stage_ms("postprocess", postprocess_started)
             return []
 
         boxes_xywh = boxes_xywh[mask]
@@ -248,4 +423,5 @@ class YoloOnnxDetector:
             cid = int(class_ids[i])
             label = self.labels[cid] if 0 <= cid < len(self.labels) else f"class_{cid}"
             detections.append(Detection((x1, y1, x2, y2), float(scores[i]), cid, label))
+        self._add_stage_ms("postprocess", postprocess_started)
         return detections

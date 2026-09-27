@@ -35,8 +35,13 @@ class _Accumulator:
     best_value: float = -1.0
     best_frame: int = 0
     descriptor_sum: np.ndarray | None = None
+    color_sum: np.ndarray | None = None
     best_crop: np.ndarray | None = None
     gallery: list[tuple[float, ...]] | None = None
+    aspect_sum: float = 0.0
+    relative_area_sum: float = 0.0
+    first_center: tuple[float, float] | None = None
+    last_center: tuple[float, float] | None = None
 
     def add(
         self,
@@ -44,6 +49,7 @@ class _Accumulator:
         score: float,
         quality: float,
         descriptor: tuple[float, ...],
+        color_descriptor: tuple[float, ...] | None,
         frame: np.ndarray,
         bbox: tuple[float, float, float, float],
     ) -> None:
@@ -55,6 +61,12 @@ class _Accumulator:
         if self.descriptor_sum.shape != arr.shape:
             return
         self.descriptor_sum += arr
+        if color_descriptor is not None:
+            color = np.asarray(color_descriptor, dtype=np.float64)
+            if self.color_sum is None:
+                self.color_sum = np.zeros_like(color)
+            if self.color_sum.shape == color.shape:
+                self.color_sum += color
         if len(self.gallery) < 6:
             keep = True
             for existing in self.gallery:
@@ -70,6 +82,21 @@ class _Accumulator:
         self.observations += 1
         self.score_sum += float(score)
         self.quality_sum += float(quality)
+
+        frame_h, frame_w = frame.shape[:2]
+        x1, y1, x2, y2 = bbox
+        box_w = max(0.0, x2 - x1)
+        box_h = max(0.0, y2 - y1)
+        self.aspect_sum += box_w / max(box_h, 1e-6)
+        self.relative_area_sum += (box_w * box_h) / max(float(frame_w * frame_h), 1.0)
+        center = (
+            ((x1 + x2) * 0.5) / max(float(frame_w), 1.0),
+            ((y1 + y2) * 0.5) / max(float(frame_h), 1.0),
+        )
+        if self.first_center is None:
+            self.first_center = center
+        self.last_center = center
+
         value = float(score) * 0.65 + float(quality) * 0.35
         if value > self.best_value:
             self.best_value = value
@@ -80,6 +107,18 @@ class _Accumulator:
         if self.observations <= 0 or self.descriptor_sum is None:
             return None
         descriptor = normalize_descriptor(self.descriptor_sum.tolist())
+        color_descriptor = (
+            normalize_descriptor(self.color_sum.tolist())
+            if self.color_sum is not None
+            else None
+        )
+        motion_direction = None
+        if self.first_center is not None and self.last_center is not None:
+            dx = self.last_center[0] - self.first_center[0]
+            dy = self.last_center[1] - self.first_center[1]
+            distance = float(np.hypot(dx, dy))
+            if distance > 1e-9:
+                motion_direction = (dx / distance, dy / distance)
         return TrackletSummary(
             video=self.video,
             local_track_id=self.local_track_id,
@@ -95,6 +134,12 @@ class _Accumulator:
             descriptor=descriptor,
             preview_path=preview_path,
             gallery=tuple(self.gallery or ()),
+            color_descriptor=color_descriptor,
+            mean_aspect_ratio=self.aspect_sum / self.observations,
+            mean_relative_area=self.relative_area_sum / self.observations,
+            start_center=self.first_center,
+            end_center=self.last_center,
+            motion_direction=motion_direction,
         )
 
 
@@ -146,7 +191,22 @@ def analyze_video(
     preview_dir: Path | None = None,
     video_id: str | None = None,
     progress_every: int = 120,
+    detector_mode: str = "standard",
+    person_conf: float = 0.12,
+    person_tile_size: int = 640,
+    person_tile_overlap: float = 0.20,
+    person_merge_iou: float = 0.55,
+    people_recall_enhancement: str = "off",
 ) -> list[TrackletSummary]:
+    if detector_mode not in {"standard", "people-recall"}:
+        raise ValueError("detector_mode must be standard or people-recall")
+    if people_recall_enhancement not in {"off", "adaptive"}:
+        raise ValueError("people_recall_enhancement must be off or adaptive")
+    if people_recall_enhancement == "adaptive" and detector_mode != "people-recall":
+        raise ValueError("adaptive enhancement requires detector_mode=people-recall")
+    if people_recall_enhancement == "adaptive" and person_conf <= 0.0:
+        raise ValueError("adaptive people-recall requires person_conf > 0")
+
     capture = RobustCapture(str(path), CaptureConfig(backend="auto", reconnect_attempts=0))
     if not capture.is_opened():
         capture.release()
@@ -172,7 +232,17 @@ def analyze_video(
             camera_transform = cam.affine if cam.valid else None
             should_detect = ((frame_index - 1) % detect_every) == 0
             if should_detect:
-                detections = detector.detect(frame)
+                if detector_mode == "people-recall":
+                    detections = detector.detect_people_recall(
+                        frame,
+                        person_threshold=person_conf,
+                        tile_size=person_tile_size,
+                        tile_overlap=person_tile_overlap,
+                        merge_iou_threshold=person_merge_iou,
+                        enhancement_mode=people_recall_enhancement,
+                    )
+                else:
+                    detections = detector.detect(frame)
                 if class_filter:
                     detections = [d for d in detections if d.label.lower() in class_filter]
                 attach_appearance(frame, detections)
@@ -210,6 +280,7 @@ def analyze_video(
                         tr.last_detection_score or tr.score,
                         tr.quality,
                         descriptor,
+                        tr.appearance,
                         frame,
                         tr.bbox,
                     )
@@ -250,6 +321,12 @@ def main() -> int:
     parser.add_argument("--input-size", type=int, default=640)
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--iou", type=float, default=0.45)
+    parser.add_argument("--detector-mode", choices=("standard", "people-recall"), default="standard")
+    parser.add_argument("--person-conf", type=float, default=0.12)
+    parser.add_argument("--person-tile-size", type=int, default=640)
+    parser.add_argument("--person-tile-overlap", type=float, default=0.20)
+    parser.add_argument("--person-merge-iou", type=float, default=0.55)
+    parser.add_argument("--people-recall-enhancement", choices=("off", "adaptive"), default="off")
     parser.add_argument("--detect-every", type=int, default=1)
     parser.add_argument("--classes", default="")
     parser.add_argument("--candidate-threshold", type=float, default=0.86)
@@ -275,6 +352,18 @@ def main() -> int:
         raise SystemExit("--min-observations must be >= 1")
     if args.progress_every < 0:
         raise SystemExit("--progress-every must be >= 0")
+    if not 0.0 <= args.person_conf <= 1.0:
+        raise SystemExit("--person-conf must be in [0, 1]")
+    if args.person_tile_size <= 0:
+        raise SystemExit("--person-tile-size must be > 0")
+    if not 0.0 <= args.person_tile_overlap < 1.0:
+        raise SystemExit("--person-tile-overlap must satisfy 0 <= overlap < 1")
+    if not 0.0 < args.person_merge_iou <= 1.0:
+        raise SystemExit("--person-merge-iou must be in (0, 1]")
+    if args.people_recall_enhancement == "adaptive" and args.detector_mode != "people-recall":
+        raise SystemExit("--people-recall-enhancement adaptive requires --detector-mode people-recall")
+    if args.people_recall_enhancement == "adaptive" and args.person_conf <= 0.0:
+        raise SystemExit("adaptive people-recall requires --person-conf > 0")
     if not 0.0 <= args.candidate_threshold <= args.strong_threshold <= 1.0:
         raise SystemExit("Require 0 <= --candidate-threshold <= --strong-threshold <= 1")
 
@@ -317,6 +406,12 @@ def main() -> int:
                 preview_dir=preview_dir,
                 video_id=video_identifier(args.input_dir, path),
                 progress_every=args.progress_every,
+                detector_mode=args.detector_mode,
+                person_conf=args.person_conf,
+                person_tile_size=args.person_tile_size,
+                person_tile_overlap=args.person_tile_overlap,
+                person_merge_iou=args.person_merge_iou,
+                people_recall_enhancement=args.people_recall_enhancement,
             )
             all_tracklets.extend(tracklets)
             print(f"  tracklets={len(tracklets)}")
@@ -360,6 +455,14 @@ def main() -> int:
         "videos_seen": len(videos),
         "videos_failed": len(failures),
         "detect_every": args.detect_every,
+        "detector_mode": args.detector_mode,
+        "person_conf": args.person_conf if args.detector_mode == "people-recall" else None,
+        "person_tile_size": args.person_tile_size if args.detector_mode == "people-recall" else None,
+        "person_tile_overlap": args.person_tile_overlap if args.detector_mode == "people-recall" else None,
+        "person_merge_iou": args.person_merge_iou if args.detector_mode == "people-recall" else None,
+        "people_recall_enhancement": (
+            args.people_recall_enhancement if args.detector_mode == "people-recall" else None
+        ),
         "classes": sorted(class_filter),
         "failures": failures,
         "review_file": args.review or None,

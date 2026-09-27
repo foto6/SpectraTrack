@@ -12,7 +12,7 @@ of repeatedly lowering thresholds until the screen fills with false positives.
 - [x] Collision-safe recursive video IDs
 - [x] End-to-end synthetic video regression
 - [x] PC and Android version metadata aligned to 0.3.0
-- [ ] Publish v0.3.0 Windows ZIP + Android APK + SHA-256 checksums
+- [x] Publish v0.3.0 Windows ZIP + Android APK + SHA-256 checksums
 
 ## Milestone B — high-recall small-pedestrian detection
 

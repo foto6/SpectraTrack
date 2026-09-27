@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spectratrack.local/schema/spectratrack-smoke-promotion-v1.json",
+  "title": "SpectraTrack smoke promotion result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "selection",
+    "confidence",
+    "coverage",
+    "rare_event_sensitivity",
+    "resolution_limits",
+    "triage",
+    "compute_budget",
+    "claims"
+  ],
+  "properties": {
+    "schema": {"const": "spectratrack-smoke-promotion-v1"},
+    "selection": {
+      "type": "object",
+      "required": [
+        "corpus_revision",
+        "corpus_sha256",
+        "selection_manifest_sha256",
+        "selection_identity_sha256",
+        "selection_method",
+        "inference_design",
+        "population_frames",
+        "sample_frames",
+        "frozen_before_candidate_scoring"
+      ],
+      "properties": {
+        "corpus_revision": {"type": "string", "minLength": 1},
+        "corpus_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "selection_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "selection_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "selection_method": {"type": "string", "minLength": 1},
+        "inference_design": {"type": "string", "minLength": 1},
+        "population_frames": {"type": "integer", "minimum": 1},
+        "sample_frames": {"type": "integer", "minimum": 1},
+        "frozen_before_candidate_scoring": {"const": true}
+      },
+      "additionalProperties": true
+    },
+    "confidence": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+    "coverage": {"type": ["object", "null"]},
+    "rare_event_sensitivity": {"type": "object"},
+    "resolution_limits": {"type": ["object", "null"]},
+    "triage": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "confidence",
+        "reason",
+        "metrics",
+        "final_benchmark_claim",
+        "full_corpus_required_for_acceptance"
+      ],
+      "properties": {
+        "category": {"enum": ["CLEAR_REJECT", "PROMOTE_TO_FULL", "AMBIGUOUS"]},
+        "confidence": {"type": "number"},
+        "reason": {"type": "string"},
+        "metrics": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "role",
+              "kind",
+              "benefit_interval",
+              "minimum_material_improvement",
+              "maximum_tolerable_harm",
+              "state"
+            ],
+            "properties": {
+              "name": {"type": "string"},
+              "role": {"enum": ["primary", "guardrail"]},
+              "kind": {"enum": ["paired_binary_delta", "binomial_delta", "poisson_rate_delta"]},
+              "benefit_interval": {"type": "object"},
+              "minimum_material_improvement": {"type": "number", "minimum": 0},
+              "maximum_tolerable_harm": {"type": "number", "minimum": 0},
+              "state": {
+                "enum": [
+                  "PROMISING",
+                  "TOO_SMALL",
+                  "HARMFUL",
+                  "SAFE",
+                  "AMBIGUOUS",
+                  "INSUFFICIENT_EVIDENCE"
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "final_benchmark_claim": {"const": false},
+        "full_corpus_required_for_acceptance": {"const": true}
+      }
+    },
+    "compute_budget": {"type": "object"},
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "smoke_is_triage_only",
+        "smoke_pass_is_final_benchmark_claim",
+        "authoritative_acceptance_requires_full_frozen_corpus",
+        "simple_random_inference_supported"
+      ],
+      "properties": {
+        "smoke_is_triage_only": {"const": true},
+        "smoke_pass_is_final_benchmark_claim": {"const": false},
+        "authoritative_acceptance_requires_full_frozen_corpus": {"const": true},
+        "simple_random_inference_supported": {"type": "boolean"}
+      }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "schema": "spectratrack-smoke-promotion-input-v1",
+  "confidence": 0.95,
+  "selection": {
+    "corpus_revision": "fixture-corpus-r1",
+    "corpus_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "selection_manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "selection_identity_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "selection_method": "deterministic_outcome_independent_without_replacement",
+    "inference_design": "simple_random_without_replacement",
+    "population_frames": 5000,
+    "sample_frames": 400,
+    "frozen_before_candidate_scoring": true
+  },
+  "population_composition": {
+    "frames": 5000,
+    "positive_frames": 600,
+    "objects": 1000
+  },
+  "sample_composition": {
+    "frames": 400,
+    "positive_frames": 50,
+    "objects": 82
+  },
+  "metrics": [
+    {
+      "name": "person_recall",
+      "role": "primary",
+      "kind": "paired_binary_delta",
+      "opportunities": 82,
+      "improvements": 8,
+      "regressions": 2,
+      "minimum_material_improvement": 0.05,
+      "maximum_tolerable_harm": 0.02
+    },
+    {
+      "name": "false_positive_rate",
+      "role": "guardrail",
+      "kind": "poisson_rate_delta",
+      "baseline_count": 12,
+      "candidate_count": 10,
+      "exposure": 400,
+      "direction": "lower_is_better",
+      "maximum_tolerable_harm": 0.01
+    }
+  ]
+}

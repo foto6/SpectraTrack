@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spectratrack-research-stage-history-v1",
+  "title": "SpectraTrack research stage history v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "policy_schema",
+    "research_cycle_id",
+    "research_exposure_log",
+    "candidates"
+  ],
+  "properties": {
+    "schema": {
+      "const": "spectratrack-research-stage-history-v1"
+    },
+    "policy_schema": {
+      "const": "spectratrack-research-stage-policy-v1"
+    },
+    "research_cycle_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "research_exposure_log": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/exposure"
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/candidate"
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "stage": {
+      "enum": [
+        "r1",
+        "r2",
+        "holdout4200"
+      ]
+    },
+    "exposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "exposed_at",
+        "evidence_sha256"
+      ],
+      "properties": {
+        "stage": {
+          "enum": [
+            "r1",
+            "r2",
+            "holdout4200",
+            "full5000_characterization"
+          ]
+        },
+        "exposed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "evidence_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "freeze_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_sha256",
+        "source_revision",
+        "source_path"
+      ],
+      "properties": {
+        "record_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "source_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_path": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "performance_exception": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "independent_of_quality_results",
+        "equivalence_evidence_sha256",
+        "optimization_scope"
+      ],
+      "properties": {
+        "independent_of_quality_results": {
+          "const": true
+        },
+        "equivalence_evidence_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "optimization_scope": {
+          "enum": [
+            "runtime_only",
+            "memory_only",
+            "serialization_only"
+          ]
+        }
+      }
+    },
+    "promotion_evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "scored_at",
+        "candidate_spec_sha256",
+        "dataset_identity_sha256",
+        "decision",
+        "evidence_sha256"
+      ],
+      "properties": {
+        "stage": {
+          "$ref": "#/$defs/stage"
+        },
+        "scored_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "candidate_spec_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "dataset_identity_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "decision": {
+          "enum": [
+            "CLEAR_REJECT",
+            "PROMOTE_TO_NEXT",
+            "AMBIGUOUS"
+          ]
+        },
+        "evidence_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "characterization_evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "purpose",
+        "decision",
+        "candidate_spec_sha256",
+        "evidence_sha256"
+      ],
+      "properties": {
+        "stage": {
+          "const": "full5000_characterization"
+        },
+        "purpose": {
+          "const": "aggregate_characterization"
+        },
+        "decision": {
+          "type": "null"
+        },
+        "candidate_spec_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "evidence_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "parent_candidate_id",
+        "parent_candidate_spec_sha256",
+        "candidate_spec_sha256",
+        "semantic_config_sha256",
+        "hypothesis_frozen_at",
+        "freeze_provenance",
+        "data_exposure",
+        "inspired_by_stages",
+        "change_kind",
+        "allowed_next_evaluation_stage",
+        "evaluations"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parent_candidate_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_candidate_spec_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_spec_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "semantic_config_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "hypothesis_frozen_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "freeze_provenance": {
+          "$ref": "#/$defs/freeze_provenance"
+        },
+        "data_exposure": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stage"
+          }
+        },
+        "inspired_by_stages": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stage"
+          }
+        },
+        "change_kind": {
+          "enum": [
+            "research_candidate",
+            "semantics_preserving_performance"
+          ]
+        },
+        "performance_exception": {
+          "$ref": "#/$defs/performance_exception"
+        },
+        "allowed_next_evaluation_stage": {
+          "enum": [
+            "r1",
+            "r2",
+            "holdout4200",
+            "external_future_corpus",
+            "STOP"
+          ]
+        },
+        "evaluations": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/promotion_evaluation"
+              },
+              {
+                "$ref": "#/$defs/characterization_evaluation"
+              }
+            ]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "change_kind": {
+                "const": "semantics_preserving_performance"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "performance_exception"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

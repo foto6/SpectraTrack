@@ -1,0 +1,129 @@
+{
+  "schema": "spectratrack-research-stage-policy-v1",
+  "research_cycle_id": "nightowls-r1-r2-holdout-v1",
+  "decision_semantics": {
+    "CLEAR_REJECT": "Conservative uncertainty bounds establish harm or rule out the predeclared material effect; stop this candidate.",
+    "PROMOTE_TO_NEXT": "Conservative uncertainty bounds support the predeclared material effect and guardrails; advance only to the next eligible blinded stage.",
+    "AMBIGUOUS": "Uncertainty overlaps a material-effect or harm boundary; more evidence may be collected at the next eligible stage, but this is not a positive claim.",
+    "p_values_used": false
+  },
+  "stages": [
+    {
+      "stage": "r1",
+      "role": "triage",
+      "independent_heldout_for_eligible_candidate": true,
+      "dataset": {
+        "status": "published",
+        "revision": "nightowls-public-smoke400-r1",
+        "frames": 400,
+        "parent_revision": "nightowls-public-slice5000-r1",
+        "parent_corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
+        "parent_ground_truth_sha256": "6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc",
+        "corpus_sha256": "70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162",
+        "jsonl_sha256": "45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8",
+        "manifest_sha256": "3f65339609de78e7ef255e94875727a4bb26c4769231763a2660e1bb8f15905e",
+        "selection_proof_sha256": "0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940",
+        "identity_sha256": "2a4da42830400b14405de01a82e3b3bee3d17a07db0be067f752545664fc6186",
+        "a5_source_commit": "2c40b522433b986a213689f7152834d2933e29c5"
+      }
+    },
+    {
+      "stage": "r2",
+      "role": "blinded_confirmation_after_r1_exposure",
+      "independent_heldout_for_eligible_candidate": true,
+      "dataset": {
+        "status": "published",
+        "expected_frames": 400,
+        "revision": "nightowls-public-smoke400-r2",
+        "corpus_sha256": "9d145b4dda780052388f3b663203c519ded48f61457adef14654f84fb5549eff",
+        "jsonl_sha256": "75eba2c9dc3b36d0a2389bfbb080a709621ef690680ae655d85d8732e7bc6097",
+        "manifest_sha256": "9270d46c2776aa531e1b979a1a7ebc16eaed0f6483b2c1095da834af383c4e83",
+        "identity_sha256": "9f2afa165f294a4bce1e7c842b8a135a98876e1a0c4db4b0cbd0b8c583151cce",
+        "frames": 400,
+        "seed": "spectratrack-round2-nightowls-smoke400-r2-v1",
+        "parent_revision": "nightowls-public-slice5000-r1",
+        "parent_corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
+        "parent_ground_truth_sha256": "6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc",
+        "ground_truth_sha256": "75eba2c9dc3b36d0a2389bfbb080a709621ef690680ae655d85d8732e7bc6097",
+        "selection_proof_sha256": "df11e9dc6ca1f63019cba071ed82420de27c706b41d1d3b46df880bb3ce50faf",
+        "hash_bundle_sha256": "9f2afa165f294a4bce1e7c842b8a135a98876e1a0c4db4b0cbd0b8c583151cce",
+        "identity_kind": "hash_bundle_sha256",
+        "a5_source_commit": "a339da324ea0df682179097d7d6810b6fc250240"
+      }
+    },
+    {
+      "stage": "holdout4200",
+      "role": "final_independent_nightowls_evidence",
+      "independent_heldout_for_eligible_candidate": true,
+      "dataset": {
+        "status": "published",
+        "expected_frames": 4200,
+        "revision": "nightowls-public-holdout4200-r1",
+        "corpus_sha256": "c2e5091fe4e1c146301f6d411c7a9c4d816380f94515e226b25e28e90dfc190a",
+        "jsonl_sha256": "cda56abf7bd48b9849d5b10467be7e192d0fea9abc3ae31fac5a2f180605c621",
+        "manifest_sha256": "19ea73abf8d97265b3b0a3e46657c09bac370c31835b7414886156994fefc901",
+        "identity_sha256": "011242dbdc155e28dbae90e48cb2f6162abaf49ec793619936f86b78f41ebc9a",
+        "frames": 4200,
+        "parent_revision": "nightowls-public-slice5000-r1",
+        "parent_corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
+        "parent_ground_truth_sha256": "6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc",
+        "ground_truth_sha256": "cda56abf7bd48b9849d5b10467be7e192d0fea9abc3ae31fac5a2f180605c621",
+        "selection_proof_sha256": "4f1f8e977871ce3c134a4c72029035760f4377d3bddfd7a99cd3cebe568dab3d",
+        "hash_bundle_sha256": "011242dbdc155e28dbae90e48cb2f6162abaf49ec793619936f86b78f41ebc9a",
+        "identity_kind": "hash_bundle_sha256",
+        "a5_source_commit": "a339da324ea0df682179097d7d6810b6fc250240"
+      }
+    },
+    {
+      "stage": "full5000_characterization",
+      "role": "aggregate_characterization_only",
+      "independent_heldout_for_eligible_candidate": false,
+      "dataset": {
+        "status": "published_parent",
+        "revision": "nightowls-public-slice5000-r1",
+        "frames": 5000,
+        "corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
+        "ground_truth_sha256": "6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc"
+      }
+    },
+    {
+      "stage": "external_future_corpus",
+      "role": "required_new_independent_evidence_after_holdout_exposure",
+      "independent_heldout_for_eligible_candidate": true,
+      "dataset": {
+        "status": "future_external"
+      }
+    }
+  ],
+  "rules": {
+    "candidate_fields_required": [
+      "hypothesis_frozen_at",
+      "data_exposure",
+      "allowed_next_evaluation_stage",
+      "candidate_spec_sha256",
+      "semantic_config_sha256",
+      "freeze_provenance"
+    ],
+    "r1_requires_candidate_frozen_before_r1_exposure": true,
+    "r1_inspired_candidate_next_stage": "r2",
+    "r2_inspired_candidate_next_stage": "holdout4200",
+    "holdout_exposure_forces_future_external_corpus_for_further_tuning": true,
+    "full5000_after_component_exposure_is_characterization_only": true,
+    "stage_reuse_for_promotion_forbidden": true,
+    "post_result_mutation_under_same_candidate_id_forbidden": true,
+    "lineage_freeze_provenance_required": true,
+    "stage_skipping_forbidden": true,
+    "semantics_preserving_performance_exception": {
+      "allowed": true,
+      "requirements": [
+        "parent candidate exists",
+        "semantic_config_sha256 is unchanged",
+        "inspired_by_stages is empty",
+        "performance_exception.independent_of_quality_results is true",
+        "performance_exception.equivalence_evidence_sha256 is present",
+        "optimization_scope is runtime_only, memory_only, or serialization_only",
+        "no already-consumed stage may be reused"
+      ]
+    }
+  }
+}

@@ -2,8 +2,8 @@ from spectratrack.tracker import MultiObjectTracker, bbox_iou
 from spectratrack.types import Detection
 
 
-def d(x, y, cls=0, score=0.9):
-    return Detection((x, y, x + 100, y + 100), score, cls, "obj")
+def d(x, y, cls=0, score=0.9, appearance=None):
+    return Detection((x, y, x + 100, y + 100), score, cls, "obj", appearance)
 
 
 def test_iou_identity():
@@ -94,6 +94,35 @@ def test_two_same_class_targets_cross_without_immediate_id_swap():
     tracks = tracker.update([d(260, 100), d(240, 100)])
     by_id = {t.track_id: t for t in tracks}
     assert left_id in by_id and right_id in by_id
+    assert by_id[left_id].center[0] > by_id[right_id].center[0]
+
+
+def test_long_dropout_reactivates_confirmed_track_with_multiple_cues():
+    appearance = tuple([1.0] + [0.0] * 7)
+    tracker = MultiObjectTracker(max_missed=2, min_hits=1, reactivation_window=6)
+    first = tracker.update([d(50, 50, appearance=appearance)])[0].track_id
+
+    tracker.update([])
+    tracker.update([])
+    assert tracker.update([]) == []
+
+    resumed = tracker.update([d(80, 50, appearance=appearance)])[0]
+    assert resumed.track_id == first
+    assert resumed.recoveries == 1
+    assert resumed.missed == 0
+
+
+def test_long_dropout_does_not_reactivate_different_appearance():
+    appearance_a = tuple([1.0] + [0.0] * 7)
+    appearance_b = tuple([0.0, 1.0] + [0.0] * 6)
+    tracker = MultiObjectTracker(max_missed=1, min_hits=1, reactivation_window=6)
+    first = tracker.update([d(50, 50, appearance=appearance_a)])[0].track_id
+
+    tracker.update([])
+    assert tracker.update([]) == []
+
+    resumed = tracker.update([d(55, 50, appearance=appearance_b)])[0]
+    assert resumed.track_id != first
 
 
 def test_recovery_counter_increments_after_occlusion():
@@ -147,3 +176,69 @@ def test_predict_only_does_not_increment_missed():
     assert tr.missed == 0
     assert tr.age == 2
     assert tr.center[0] == 155.0
+
+
+def test_long_dropout_without_appearance_does_not_reactivate():
+    tracker = MultiObjectTracker(max_missed=1, min_hits=1, reactivation_window=6)
+    first = tracker.update([d(50, 50)])[0].track_id
+
+    tracker.update([])
+    assert tracker.update([]) == []
+
+    resumed = tracker.update([d(55, 50)])[0]
+    assert resumed.track_id != first
+
+
+def test_dormant_track_expires_after_reactivation_window():
+    appearance = tuple([1.0] + [0.0] * 7)
+    tracker = MultiObjectTracker(max_missed=1, min_hits=1, reactivation_window=2)
+    first = tracker.update([d(50, 50, appearance=appearance)])[0].track_id
+
+    tracker.update([])
+    assert tracker.update([]) == []
+    tracker.update([])
+    tracker.update([])
+    tracker.update([])
+
+    resumed = tracker.update([d(55, 50, appearance=appearance)])[0]
+    assert resumed.track_id != first
+
+
+def test_reset_clears_dormant_tracks():
+    appearance = tuple([1.0] + [0.0] * 7)
+    tracker = MultiObjectTracker(max_missed=1, min_hits=1, reactivation_window=6)
+    first = tracker.update([d(50, 50, appearance=appearance)])[0].track_id
+
+    tracker.update([])
+    assert tracker.update([]) == []
+    tracker.reset()
+
+    resumed = tracker.update([d(55, 50, appearance=appearance)])[0]
+    assert resumed.track_id == 1
+    assert resumed.recoveries == 0
+    assert first == 1
+
+
+def test_dormant_reactivation_tracks_camera_motion_across_skipped_frames():
+    appearance = tuple([1.0] + [0.0] * 7)
+    tracker = MultiObjectTracker(
+        max_missed=1,
+        min_hits=1,
+        reactivation_window=6,
+        reactivation_max_center_ratio=4.0,
+    )
+    first = tracker.update([d(50, 50, appearance=appearance)])[0].track_id
+
+    affine_200 = (1.0, 0.0, 200.0, 0.0, 1.0, 0.0)
+    tracker.update([], camera_transform=affine_200)
+    assert tracker.update([], camera_transform=affine_200) == []
+
+    affine_400 = (1.0, 0.0, 400.0, 0.0, 1.0, 0.0)
+    tracker.predict_only(camera_transform=affine_400)
+    resumed = tracker.update(
+        [d(1250, 50, appearance=appearance)],
+        camera_transform=affine_400,
+    )[0]
+
+    assert resumed.track_id == first
+    assert resumed.recoveries == 1

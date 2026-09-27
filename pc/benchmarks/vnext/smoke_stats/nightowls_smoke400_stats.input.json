@@ -1,0 +1,33 @@
+{
+  "schema": "spectratrack-smoke-promotion-input-v1",
+  "confidence": 0.95,
+  "selection": {
+    "corpus_revision": "nightowls-public-slice5000-r1",
+    "corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
+    "canonical_ground_truth_sha256": "6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc",
+    "smoke_revision": "nightowls-public-smoke400-r1",
+    "smoke_corpus_sha256": "70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162",
+    "smoke_jsonl_sha256": "45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8",
+    "selection_manifest_sha256": "3f65339609de78e7ef255e94875727a4bb26c4769231763a2660e1bb8f15905e",
+    "selection_proof_sha256": "0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940",
+    "selection_identity_sha256": "2a4da42830400b14405de01a82e3b3bee3d17a07db0be067f752545664fc6186",
+    "selection_seed": "spectratrack-round2-nightowls-smoke400-v1",
+    "selection_method": "one deterministic metadata-only hash-ranked pick per logical video, then deterministic global hash fill",
+    "inference_design": "deterministic_sequence_coverage_plus_hash_fill",
+    "a5_source_commit": "2c40b522433b986a213689f7152834d2933e29c5",
+    "population_frames": 5000,
+    "sample_frames": 400,
+    "frozen_before_candidate_scoring": true
+  },
+  "population_composition": {
+    "frames": 5000,
+    "positive_frames": 605,
+    "objects": 969
+  },
+  "sample_composition": {
+    "frames": 400,
+    "positive_frames": 109,
+    "objects": 183
+  },
+  "metrics": []
+}

@@ -23,6 +23,44 @@ def make_frame(frame: int, targets: int, width: int = 1920, height: int = 1080) 
     return out
 
 
+def quality_probe() -> tuple[int, int]:
+    appearance_a = tuple([1.0] + [0.0] * 7)
+    appearance_b = tuple([0.0, 1.0] + [0.0] * 6)
+
+    crossing = MultiObjectTracker(min_hits=1, max_center_ratio=2.5)
+    initial = crossing.update([
+        Detection((0, 100, 100, 200), 0.9, 0, "obj", appearance_a),
+        Detection((300, 100, 400, 200), 0.9, 0, "obj", appearance_b),
+    ])
+    a_id = min(initial, key=lambda t: t.center[0]).track_id
+    b_id = max(initial, key=lambda t: t.center[0]).track_id
+    tracks = initial
+    for xa, xb in [(60, 240), (120, 180), (180, 120), (240, 60)]:
+        tracks = crossing.update([
+            Detection((xa, 100, xa + 100, 200), 0.9, 0, "obj", appearance_a),
+            Detection((xb, 100, xb + 100, 200), 0.9, 0, "obj", appearance_b),
+        ])
+    by_id = {track.track_id: track for track in tracks}
+    crossing_switches = int(
+        a_id not in by_id
+        or b_id not in by_id
+        or by_id[a_id].center[0] <= by_id[b_id].center[0]
+    )
+
+    reappearance = MultiObjectTracker(max_missed=2, min_hits=1, reactivation_window=6)
+    first_id = reappearance.update([
+        Detection((50, 50, 150, 150), 0.9, 0, "obj", appearance_a)
+    ])[0].track_id
+    reappearance.update([])
+    reappearance.update([])
+    reappearance.update([])
+    resumed = reappearance.update([
+        Detection((80, 50, 180, 150), 0.9, 0, "obj", appearance_a)
+    ])[0]
+    reappearance_switches = int(resumed.track_id != first_id)
+    return crossing_switches, reappearance_switches
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="Synthetic SpectraTrack tracker benchmark")
     p.add_argument("--frames", type=int, default=3000)
@@ -41,8 +79,15 @@ def main() -> int:
     fps = args.frames / max(elapsed, 1e-9)
     print(f"frames={args.frames} targets={args.targets} observations={observations}")
     print(f"elapsed={elapsed:.3f}s tracker_fps={fps:.1f} active_tracks={len(tracker.tracks)}")
+    crossing_switches, reappearance_switches = quality_probe()
+    print(
+        f"quality crossing_id_switches={crossing_switches} "
+        f"reappearance_id_switches={reappearance_switches}"
+    )
     if fps < 30:
         raise SystemExit("Synthetic tracker benchmark below 30 FPS")
+    if crossing_switches or reappearance_switches:
+        raise SystemExit("Synthetic tracker identity quality probe failed")
     return 0
 
 

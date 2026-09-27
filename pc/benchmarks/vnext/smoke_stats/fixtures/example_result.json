@@ -1,0 +1,164 @@
+{
+  "claims": {
+    "authoritative_acceptance_requires_full_frozen_corpus": true,
+    "simple_random_inference_supported": true,
+    "smoke_is_triage_only": true,
+    "smoke_pass_is_final_benchmark_claim": false
+  },
+  "compute_budget": {
+    "break_even_survival_rate": 0.92,
+    "full_to_smoke_frame_ratio": 12.5,
+    "model": "all candidates pay smoke cost; survivors additionally pay one full-corpus run",
+    "scenarios": [
+      {
+        "candidate_survival_rate": 0.0,
+        "cost_vs_all_full": 0.08,
+        "expected_savings_fraction": 0.92
+      },
+      {
+        "candidate_survival_rate": 0.1,
+        "cost_vs_all_full": 0.18,
+        "expected_savings_fraction": 0.8200000000000001
+      },
+      {
+        "candidate_survival_rate": 0.25,
+        "cost_vs_all_full": 0.33,
+        "expected_savings_fraction": 0.6699999999999999
+      },
+      {
+        "candidate_survival_rate": 0.5,
+        "cost_vs_all_full": 0.58,
+        "expected_savings_fraction": 0.42000000000000004
+      },
+      {
+        "candidate_survival_rate": 0.75,
+        "cost_vs_all_full": 0.83,
+        "expected_savings_fraction": 0.17000000000000004
+      },
+      {
+        "candidate_survival_rate": 1.0,
+        "cost_vs_all_full": 1.08,
+        "expected_savings_fraction": -0.08000000000000007
+      }
+    ],
+    "smoke_fraction_of_full": 0.08
+  },
+  "confidence": 0.95,
+  "coverage": {
+    "objects": {
+      "expected": 80.0,
+      "observed": 82,
+      "observed_rate_per_frame_interval": {
+        "estimate": 0.205,
+        "lower": 0.16303727914524174,
+        "upper": 0.25446209850297236
+      },
+      "poisson_style_note": "object counts can cluster within frames; this interval is descriptive, not an independence claim"
+    },
+    "population": {
+      "frames": 5000,
+      "objects": 1000,
+      "positive_frames": 600
+    },
+    "positive_frames": {
+      "expected": 48.0,
+      "hypergeometric_sd": 6.2344665942438855,
+      "observed": 50,
+      "observed_fraction_interval": {
+        "estimate": 0.125,
+        "lower": 0.09611512323676383,
+        "upper": 0.16101909751395857
+      },
+      "standardized_deviation": 0.32079729192013734
+    },
+    "sample": {
+      "frames": 400,
+      "objects": 82,
+      "positive_frames": 50
+    },
+    "selection_inference_design": "simple_random_without_replacement",
+    "simple_random_reference_only": false
+  },
+  "rare_event_sensitivity": {
+    "assumption": "exact under a simple random sample without replacement; otherwise a reference sensitivity model only",
+    "event_frame_capture_probability": {
+      "1": 0.07999999999999918,
+      "10": 0.5659518186151458,
+      "100": 0.9997807851980446,
+      "2": 0.1536147229445889,
+      "20": 0.8119308413984285,
+      "5": 0.34103316150835405,
+      "50": 0.9848617808548307
+    },
+    "minimum_full_corpus_event_frames_for_capture_probability": {
+      "50pct": 9,
+      "80pct": 20,
+      "90pct": 28,
+      "95pct": 36
+    },
+    "reference_model": "simple_random_without_replacement",
+    "reference_only": false,
+    "selection_inference_design": "simple_random_without_replacement"
+  },
+  "resolution_limits": {
+    "interpretation": "effects smaller than these zero-event/zero-change ceilings cannot be ruled out merely because the smoke sample observes none; rare subgroup and clustered-object effects are less identifiable still",
+    "paired_zero_change_half_width": {
+      "all_frames": 0.009512294334296503,
+      "objects": 0.0447506236901003,
+      "positive_frames": 0.07134759913335868
+    },
+    "zero_count_poisson_upper_rate_per_frame": 0.009170029580434377,
+    "zero_observed_frame_event_upper_probability": 0.0074613555287995625,
+    "zero_observed_object_event_upper_probability": 0.03587403171067116,
+    "zero_observed_positive_frame_event_upper_probability": 0.058155079116972264
+  },
+  "schema": "spectratrack-smoke-promotion-v1",
+  "selection": {
+    "corpus_revision": "fixture-corpus-r1",
+    "corpus_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "frozen_before_candidate_scoring": true,
+    "inference_design": "simple_random_without_replacement",
+    "population_frames": 5000,
+    "sample_frames": 400,
+    "selection_identity_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "selection_manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "selection_method": "deterministic_outcome_independent_without_replacement"
+  },
+  "triage": {
+    "category": "AMBIGUOUS",
+    "confidence": 0.95,
+    "final_benchmark_claim": false,
+    "full_corpus_required_for_acceptance": true,
+    "metrics": [
+      {
+        "benefit_interval": {
+          "estimate": 0.07317073170731707,
+          "improvements": 8,
+          "lower": -0.034365095627941405,
+          "regressions": 2,
+          "upper": 0.1741576872830487
+        },
+        "kind": "paired_binary_delta",
+        "maximum_tolerable_harm": 0.02,
+        "minimum_material_improvement": 0.05,
+        "name": "person_recall",
+        "role": "primary",
+        "state": "AMBIGUOUS"
+      },
+      {
+        "benefit_interval": {
+          "estimate": 0.0049999999999999975,
+          "lower": -0.03049487190669361,
+          "upper": 0.04043852034912283
+        },
+        "kind": "poisson_rate_delta",
+        "maximum_tolerable_harm": 0.01,
+        "minimum_material_improvement": 0.0,
+        "name": "false_positive_rate",
+        "role": "guardrail",
+        "state": "AMBIGUOUS"
+      }
+    ],
+    "reason": "smoke evidence overlaps a material boundary or is insufficient"
+  }
+}
