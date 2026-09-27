@@ -12,7 +12,7 @@ import cv2
 
 from ..detector import YoloOnnxDetector
 from ..integrity import sha256_file
-from ..qa_benchmark import GroundTruthFrame, GroundTruthObject, load_ground_truth
+from ..qa_benchmark import GroundTruthObject, load_ground_truth
 from .vnext_detection_corpus import _source_image_path, _timestamp_s
 from .vnext_detection_fusion import (
     FusionCandidate,
