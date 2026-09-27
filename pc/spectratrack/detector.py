@@ -338,11 +338,14 @@ class YoloOnnxDetector:
                 local_thresholds = dict(self.class_thresholds)
                 local_thresholds["person"] = float(threshold)
                 started = time.perf_counter()
-                detections = self._detect_once(
-                    tile_bgr,
-                    local_thresholds,
-                    allowed_class_ids=allowed_tile_ids,
-                )
+                if allowed_tile_ids is None:
+                    detections = self._detect_once(tile_bgr, local_thresholds)
+                else:
+                    detections = self._detect_once(
+                        tile_bgr,
+                        local_thresholds,
+                        allowed_class_ids=allowed_tile_ids,
+                    )
                 elapsed_ms = (time.perf_counter() - started) * 1000.0
                 if threshold <= probe_threshold + 1e-12:
                     self._add_policy_ms("raw_roi_passes", elapsed_ms)
@@ -371,11 +374,14 @@ class YoloOnnxDetector:
             for x1, y1, x2, y2 in regions:
                 tile = frame_bgr[y1:y2, x1:x2]
                 roi_started = time.perf_counter()
-                tile_detections = self._detect_once(
-                    tile,
-                    thresholds,
-                    allowed_class_ids=allowed_tile_ids,
-                )
+                if allowed_tile_ids is None:
+                    tile_detections = self._detect_once(tile, thresholds)
+                else:
+                    tile_detections = self._detect_once(
+                        tile,
+                        thresholds,
+                        allowed_class_ids=allowed_tile_ids,
+                    )
                 self._add_policy_ms("raw_roi_passes", (time.perf_counter() - roi_started) * 1000.0)
                 self._increment_policy_count("raw_roi_calls")
                 for detection in tile_detections:
