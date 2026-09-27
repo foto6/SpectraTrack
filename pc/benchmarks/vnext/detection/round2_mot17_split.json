@@ -1,0 +1,26 @@
+{
+  "schema": "spectratrack-vnext-round2-mot17-split-v1",
+  "corpus_revision": "mot17-public-r1",
+  "purpose": "Freeze development vs held-out sequence identities before Round-2 multi-sequence validation.",
+  "development": {
+    "videos": [
+      "golden/public/mot17/MOT17-04"
+    ],
+    "rationale": "Round-2 evidence-aware fusion policy and thresholds were already developed on the first 600 frames of MOT17-04; the entire logical sequence is therefore excluded from held-out claims."
+  },
+  "held_out": {
+    "videos": [
+      "golden/public/mot17/MOT17-02",
+      "golden/public/mot17/MOT17-05",
+      "golden/public/mot17/MOT17-09",
+      "golden/public/mot17/MOT17-10",
+      "golden/public/mot17/MOT17-11",
+      "golden/public/mot17/MOT17-13"
+    ],
+    "rule": "Do not use held-out metrics to retune evidence thresholds or fusion settings in Round 2."
+  },
+  "separate_dense_safety": {
+    "corpus_revision": "crowdhuman-val-fbox-r1",
+    "role": "Detection/crowd/dense-safety validation only; no tracking metrics and no MOT17 threshold tuning."
+  }
+}

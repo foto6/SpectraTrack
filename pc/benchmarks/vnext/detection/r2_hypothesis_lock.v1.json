@@ -1,0 +1,226 @@
+{
+  "algorithm": {
+    "admission": {
+      "detection_center_must_be_inside_expanded_trigger_union": true,
+      "final_merge_iou": 0.55,
+      "final_merge_method": "hard-nms",
+      "label": "person",
+      "new_confidence_threshold": false,
+      "score_floor": 0.12,
+      "trigger_union_expansion_ratio": 0.15
+    },
+    "global_smaller_tiles": false,
+    "group_rank_order": [
+      "smallest_median_bbox_height",
+      "largest_distinct_source_count",
+      "largest_candidate_count",
+      "lexicographically_smallest_canonical_group_signature"
+    ],
+    "grouping": {
+      "min_distinct_source_ids": 2,
+      "minimum_group_candidates": 2,
+      "pair_relation": {
+        "iou_at_least": 0.15,
+        "or_center_distance_over_min_height_at_most": 0.75
+      },
+      "same_label_only": true
+    },
+    "inference": {
+      "conf": 0.35,
+      "decoder_iou": 0.45,
+      "enhancement": "off",
+      "max_extra_onnx_calls_per_frame": 1,
+      "model": "same_as_control",
+      "person_conf": 0.12,
+      "repeat_rescue_on_same_frame": false
+    },
+    "max_trigger_groups_per_frame": 1,
+    "microtile": {
+      "center": "selected_group_union_bbox_center",
+      "clamp_to_frame": true,
+      "detector_input_size": 960,
+      "skip_if_frame_dimension_below_source_size": true,
+      "source_size_px": 512,
+      "square": true
+    },
+    "trigger_source": "accepted_pre_fusion_control_person_candidates_only"
+  },
+  "candidate_id": "a1-r2-conditional-crowd-microtile512-v1",
+  "compute_budget": {
+    "baseline_control_calls": "unchanged",
+    "budget_violation_disposition": "REJECT_INVALID",
+    "max_extra_onnx_calls_over_n_frames": "N",
+    "max_extra_onnx_calls_per_frame": 1,
+    "max_rescue_rois_per_frame": 1,
+    "no_second_rescue_pass": true
+  },
+  "control_contract": {
+    "conf": 0.35,
+    "decoder_iou": 0.45,
+    "enhancement": "off",
+    "fusion_iou": 0.55,
+    "fusion_method": "hard-nms",
+    "input_size": 960,
+    "model_family": "current-yolo-compatible-onnx",
+    "person_conf": 0.12,
+    "production_behavior_changed": false,
+    "tile_overlap": 0.2,
+    "tile_size": 640
+  },
+  "evidence_scope": {
+    "allowed_only": [
+      {
+        "commit": "9773947b06edad1c44c20773092f75c212ad517b",
+        "kind": "a7_discovery",
+        "report_digest": "sha256:ad51f9b7c3f4629155298215a52004092ea1b95bd220c4ed6a608e464971afec"
+      },
+      {
+        "kind": "a1_r1_summary",
+        "sha256": "e7ec752be2e59157d5dae273c5bdae7352e32e9b14ea8a4f1c167f7fd365c6a8",
+        "source_commit": "c55c265189404b68f641c860defff4b6092a2e4d"
+      },
+      {
+        "kind": "a1_r1_control",
+        "sha256": "35ed2221875c91416c17970eeb8d560c8e38c3b3f8241e8a9052c1b56696fee9",
+        "source_commit": "c55c265189404b68f641c860defff4b6092a2e4d"
+      },
+      {
+        "disposition": "REJECT",
+        "kind": "a1_r1_rejected_tile512",
+        "sha256": "6cdeb1b7414c5dda2a59148a4230993ce51db6ab546e0e79707137706dbe1719",
+        "source_commit": "c55c265189404b68f641c860defff4b6092a2e4d"
+      },
+      {
+        "kind": "a1_r1_candidate_matrix",
+        "sha256": "394df1038c060a483a4695b6511c379389f2503df39cbf352f1b93a4a1732063"
+      }
+    ],
+    "forbidden": [
+      "nightowls-public-smoke400-r2 ground truth",
+      "nightowls-public-smoke400-r2 images",
+      "nightowls-public-smoke400-r2 predictions or metrics",
+      "nightowls-public-holdout4200-r1 ground truth",
+      "nightowls-public-holdout4200-r1 images",
+      "nightowls-public-holdout4200-r1 predictions or metrics",
+      "FULL5000 reruns or rescoring"
+    ],
+    "holdout4200_inspected": false,
+    "holdout4200_scored": false,
+    "r2_inspected": false,
+    "r2_scored": false
+  },
+  "expected_taxonomy_effects": [
+    {
+      "category": "low_contrast_night_darkness",
+      "direction": "decrease",
+      "scope": "triggered adjacency subset only"
+    },
+    {
+      "category": "missed_small_person",
+      "direction": "decrease",
+      "scope": "triggered adjacency subset only"
+    },
+    {
+      "category": "occlusion_crowd",
+      "direction": "decrease",
+      "scope": "primary target"
+    },
+    {
+      "category": "duplicate_fragmented_detection",
+      "direction": "unchanged",
+      "scope": "must remain bounded by single ROI and hard-NMS"
+    },
+    {
+      "category": "unknown",
+      "direction": "unchanged",
+      "scope": "false-positive cause must not materially worsen"
+    }
+  ],
+  "hypothesis": {
+    "mechanism": "Keep the full control pass unchanged. Use only already-accepted pre-fusion person candidates from the unchanged full-frame plus 640px-tile control to identify at most one crowd/overlap cluster. Run exactly one additional 512px source-space crop for that cluster, using the unchanged model/input size/confidence/decoder settings and no enhancement. Admit only person detections centered inside the bounded trigger region, then use the existing hard-NMS final merge.",
+    "non_goals": [
+      "No generic confidence-threshold search",
+      "No global 512px tiling",
+      "No enhancement or low-light preprocessing",
+      "No revival of evidence-aware, conservative-NMM, weighted fusion, or other previously rejected fusion policies",
+      "No production/control behavior change before later blinded gates"
+    ],
+    "summary": "A single evidence-triggered 512px microtile around one crowded/overlapping baseline person cluster can recover some small or occluded low-contrast pedestrians without the global duplicate/false-positive pressure caused by replacing all 640px tiles with 512px tiles."
+  },
+  "inspired_by": {
+    "cluster_ids": [
+      "baseline:low_contrast_night_darkness",
+      "baseline:missed_small_person",
+      "baseline:occlusion_crowd",
+      "a1_r1:prefusion_duplicate_pressure"
+    ],
+    "discovery_commit": "9773947b06edad1c44c20773092f75c212ad517b",
+    "discovery_report_digest": "sha256:ad51f9b7c3f4629155298215a52004092ea1b95bd220c4ed6a608e464971afec"
+  },
+  "lock_digest": "sha256:350d92339030c2f1fd781951f25c13f1b96aec5f0a607e3796df3ebf4e6e6cfc",
+  "next_stage_policy": {
+    "holdout4200_is_final_independent_nightowls_evidence_for_cycle": true,
+    "holdout4200_only_after_r2_promotion": true,
+    "no_full5000_run_for_this_lock": true,
+    "no_r1_rescoring": true,
+    "r2_is_first_eligible_blinded_evidence": true
+  },
+  "predicted_failure_modes": [
+    "Crowd or clutter clusters may trigger an extra crop without containing a missed pedestrian, increasing false positives.",
+    "The microtile may split one real person into multiple boxes whose overlap is below hard-NMS suppression, increasing duplicate pressure.",
+    "Isolated low-contrast misses with no neighboring accepted baseline person evidence are intentionally not addressed.",
+    "A 512px crop can remove useful context for large or edge-of-frame people.",
+    "Crowd-heavy clips may activate the one-call budget on many frames, increasing compute even if quality does not improve."
+  ],
+  "r1_discovery_facts": {
+    "control_false_negatives": 48,
+    "low_contrast_night_darkness_false_negatives": 48,
+    "occlusion_crowd_false_negatives": 17,
+    "rejected_tile512_fp_delta": 75,
+    "rejected_tile512_prefusion_duplicate_delta": 162,
+    "rejected_tile512_tp_delta": 1,
+    "small_person_false_negatives": 10
+  },
+  "r2_decision_gates": {
+    "ambiguous": "Any valid R2 result that is neither hard-rejected nor fully satisfies every promotion condition remains AMBIGUOUS and must not be interpreted as promotion.",
+    "invalid_or_hard_reject": {
+      "any_control_threshold_or_fusion_change": true,
+      "enhancement_not_off": true,
+      "extra_onnx_calls_per_frame_above": 1,
+      "f1_delta_at_most": -0.005,
+      "false_positive_increase": {
+        "absolute_at_least": 10,
+        "relative_at_least": 0.15,
+        "require_both": true
+      },
+      "global_512_tiling_enabled": true,
+      "precision_delta_at_most": -0.01,
+      "prefusion_duplicate_increase": {
+        "absolute_at_least": 20,
+        "relative_at_least": 0.5,
+        "require_both": true
+      },
+      "provenance_or_lock_mismatch": true,
+      "recall_delta_at_most": -0.005
+    },
+    "promote_to_holdout4200": {
+      "compute_budget_must_pass": true,
+      "max_bbox_localization_iou_drop": 0.01,
+      "max_center_error_gt_diag_ratio_increase": 0.02,
+      "max_false_positive_relative_increase": 0.05,
+      "max_precision_drop": 0.005,
+      "max_prefusion_duplicate_relative_increase": 0.25,
+      "min_f1_delta": 0.005,
+      "min_recall_delta": 0.01,
+      "targeted_cluster_requirements": {
+        "missed_small_person_fn_delta_at_most": 0,
+        "occlusion_crowd_fn_delta_at_most_if_baseline_cluster_present": -1
+      }
+    }
+  },
+  "schema": "spectratrack-a1-r2-hypothesis-lock-v1",
+  "source_head_before_lock": "9362d0db5fd5eca74f2384d93cbb1faf8ebfb612",
+  "stage": "r2_preregistered_only",
+  "status": "LOCKED_NO_R2_INSPECTION_OR_SCORING",
+  "version": 1
+}

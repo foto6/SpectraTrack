@@ -1,0 +1,198 @@
+# A1 vNext detection / fusion research
+
+Research-only artifacts for agent/vnext-detection.
+
+Canonical start:
+
+`vnext-base @ d03af3ae6425d3ea2e4d52e25389fecc09957394`
+
+Nothing in this directory is production detector policy.
+
+## Stage 1: cross-pass fusion
+
+The research harness intentionally distinguishes:
+
+1. **decoder-local NMS** inside each full-frame or tile inference — preserved from the current detector;
+2. **final cross-pass fusion** across already-decoded full-frame/tile detections — the isolated variable under study.
+
+Candidates:
+
+- `hard-nms`: current class-aware winner-takes-box behavior;
+- `conservative-nmm`: direct-to-seed GreedyNMM-style grouping with IoU, center-distance and size-ratio safety gates; geometry is the group envelope;
+- `weighted`: the same conservative grouping, but score/evidence-weighted bbox coordinates.
+
+The conservative candidates deliberately do not use transitive merge chains. A candidate must match the highest-score seed directly. This is intended to reduce accidental merges of nearby people in crowds.
+
+Default synthetic config:
+
+- final fusion IoU: `0.55`
+- center-distance gate: `0.20 * min(box dimensions)`
+- max width/height ratio: `1.80`
+- score power: `1.0`
+- full-frame evidence weight: `1.0`
+- tile evidence weight: `1.0`
+- evaluation IoU: `0.50`
+
+Synthetic cases cover:
+
+- alternating full-frame/tile score winner;
+- tile-boundary duplicates;
+- full-frame + tile duplicates;
+- nearby people;
+- partial-person vs full-body geometry;
+- tiny person;
+- frame-edge person;
+- two distinct people with strongly overlapping boxes.
+
+Regenerate the synthetic result from `pc/`:
+
+```powershell
+python -m spectratrack.research.vnext_detection_fusion synthetic `
+  --source-commit d03af3ae6425d3ea2e4d52e25389fecc09957394 `
+  --output benchmarks/vnext/detection/synthetic_fusion_report.json
+```
+
+The committed synthetic report is only a deterministic failure/safety fixture. It is **not** CCTV quality evidence and must not be used to claim recall or localization improvement on real footage.
+
+## Pre-fusion dump
+
+Capture the existing current-YOLO full-frame/tile outputs **after decoder-local NMS but before final cross-pass merge**:
+
+```powershell
+python -m spectratrack.research.vnext_detection_fusion collect `
+  --model ..\models\yolo11n.onnx `
+  --video D:\data\clip.mp4 `
+  --video-id clip.mp4 `
+  --source-commit <exact-branch-sha> `
+  --output benchmarks\vnext\detection\clip.prefusion.jsonl `
+  --input-size 640 `
+  --conf 0.35 `
+  --decoder-iou 0.45 `
+  --person-conf 0.12 `
+  --tile-size 640 `
+  --tile-overlap 0.20
+```
+
+The dump records source commit, video/model hashes, provider, exact detector/tile config, dimensions/timestamps, candidate evidence source, policy-run count, actual inference-call count, detector stage timings, and wall time.
+
+Enhancement is intentionally excluded from this A1 collector because A3 owns enhancement semantics.
+
+## Canonical tracker replay
+
+Convert one frozen pre-fusion dump into canonical `spectratrack-detection-replay-v1` without detector inference:
+
+```powershell
+python -m spectratrack.research.vnext_detection_fusion replay `
+  --input benchmarks\vnext\detection\clip.prefusion.jsonl `
+  --output benchmarks\vnext\detection\clip.weighted.replay.jsonl `
+  --method weighted
+```
+
+Use `--method hard-nms`, `conservative-nmm`, or `weighted`.
+
+The replay metadata records the selected cross-pass fusion config. Detection records contain only canonical bbox/score/class/label fields plus `appearance: null`, so A2 can consume the same frozen detector evidence without rerunning detector inference.
+
+## Real-data gate
+
+No fusion candidate is recommended for production integration until A5 publishes a frozen, human-confirmed CCTV corpus revision and all candidates are evaluated on the exact same detector outputs / ground truth.
+
+The synthetic result currently supports only this research conclusion:
+
+- hard NMS has a reproducible winner-flip failure mode by construction;
+- conservative grouping can avoid the included high-overlap-distinct-person merge case;
+- envelope NMM can worsen localization geometry;
+- weighted coordinate fusion is worth continuing to real-corpus evaluation;
+- none of these statements proves a real CCTV quality gain.
+
+
+## Round 2 fixed public validation split
+
+Committed split metadata:
+
+`pc/benchmarks/vnext/detection/round2_mot17_split.json`
+
+Round-2 development sequence:
+
+- `golden/public/mot17/MOT17-04`
+
+Reason: the evidence-aware policy and threshold grid were already developed on the first 600 frames of this logical sequence, so the whole sequence is excluded from held-out claims.
+
+Round-2 held-out MOT17 sequences:
+
+- `golden/public/mot17/MOT17-02`
+- `golden/public/mot17/MOT17-05`
+- `golden/public/mot17/MOT17-09`
+- `golden/public/mot17/MOT17-10`
+- `golden/public/mot17/MOT17-11`
+- `golden/public/mot17/MOT17-13`
+
+CrowdHuman validation remains separate dense-detection safety evidence and is not part of the MOT17 tuning split.
+
+The held-out metrics must not be used to retune evidence thresholds or fusion parameters in this Round-2 cycle. If the held-out candidate fails, record the failure and start a new explicitly versioned research cycle rather than silently tuning on the held-out set.
+
+Example held-out invocation from `pc/`:
+
+```powershell
+python -m spectratrack.research.vnext_detection_corpus `
+  --model E:\SpectraTrack\yolo11x.onnx `
+  --ground-truth C:\Users\foto6\SpectraTrack-data\imports\mot17-public.jsonl `
+  --video-root C:\Users\foto6\SpectraTrack-data\public\MOT17\MOT17 `
+  --output C:\Users\foto6\SpectraTrack-data\runs\a1-round2-mot17-heldout.json `
+  --prefusion-dir C:\Users\foto6\SpectraTrack-data\runs\a1-round2-prefusion-mot17 `
+  --resume --per-video `
+  --source-commit <exact-A1-code-sha> `
+  --corpus-revision mot17-public-r1 `
+  --include-video golden/public/mot17/MOT17-02 `
+  --include-video golden/public/mot17/MOT17-05 `
+  --include-video golden/public/mot17/MOT17-09 `
+  --include-video golden/public/mot17/MOT17-10 `
+  --include-video golden/public/mot17/MOT17-11 `
+  --include-video golden/public/mot17/MOT17-13
+```
+
+Do not add `MOT17-04` to that held-out command.
+
+
+## NightOwls SMOKE400 triage
+
+A1 has a separate research-only triage runner; canonical `qa_benchmark.py` semantics are unchanged.
+
+Locked matrix:
+
+`benchmarks/vnext/detection/smoke400_candidate_matrix.json`
+
+Validate it before scoring:
+
+```powershell
+python -m spectratrack.research.vnext_detection_triage validate-matrix `
+  --matrix benchmarks/vnext/detection/smoke400_candidate_matrix.json
+```
+
+Run only after A5 supplies the exact externally frozen selection proof/revision/hash:
+
+```powershell
+python -m spectratrack.research.vnext_detection_triage run `
+  --matrix benchmarks/vnext/detection/smoke400_candidate_matrix.json `
+  --frame-manifest E:\SpectraTrack-data\imports\nightowls-public-smoke400-r1\nightowls-public-smoke400-r1.selection-proof.json `
+  --frame-manifest-sha256 0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940 `
+  --frame-manifest-revision nightowls-public-smoke400-r1 `
+  --model E:\SpectraTrack\yolo11x.onnx `
+  --ground-truth E:\SpectraTrack-data\imports\nightowls-public-smoke400-r1\nightowls-public-smoke400-r1.jsonl `
+  --video-root E:\SpectraTrack-data\public\NightOwls `
+  --output-dir E:\SpectraTrack-data\runs\a1-nightowls-smoke400 `
+  --summary E:\SpectraTrack-data\runs\a1-nightowls-smoke400\summary.json `
+  --source-commit <exact-A1-code-SHA> `
+  --corpus-revision nightowls-public-smoke400-r1 `
+  --resume
+```
+
+The runner hashes result/completion/replay artifacts, records the exact committed matrix configuration, emits static bbox/center quality and an error taxonomy, and never launches FULL5000. Enhancement is locked OFF. The current smoke candidate changes only source tile size 640 -> 512; thresholds and hard-NMS fusion are unchanged.
+
+
+### SMOKE400 result вЂ” tile512 scale hypothesis
+
+Experiment source commit `c55c265189404b68f641c860defff4b6092a2e4d`; exact-head CI run `36314888816` SUCCESS.
+
+On A5 `nightowls-public-smoke400-r1`, tile512 versus the unchanged tile640 hard-NMS control moved TP/FP/FN from 135/126/48 to 136/201/47. Precision/recall/F1 moved 0.517241/0.737705/0.608108 -> 0.403561/0.743169/0.523077. Static bbox IoU moved 0.713630 -> 0.712952 and normalized center error 0.031420 -> 0.032514.
+
+Pre-locked triage decision: **REJECT**. The one net FN recovery is outweighed by +75 FP and an 8.50 pp F1 loss. FULL5000 is not run/requested. Summary SHA-256: `e7ec752be2e59157d5dae273c5bdae7352e32e9b14ea8a4f1c167f7fd365c6a8`.

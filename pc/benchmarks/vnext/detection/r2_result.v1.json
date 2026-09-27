@@ -1,0 +1,235 @@
+{
+  "a6_stage_policy": {
+    "ci": 36317780050,
+    "commit": "1a63c0a981c21e57dbe679e388046eaaaa0d5577",
+    "first_allowed_r2_exposure": true,
+    "full5000_run": false,
+    "holdout4200_inspected": false,
+    "holdout4200_scored": false,
+    "retuned_after_r2": false
+  },
+  "candidate": {
+    "clusters": {
+      "occlusion_crowd_occluded_true": {
+        "fn": 1,
+        "ground_truth": 6,
+        "recall": 0.8333333333333334,
+        "tp": 5
+      },
+      "small_person_height_lt_48": {
+        "fn": 0,
+        "ground_truth": 3,
+        "recall": 1.0,
+        "tp": 3
+      }
+    },
+    "metrics": {
+      "area_jitter_ratio": null,
+      "bbox_localization_iou": 0.7563635177356771,
+      "center_error_gt_diag_ratio": 0.031389577690108646,
+      "center_error_px": 3.4988086492398853,
+      "center_jitter_px": null,
+      "config": {
+        "center_ratio": 0.2,
+        "full_weight": 1.0,
+        "iou_threshold": 0.55,
+        "match_iou": 0.5,
+        "score_power": 1.0,
+        "size_ratio": 1.8,
+        "tile_weight": 1.0
+      },
+      "duplicate_count_before_fusion": 122,
+      "error_taxonomy": {
+        "false_negative_by_attribute": {
+          "nightowls_difficult_false": 9,
+          "nightowls_difficult_true": 1,
+          "nightowls_occluded_false": 9,
+          "nightowls_occluded_true": 1,
+          "nightowls_pose_back": 3,
+          "nightowls_pose_left": 2,
+          "nightowls_pose_nan": 1,
+          "nightowls_pose_right": 4,
+          "nightowls_truncated_false": 10
+        },
+        "false_negative_by_size": {
+          "height_24_47": 0,
+          "height_48_95": 7,
+          "height_ge_96": 3
+        },
+        "false_negative_by_tag": {
+          "night_dark": 10
+        },
+        "false_negative_total": 10,
+        "false_positive_total": 110,
+        "representative_false_negatives": [
+          "golden/public/nightowls-val-slice/recording-34#33#index:2",
+          "golden/public/nightowls-val-slice/recording-34#37#index:0",
+          "golden/public/nightowls-val-slice/recording-34#38#index:0",
+          "golden/public/nightowls-val-slice/recording-36#31#index:2",
+          "golden/public/nightowls-val-slice/recording-36#72#index:1",
+          "golden/public/nightowls-val-slice/recording-36#74#index:0",
+          "golden/public/nightowls-val-slice/recording-36#83#index:0",
+          "golden/public/nightowls-val-slice/recording-36#87#index:2",
+          "golden/public/nightowls-val-slice/recording-36#93#index:4",
+          "golden/public/nightowls-val-slice/recording-38#41#index:0"
+        ]
+      },
+      "f1": 0.5121951219512196,
+      "fn": 10,
+      "fp": 110,
+      "fusion_mistakes": 0,
+      "height_jitter_px": null,
+      "jitter_pair_count": 0,
+      "method": "hard-nms",
+      "precision": 0.36416184971098264,
+      "recall": 0.863013698630137,
+      "temporal_iou": null,
+      "tp": 63,
+      "width_jitter_px": null
+    }
+  },
+  "candidate_config_digest": "sha256:da906156a54e87cfca55f5c5fc0574a94ae9919835a25508321662078d4af10b",
+  "candidate_id": "a1-r2-conditional-crowd-microtile512-v1",
+  "compute": {
+    "activation_rate": 0.1725,
+    "activations": 69,
+    "admitted_microtile_detections": 93,
+    "candidate_represented_onnx_calls": 1269,
+    "control_onnx_calls": 1200,
+    "extra_onnx_calls": 69,
+    "locked_max_extra_onnx_calls_per_frame": 1,
+    "max_extra_onnx_calls_observed_per_frame": 1
+  },
+  "control": {
+    "clusters": {
+      "occlusion_crowd_occluded_true": {
+        "fn": 1,
+        "ground_truth": 6,
+        "recall": 0.8333333333333334,
+        "tp": 5
+      },
+      "small_person_height_lt_48": {
+        "fn": 0,
+        "ground_truth": 3,
+        "recall": 1.0,
+        "tp": 3
+      }
+    },
+    "metrics": {
+      "area_jitter_ratio": null,
+      "bbox_localization_iou": 0.7595456128268063,
+      "center_error_gt_diag_ratio": 0.030611589165909937,
+      "center_error_px": 3.4156900814771123,
+      "center_jitter_px": null,
+      "config": {
+        "center_ratio": 0.2,
+        "full_weight": 1.0,
+        "iou_threshold": 0.55,
+        "match_iou": 0.5,
+        "score_power": 1.0,
+        "size_ratio": 1.8,
+        "tile_weight": 1.0
+      },
+      "duplicate_count_before_fusion": 73,
+      "error_taxonomy": {
+        "false_negative_by_attribute": {
+          "nightowls_difficult_false": 9,
+          "nightowls_difficult_true": 1,
+          "nightowls_occluded_false": 9,
+          "nightowls_occluded_true": 1,
+          "nightowls_pose_back": 3,
+          "nightowls_pose_left": 2,
+          "nightowls_pose_nan": 1,
+          "nightowls_pose_right": 4,
+          "nightowls_truncated_false": 10
+        },
+        "false_negative_by_size": {
+          "height_24_47": 0,
+          "height_48_95": 7,
+          "height_ge_96": 3
+        },
+        "false_negative_by_tag": {
+          "night_dark": 10
+        },
+        "false_negative_total": 10,
+        "false_positive_total": 108,
+        "representative_false_negatives": [
+          "golden/public/nightowls-val-slice/recording-34#33#index:2",
+          "golden/public/nightowls-val-slice/recording-34#37#index:0",
+          "golden/public/nightowls-val-slice/recording-34#38#index:0",
+          "golden/public/nightowls-val-slice/recording-36#31#index:2",
+          "golden/public/nightowls-val-slice/recording-36#72#index:1",
+          "golden/public/nightowls-val-slice/recording-36#74#index:0",
+          "golden/public/nightowls-val-slice/recording-36#83#index:0",
+          "golden/public/nightowls-val-slice/recording-36#87#index:2",
+          "golden/public/nightowls-val-slice/recording-36#93#index:4",
+          "golden/public/nightowls-val-slice/recording-38#41#index:0"
+        ]
+      },
+      "f1": 0.5163934426229508,
+      "fn": 10,
+      "fp": 108,
+      "fusion_mistakes": 0,
+      "height_jitter_px": null,
+      "jitter_pair_count": 0,
+      "method": "hard-nms",
+      "precision": 0.3684210526315789,
+      "recall": 0.863013698630137,
+      "temporal_iou": null,
+      "tp": 63,
+      "width_jitter_px": null
+    }
+  },
+  "decision": "REJECT_R2",
+  "gates": {
+    "deltas_vs_control": {
+      "bbox_localization_iou": -0.003182095091129211,
+      "center_error_gt_diag_ratio": 0.000777988524198709,
+      "f1": -0.004198320671731204,
+      "fn": 0,
+      "fp": 2,
+      "precision": -0.004259202920596283,
+      "prefusion_duplicate_pressure": 49,
+      "recall": 0.0,
+      "tp": 0
+    },
+    "hard_reject_reasons": [
+      "prefusion_duplicate_increase_gate"
+    ],
+    "promote_checks": {
+      "bbox_localization_iou": true,
+      "center_error_gt_diag_ratio": true,
+      "compute_budget_must_pass": true,
+      "f1": false,
+      "false_positive_relative_increase": true,
+      "occlusion_crowd_fn": false,
+      "precision": true,
+      "prefusion_duplicate_relative_increase": false,
+      "recall": false,
+      "small_person_fn": true
+    },
+    "relative_increases": {
+      "false_positive": 0.018518518518518517,
+      "prefusion_duplicate_pressure": 0.6712328767123288
+    },
+    "targeted_cluster_deltas": {
+      "occlusion_crowd_fn": 0,
+      "small_person_fn": 0
+    }
+  },
+  "lock_digest": "sha256:350d92339030c2f1fd781951f25c13f1b96aec5f0a607e3796df3ebf4e6e6cfc",
+  "model_sha256": "e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73",
+  "production_control_changed": false,
+  "provenance_digest": "sha256:d6302f466c69d94730169ea8f414d9b238ec08b85cb2adbad0e5a8eacc751b96",
+  "r2": {
+    "corpus_sha256": "9d145b4dda780052388f3b663203c519ded48f61457adef14654f84fb5549eff",
+    "frame_count": 400,
+    "ground_truth_sha256": "75eba2c9dc3b36d0a2389bfbb080a709621ef690680ae655d85d8732e7bc6097",
+    "manifest_sha256": "9270d46c2776aa531e1b979a1a7ebc16eaed0f6483b2c1095da834af383c4e83",
+    "revision": "nightowls-public-smoke400-r2",
+    "selection_proof_sha256": "df11e9dc6ca1f63019cba071ed82420de27c706b41d1d3b46df880bb3ce50faf"
+  },
+  "result_digest": "sha256:a7af50585e244bdaed69aefebe8c34a3a82a465d0714258967be41bdb87be63f",
+  "schema": "spectratrack-a1-r2-result-v1",
+  "source_commit": "ea1234e153a689811488e439429472c5b2a698ea"
+}

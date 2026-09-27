@@ -1,0 +1,83 @@
+{
+  "schema": "spectratrack-a1-triage-candidate-matrix-v1",
+  "name": "nightowls-smoke400-a1-scale-r1",
+  "expected_frame_count": 400,
+  "control_id": "control-hard-nms-tile640",
+  "experiments": [
+    {
+      "id": "control-hard-nms-tile640",
+      "role": "control",
+      "enabled": true,
+      "hypothesis": "Frozen current A1 control: hard-NMS, existing thresholds, 640px tiling, enhancement off.",
+      "config": {
+        "input_size": 960,
+        "conf": 0.35,
+        "decoder_iou": 0.45,
+        "person_conf": 0.12,
+        "tile_size": 640,
+        "tile_overlap": 0.2,
+        "match_iou": 0.5,
+        "fusion_iou": 0.55,
+        "center_ratio": 0.2,
+        "size_ratio": 1.8,
+        "score_power": 1,
+        "full_weight": 1,
+        "tile_weight": 1,
+        "evidence_weak_score": 0.12,
+        "evidence_solo_score": 0.2,
+        "evidence_strong_score": 0.35,
+        "evidence_min_sources": 2,
+        "method": "hard-nms",
+        "enhancement": "off"
+      }
+    },
+    {
+      "id": "candidate-hard-nms-tile512",
+      "role": "candidate",
+      "enabled": true,
+      "hypothesis": "Smaller 512px source tiles increase person apparent scale before the unchanged detector input, potentially recovering small/dim pedestrians without changing thresholds, fusion, or enhancement.",
+      "config": {
+        "input_size": 960,
+        "conf": 0.35,
+        "decoder_iou": 0.45,
+        "person_conf": 0.12,
+        "tile_size": 512,
+        "tile_overlap": 0.2,
+        "match_iou": 0.5,
+        "fusion_iou": 0.55,
+        "center_ratio": 0.2,
+        "size_ratio": 1.8,
+        "score_power": 1,
+        "full_weight": 1,
+        "tile_weight": 1,
+        "evidence_weak_score": 0.12,
+        "evidence_solo_score": 0.2,
+        "evidence_strong_score": 0.35,
+        "evidence_min_sources": 2,
+        "method": "hard-nms",
+        "enhancement": "off"
+      }
+    }
+  ],
+  "decision_rules": {
+    "promote_to_full": {
+      "min_f1_delta": 0.01,
+      "min_recall_delta": 0.01,
+      "max_precision_drop": 0.005,
+      "max_bbox_iou_drop": 0.01,
+      "max_center_error_ratio_increase": 0.02
+    },
+    "reject": {
+      "max_f1_delta": -0.005,
+      "max_recall_delta": -0.005,
+      "max_precision_delta": -0.01
+    }
+  },
+  "exclusions": {
+    "evidence_aware_fusion": "Rejected by frozen CrowdHuman dense-safety recall gate; not eligible for this smoke cycle.",
+    "conservative_nmm": "Rejected by frozen MOT17 aggregate; not eligible.",
+    "weighted_fusion": "Rejected by frozen MOT17 aggregate; not eligible.",
+    "adaptive_enhancement": "Off. Prior A3 NightOwls enhancement result was ENHANCEMENT OFF and this matrix does not re-enable it.",
+    "threshold_retuning": "No detector, person-confidence, decoder-IoU, fusion-IoU, or evidence threshold differs between control and candidate."
+  }
+}
