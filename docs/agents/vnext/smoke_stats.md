@@ -188,3 +188,20 @@ Committed exact analysis artifacts:
 
 - `pc/benchmarks/vnext/smoke_stats/nightowls_smoke400_stats.input.json`;
 - `pc/benchmarks/vnext/smoke_stats/nightowls_smoke400_stats.result.json`.
+
+
+## Stage-aware anti-leakage research policy
+
+Repeated smoke use is governed separately from the unchanged statistical interval gate above. The versioned policy is `pc/benchmarks/vnext/smoke_stats/research_stage_policy.v1.json`; the validator is `pc/spectratrack/research_stage_policy.py`; and the strict input contract is `research_stage_history.schema.json`.
+
+The research cycle is ordered `r1 -> r2 -> holdout4200 -> external_future_corpus`. Each candidate freezes a candidate-spec digest, semantic-config digest, timestamp, freeze-record digest, data exposure, lineage, and declared next stage before scoring. A candidate frozen before r1 may use r1 for triage. `CLEAR_REJECT` stops that candidate. `PROMOTE_TO_NEXT` and `AMBIGUOUS` may advance only to the next eligible blinded stage; `AMBIGUOUS` is not a positive claim.
+
+Once r1 results are exposed, any newly tuned hypothesis or hyperparameter must record `data_exposure=["r1"]` and cannot use r1 for promotion; r2 is the next eligible evidence. Once r2 is exposed, a newly tuned candidate can next use only holdout4200. Once holdout4200 is exposed, further tuning requires a new external/future corpus. The validator rejects omitted exposure, repeated stage use, stage skipping, same-candidate parameter mutation, mismatched lineage hashes, scoring before freeze, and promotion inputs carrying p-values/significance labels.
+
+`full5000_characterization` is explicitly non-promotional aggregate characterization. After component-slice exposure it cannot be represented as independent held-out evidence and cannot carry `CLEAR_REJECT`, `PROMOTE_TO_NEXT`, or `AMBIGUOUS`.
+
+The only freeze-eligibility exception is an independently motivated semantics-preserving performance change. It requires an unchanged `semantic_config_sha256`, no quality-stage inspiration, an explicit independence attestation, and hashed equivalence evidence. It never permits reuse of a stage already consumed by the parent lineage.
+
+The existing smoke statistics policy remains unchanged. At this layer, an existing statistical `PROMOTE_TO_FULL` outcome is represented as `PROMOTE_TO_NEXT`; the next stage is determined by exposure history rather than by reinterpreting the uncertainty calculation.
+
+A5 r1 provenance remains exactly bound to the published r1 hashes already recorded above. At implementation time A5 had not yet published hash-bound r2 or holdout4200 artifacts, so those two policy entries are deliberately `UNPUBLISHED` placeholders. The validator rejects attempts to score an unpublished stage; binding A5's later exact revision/identity hashes is a provenance-only update and must not change stage semantics.
