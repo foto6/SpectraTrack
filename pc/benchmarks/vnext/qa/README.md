@@ -435,3 +435,38 @@ Until real user CCTV has been extracted, human-confirmed, validated, and frozen:
 - common A1-A4 comparative run: **not ready**.
 
 Synthetic/unit fixtures validate the tooling only.
+
+## NightOwls SMOKE400 promotion gate
+
+The frozen FULL5000 contract remains unchanged:
+
+- revision: \`nightowls-public-slice5000-r1\`
+- corpus SHA-256: \`1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8\`
+- frames: 5000
+- tracking_supported: false
+
+The triage-only slice is \`nightowls-public-smoke400-r1\`, seed
+\`spectratrack-round2-nightowls-smoke400-v1\`.
+
+Selection is metadata-only and candidate-independent. It ranks the locked parent identity fields
+\`video, frame, source, source_frame, source_sequence\` with SHA-256. First, the lowest-ranked
+frame from every parent logical video is selected; remaining slots are filled by the global
+metadata hash rank. GT objects/tags and candidate detections/scores/outcomes are never ranking
+inputs. After selection only, canonical \`frame\` ordinals are reindexed contiguously within each
+logical video so the existing \`qa_benchmark.py\` JSONL contract remains valid. The selection proof
+records the exact parent line/frame and row hash for every smoke row.
+
+Two-stage policy:
+
+- SMOKE400 is triage only. Invalid/incomplete/provenance-mismatched runs fail immediately.
+- An obviously bad candidate may be rejected when FN or FP is at least 2x the locked reference
+  and also at least 10 errors worse. Both conditions are required for that error class.
+- Any non-rejected candidate is only a survivor. Ambiguous results and all promotion candidates
+  must run FULL5000.
+- A SMOKE400 pass is never a final full-corpus quality claim.
+
+Variable per-frame work is approximately 8% of FULL5000: 400/5000 frames, about 92% fewer frame
+evaluations and a 12.5x frame-count reduction. Fixed model-load/startup/I/O overhead is excluded.
+
+Commands are exposed as \`build-smoke-slice\` and \`validate-smoke-slice\` under
+\`python -m spectratrack.vnext_qa\`.

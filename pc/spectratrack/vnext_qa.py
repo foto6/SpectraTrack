@@ -1386,6 +1386,29 @@ def _build_parser() -> argparse.ArgumentParser:
     crowd.add_argument("--importer-source-commit")
     crowd.add_argument("--acknowledge-terms", action="store_true")
 
+    smoke = sub.add_parser(
+        "build-smoke-slice",
+        help="Derive the locked metadata-only NightOwls Smoke400 slice from frozen FULL5000",
+    )
+    smoke.add_argument("--parent-manifest", required=True)
+    smoke.add_argument("--parent-ground-truth", required=True)
+    smoke.add_argument("--output-ground-truth", required=True)
+    smoke.add_argument("--output-manifest", required=True)
+    smoke.add_argument("--output-proof", required=True)
+    smoke.add_argument("--output-hashes", required=True)
+
+    smoke_validate = sub.add_parser(
+        "validate-smoke-slice",
+        help="Recompute and validate the locked NightOwls Smoke400 selection and proof",
+    )
+    smoke_validate.add_argument("--parent-manifest", required=True)
+    smoke_validate.add_argument("--parent-ground-truth", required=True)
+    smoke_validate.add_argument("--smoke-ground-truth", required=True)
+    smoke_validate.add_argument("--smoke-manifest", required=True)
+    smoke_validate.add_argument("--selection-proof", required=True)
+    smoke_validate.add_argument("--hashes", required=True)
+    smoke_validate.add_argument("--output")
+
     replay = sub.add_parser("validate-replay", help=f"Validate canonical {REPLAY_SCHEMA} provenance")
     replay.add_argument("--replay", required=True)
     replay.add_argument("--output")
@@ -1532,6 +1555,41 @@ def main() -> int:
                 f"gt_sha256={result['output']['ground_truth_sha256']} "
                 f"import_manifest_sha256={result['import_manifest_sha256']}"
             )
+            return 0
+
+        if args.command == "build-smoke-slice":
+            from .smoke_gate import build_smoke_slice
+
+            result = build_smoke_slice(
+                parent_manifest_path=args.parent_manifest,
+                parent_ground_truth_path=args.parent_ground_truth,
+                output_ground_truth_path=args.output_ground_truth,
+                output_manifest_path=args.output_manifest,
+                output_proof_path=args.output_proof,
+                output_hashes_path=args.output_hashes,
+            )
+            manifest = result["manifest"]
+            print(
+                f"smoke_revision={manifest['revision']} "
+                f"smoke_corpus_sha256={manifest['corpus_sha256']} "
+                f"frames={manifest['selection']['frame_count']}"
+            )
+            return 0
+
+        if args.command == "validate-smoke-slice":
+            from .smoke_gate import validate_smoke_slice
+
+            report = validate_smoke_slice(
+                parent_manifest_path=args.parent_manifest,
+                parent_ground_truth_path=args.parent_ground_truth,
+                smoke_ground_truth_path=args.smoke_ground_truth,
+                smoke_manifest_path=args.smoke_manifest,
+                selection_proof_path=args.selection_proof,
+                hashes_path=args.hashes,
+            )
+            if args.output:
+                _json_dump(args.output, report)
+            print(json.dumps(report, indent=2))
             return 0
 
         if args.command in {"validate-corpus", "freeze-corpus"}:

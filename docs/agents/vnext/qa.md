@@ -1563,3 +1563,66 @@ A1 and A3 must use the same frozen revision/hash and identical scoring settings.
 A5 did **not** run A1/A3 candidate inference.
 
 Final NightOwls intake/freeze status: **DONE**.
+
+## Round 2 A5 — NightOwls SMOKE400 promotion gate frozen
+
+Status: **DONE**
+
+Parent FULL5000 remains byte/provenance frozen and was not modified:
+
+- revision: **`nightowls-public-slice5000-r1`**
+- corpus SHA-256: **`1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8`**
+- locked frames: **5000**
+- canonical GT SHA-256: **`6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc`**
+- tracking_supported: **false**
+
+Frozen triage slice:
+
+- revision: **`nightowls-public-smoke400-r1`**
+- seed: **`spectratrack-round2-nightowls-smoke400-v1`**
+- smoke corpus SHA-256: **`70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162`**
+- frames: **400 unique / 0 foreign**
+- logical sequence coverage: **143 / 143**
+- sequence-coverage picks: **143**
+- global hash-fill picks: **257**
+- candidate-result inputs to selection: **none**
+- GT labels used for selection: **false**
+- tracking_supported: **false**
+
+Real smoke composition, derived only after selection was frozen:
+
+- positive frames: **109**
+- true-negative frames: **291**
+- scored pedestrian objects: **183**
+- canonical ignored-person objects: **60**
+- total canonical objects: **243**
+
+Local artifacts:
+
+- JSONL: `E:\SpectraTrack-data\imports\nightowls-public-smoke400-r1\nightowls-public-smoke400-r1.jsonl`
+  - SHA-256 **`45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8`**
+- manifest: `...\nightowls-public-smoke400-r1.manifest.json`
+  - file SHA-256 **`3f65339609de78e7ef255e94875727a4bb26c4769231763a2660e1bb8f15905e`**
+- selection proof: `...\nightowls-public-smoke400-r1.selection-proof.json`
+  - SHA-256 **`0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940`**
+- hash bundle: `...\nightowls-public-smoke400-r1.hashes.json`
+  - canonical bundle SHA-256 **`ce2a05f62561c3d5eeb5f58016c9359ab67d0b6e4af666ae5208cf2363b4fa81`**
+
+Validation evidence:
+
+- deterministic regeneration: **PASS**
+- canonical selection proof / parent mapping: **PASS**
+- canonical `qa_benchmark.py` JSONL validation: **PASS**, 400 frames / 0 errors / 0 warnings
+- focused smoke + existing A5 QA tests: **41 passed in 4.35s**
+- local Ruff invocation unavailable in the system Python environment; branch CI remains the lint authority.
+
+Compute approximation versus FULL5000:
+
+- frame fraction: **0.08**
+- variable per-frame compute reduction: **~92%**
+- frame-count reduction factor: **12.5x**
+- fixed startup/model-load/I/O costs are not included.
+
+Promotion semantics are intentionally conservative: SMOKE400 can reject obvious failures, but every
+survivor, ambiguous result, and actual promotion candidate must be rerun on the unchanged FULL5000
+before any full-corpus quality statement.
