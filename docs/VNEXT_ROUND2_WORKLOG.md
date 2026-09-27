@@ -2466,3 +2466,14 @@ Decision:
 - do not restart or duplicate the active OFF baseline;
 - bilateral/current_adaptive_cached remain downstream of this baseline under the locked A3 contract;
 - A4 remains parked until A3 publishes its final NightOwls decision and artifact provenance.
+
+
+## 2026-09-27 — coordinator reconciliation after A3 NightOwls final
+
+Remote specialist heads re-verified: A1 3dc31c8fa8b323ce86afc14c3105a0c2247a2c48; A2 d1470454129024d3767b6cb91a7d6ba66102d52d; A3 d9fe3efb9ab022e2cd6600e1118be8d1ce1a0af0; A4 45bd0bc85f7e677cd602b435108b2095ab0ee78b; A5 95d0b389efcd46030634ec6005c0bc18098f4aa5.
+
+Target PC control is online. Existing run roots were inspected before any restart. A3 NightOwls OFF/bilateral/current_adaptive_cached final artifacts are present. No A2 DanceTrack association artifact is present. No duplicate A1/A2/A3 job was started.
+
+A3 final handoff is ENHANCEMENT OFF. On frozen nightowls-public-slice5000-r1, bilateral is quality-identical to OFF; current_adaptive_cached recovers zero new GT, loses one occluded GT, and adds 461 raw probes plus 461 enhanced inferences. Final evidence source commit: 39e82689e8d9671f365cea4d2f4f440b3ca603ea.
+
+A5 confirms dancetrack-public-r1 is frozen and unchanged. The older A2 handoff text claiming DanceTrack was not frozen is stale, but the requested association-only current-vs-ambiguity-guard characterization is still absent. A4 remains parked until this coordinator-requested A2 evidence gap is resolved or explicitly waived. Private CCTV remains deferred to the reduced final sanity pack.
