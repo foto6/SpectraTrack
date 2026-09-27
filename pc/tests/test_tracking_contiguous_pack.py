@@ -242,3 +242,23 @@ def test_builder_rejects_any_change_to_frozen_window_identity(tmp_path):
             observations_path=observations,
             output_dir=tmp_path / "pack",
         )
+
+
+
+def test_checked_in_canonical_pack_validates_when_present():
+    pack = (
+        Path(__file__).resolve().parents[1]
+        / "benchmarks"
+        / "vnext"
+        / "tracking"
+        / "canonical"
+        / "mot17-04-contiguous-smoke400-r1"
+    )
+    if not (pack / "manifest.json").is_file():
+        pytest.skip("canonical contiguous pack is materialized only from pinned target-PC A1 bytes")
+    manifest = validate_contiguous_pack(pack)
+    assert manifest["schema"] == PACK_SCHEMA
+    assert manifest["selection"]["windows"] == [[0, 199], [400, 599]]
+    assert manifest["selection"]["selected_frame_count"] == 400
+    assert manifest["control_tracker"] == "current MultiObjectTracker"
+    assert manifest["tracker_policy_changed"] is False
