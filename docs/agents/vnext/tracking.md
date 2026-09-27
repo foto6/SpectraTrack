@@ -1225,3 +1225,60 @@ The deterministic result SHA-256 is
 `09710d5f4c278d8ef5a6c64beefcdc92e916433d4751dc3fee12cd4ca69b720b`.
 The 400-frame smoke uses 800 candidate-frame steps versus 1200 for the full comparison, saving
 400 steps / 33.33% when it rejects. NightOwls is not used for tracking evaluation.
+
+
+## A2 canonical contiguous replay pack for A8
+
+Status: **IN PROGRESS — PACK TOOLING CI-GREEN / SOURCE BYTES WAITING ON TARGET-PC CONNECTION**
+
+Requested producer head verified before work:
+
+`d73b5d5a8268586ee963df9de901d3fd6ff6fcca`
+
+Scope is fixed to the already-frozen A2 smoke selection only:
+
+- video: `golden/public/mot17/MOT17-04`;
+- window 0: frames `0..199`;
+- window 1: frames `400..599`;
+- exactly 400 selected frames;
+- frames `200..399` must never appear in any committed pack payload;
+- tracker state resets between the two windows;
+- current production `MultiObjectTracker` remains CONTROL;
+- production tracker policy is unchanged;
+- NightOwls is explicitly not tracking GT;
+- no larger tracking replay is requested or inspected.
+
+Research-only pack tooling added:
+
+- `pc/spectratrack/tracking_contiguous_pack.py`;
+- `pc/tests/test_tracking_contiguous_pack.py`;
+- versioned payload exception under `pc/benchmarks/vnext/tracking/.gitignore`.
+
+The pack builder is fail-closed against the checked-in `mot17-04-smoke400-v1.json` selection and pinned source replay/GT hashes. It emits two independent replay, GT and pre-fusion observation JSONL windows plus a deterministic manifest containing payload byte counts, SHA-256 values, frame-ID hashes, source provenance and a pack digest.
+
+Validation covers:
+
+- exact frozen window identity;
+- 400 selected / 600 source frame accounting;
+- replay/GT/observation frame-set equality per window;
+- deterministic byte/hash stability across repeated builds;
+- payload tamper rejection;
+- source replay hash drift rejection;
+- changed frozen frame-ID rejection;
+- explicit `200..399` leakage rejection;
+- checked-in-pack validation once physical payload bytes are present.
+
+CI:
+
+- `d12831c...` run `36330481522`: SUCCESS;
+- `dd99bed...` run `36330522253`: SUCCESS, **183 passed in 1.68 s**, Ruff PASS, tracker smoke 1738.8 FPS, diagnostics/self-check/build/package PASS;
+- `f7b3cb9...` run `36330618934`: SUCCESS;
+- checked-in-pack test commit `47da47f...` run `36330901664`: SUCCESS.
+
+Physical source-of-truth payloads are generated artifacts on the target PC:
+
+- `C:\Users\foto6\SpectraTrack-data\runs\a1-replay-mot17-04-600-hard-nms.jsonl`;
+- `C:\Users\foto6\SpectraTrack-data\imports\mot17-public.jsonl`;
+- `C:\Users\foto6\SpectraTrack-data\runs\a1-prefusion-mot17-04-600.jsonl`.
+
+At this checkpoint the authorized Remote Desktop Commander reports zero connected devices. Therefore the source bytes have **not** been substituted, regenerated, or inferred from aggregate metrics/transcripts. The durable Git payload commit remains NOT DONE until those exact frozen local bytes are reachable.
