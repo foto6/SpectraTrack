@@ -10,7 +10,6 @@ import statistics
 import time
 from typing import Any, Iterable
 
-import numpy as np
 
 from .appearance import attach_appearance
 from .detector import YoloOnnxDetector
