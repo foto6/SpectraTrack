@@ -410,6 +410,8 @@ class YoloOnnxDetector:
         rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         blob = rgb.astype(np.float32) / 255.0
         blob = np.transpose(blob, (2, 0, 1))[None, ...]
+        if getattr(self, "force_contiguous_input", False):
+            blob = np.ascontiguousarray(blob)
         self._add_stage_ms("preprocess", preprocess_started)
         self._add_stage_cpu_ms("preprocess", preprocess_cpu_started)
 
