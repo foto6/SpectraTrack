@@ -47,7 +47,8 @@
         "ground_truth_sha256": "75eba2c9dc3b36d0a2389bfbb080a709621ef690680ae655d85d8732e7bc6097",
         "selection_proof_sha256": "df11e9dc6ca1f63019cba071ed82420de27c706b41d1d3b46df880bb3ce50faf",
         "hash_bundle_sha256": "9f2afa165f294a4bce1e7c842b8a135a98876e1a0c4db4b0cbd0b8c583151cce",
-        "identity_kind": "hash_bundle_sha256"
+        "identity_kind": "hash_bundle_sha256",
+        "a5_source_commit": "a339da324ea0df682179097d7d6810b6fc250240"
       }
     },
     {
@@ -69,7 +70,8 @@
         "ground_truth_sha256": "cda56abf7bd48b9849d5b10467be7e192d0fea9abc3ae31fac5a2f180605c621",
         "selection_proof_sha256": "4f1f8e977871ce3c134a4c72029035760f4377d3bddfd7a99cd3cebe568dab3d",
         "hash_bundle_sha256": "011242dbdc155e28dbae90e48cb2f6162abaf49ec793619936f86b78f41ebc9a",
-        "identity_kind": "hash_bundle_sha256"
+        "identity_kind": "hash_bundle_sha256",
+        "a5_source_commit": "a339da324ea0df682179097d7d6810b6fc250240"
       }
     },
     {
