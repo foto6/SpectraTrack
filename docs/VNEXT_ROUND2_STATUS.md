@@ -1,0 +1,229 @@
+# SpectraTrack vNext Round 2 — Live Status
+
+This file is the current coordination snapshot. Update it whenever a task changes state.
+
+Status keywords:
+
+- **DONE** — completed and evidence recorded.
+- **IN PROGRESS** — active work started; completion not yet verified.
+- **BLOCKED** — cannot safely continue without resolving a concrete blocker.
+- **NOT DONE** — required work has not yet been completed.
+- **LOCKED** — intentionally prohibited until prerequisites are satisfied.
+
+## Mandatory persistence rule
+
+Every meaningful step and every completed, failed, blocked, in-progress, or not-done item must be represented in Git-tracked project files. Important state must not exist only in chat, local logs, or terminal history.
+
+## Global gates
+
+- **DONE** — A1 MOT17 held-out complete.
+- **DONE / FAIL CHALLENGER** — A1 CrowdHuman dense-safety complete. Evidence-aware fails frozen no-recall-loss rule; Round-2 production conclusion: RETAIN HARD-NMS CONTROL.
+- **DONE** — A2 Round-2 decision: RETAIN CURRENT TRACKER.
+- **READY / NEXT** — A3 NightOwls held-out is unblocked. Exact corpus: `nightowls-public-slice5000-r1`, SHA `1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8`. Compare OFF / bilateral / current_adaptive_cached only; no NightOwls retuning.
+- **PARKED** — A4 remains deferred until A3 final enhancement decision.
+- **DONE** — DanceTrack frozen and validated.
+- **DONE** — NightOwls official intake/freeze complete; A5 final HEAD `95d0b389efcd46030634ec6005c0bc18098f4aa5`, CI `36279609347` SUCCESS.
+- **NOT DONE** — A3 final night enhancement decision, A4 final quality/cost check, reduced private sanity, final cross-role candidate table.
+- **LOCKED** — `agent/vnext-integrator`, production merge/release.
+
+## A1 Detection / Fusion — issue #18
+
+Current known Round-2 head:
+
+`agent/vnext-detection @ 3dc31c8fa8b323ce86afc14c3105a0c2247a2c48`
+
+Done:
+
+- evidence-aware weak-person fusion candidate exists;
+- default and threshold-grid MOT17-04 development evidence recorded;
+- canonical evidence-aware replay artifacts emitted locally;
+- resumable public-corpus runner implemented and CI-validated;
+- canonical held-out replay-export tooling fix `704c9a6...` validated by CI run `36241884895` (success);
+- fixed Round-2 MOT17 split committed before held-out evaluation:
+  - development: MOT17-04;
+  - held out: MOT17-02/05/09/10/11/13;
+- CrowdHuman kept separate as dense detection-safety validation;
+- exact resumable held-out command documented.
+
+Not done:
+
+- target-PC held-out per-sequence/aggregate validation;
+- CrowdHuman dense-safety validation for the new candidate;
+- final Round-2 A1 accept/reject handoff.
+
+## A2 Tracking — issue #19
+
+Current known Round-2 head:
+
+`agent/vnext-tracking @ d1470454129024d3767b6cb91a7d6ba66102d52d`
+
+Done:
+
+- current tracker remains control;
+- failure-mining tooling added;
+- ambiguity-scoped assignment candidate implemented;
+- first too-narrow ambiguity implementation failed CI and is documented;
+- fixed candidate passes the nearby-same-class mechanism probe with 0 ID switches;
+- selected non-ambiguous synthetic probes remain metric-identical to current;
+- GitHub CI run `36240708158`: success, 166 tests passed, build/package green.
+
+In progress / needs verification:
+
+- current-tracker failure-audit artifact state on the target PC after the interrupted run;
+- real identical-replay evaluation of `current-ambiguity-guard`.
+
+Not done:
+
+- Round-2 gate decision on real replay (recall / IDSW / fragmentation / false tracks);
+- validation against the surviving A1 Round-2 replay;
+- final retain-current vs targeted-fix handoff.
+
+## A3 Enhancement — issue #20
+
+Current known Round-2 head:
+
+`agent/vnext-enhancement @ 21e7b06dc470a346dd01e86b45e3e581e4f0d59d`
+
+Done:
+
+- strict weak-evidence ROI manifest prepared locally;
+- research profiler now has explicit `--max-enhanced-rois-per-frame` budget support;
+- cap=1 semantics are covered by deterministic tests;
+- raw probes remain separately counted and budget-skipped follow-ups are reported;
+- GitHub CI run `36241047867`: success, 154 tests passed, build/package green.
+
+In progress / needs verification:
+
+- target-PC weak-person strict profile for bilateral / current_adaptive_cached / sharpen after the interrupted run.
+
+Not done:
+
+- verified strict-gate metrics on target evidence;
+- post-fusion quality/cost decision;
+- enhancement-off vs strict-gated final handoff.
+
+## A4 Performance — issue #21
+
+Current known Round-2 head:
+
+`agent/vnext-performance @ 45bd0bc85f7e677cd602b435108b2095ab0ee78b`
+
+Done:
+
+- target-probe CLI blocker found and fixed;
+- branch full tests: 164 passed;
+- real RX 5700 XT / DirectML execution-cost frontier measured;
+- source commit/model/provider/provenance recorded.
+
+Not done:
+
+- scheduler quality evaluation;
+- new-person discovery/miss-latency evidence;
+- combined A3 strict-enhancement + A4 scheduler budget conclusion.
+
+## A5 QA — issue #22
+
+Current known Round-2 head:
+
+`agent/vnext-qa @ 6760ac740b9875f2d0754e3cf5870a41b2f52a0e`
+
+Done:
+
+- machine draft boxes can seed human review while human-saved rows take precedence;
+- 46-frame private CCTV review pack extracted from the three local test videos;
+- YOLO11x/DirectML draft pre-annotations and triage artifacts produced;
+- private AI drafts remain explicitly non-GOLDEN;
+- review-progress tooling is CI-green (`36241763043`) and counts only human-saved rows as reviewed; draft rows remain pending.
+
+Not done:
+
+- human confirmation/correction;
+- `cctv-golden-r1` freeze;
+- final A1-A4 rerun/stamp table on private GOLDEN.
+
+## Architect / Integrator — issue #23
+
+State: **LOCKED**
+
+Unlock only when:
+
+1. A1 has held-out evidence for a surviving fusion policy.
+2. A2 has a targeted improvement or explicit retain-current conclusion.
+3. A3 has a verified strict-enhancement decision.
+4. A4 has quality-validated target-PC scheduler evidence.
+5. A5 has human-confirmed `cctv-golden-r1`.
+6. Surviving candidates are compared on that same frozen private revision.
+
+
+## Restart recovery note
+
+- **DONE** — GitHub branch heads re-verified; none of A1-A5 advanced beyond the heads recorded above during the interruption.
+- **DONE** — target PC answered a direct connectivity ping.
+- **NEEDS VERIFICATION** — detailed target-PC process/GPU state; repeated substantive control queries, including direct A3 artifact metadata, timed out.
+- **DONE** — A2 old hard-NMS/NMM/weighted audit output files recovered and provenance verified; they do not include the ambiguity-guard comparison.
+- **DONE** — A3 `a3-round2-weak1.json` recovered as a complete strict-profile artifact; final enhancement decision still requires post-fusion/NightOwls evidence.
+- **RULE** — do not restart A2/A3 blindly until existing local process/artifact state is verified.
+
+
+## Current execution blocker
+
+- **DONE** — target-PC substantive Remote Desktop Commander control restored; process/artifact inspection succeeds. Blind restarts remain prohibited by policy, but the relay blocker is cleared.
+- **DEFERRED (private domain gate)** — do not ask for 46-frame human review now. Public human-annotated benchmarks run first; later reduce to ~10-15 hardest frames + 3-5 temporal episodes before human confirmation.
+- This does **not** mean A2/A3 benchmarks failed.
+- Do not restart A2/A3 until existing local process/artifact state is verified.
+- GitHub coordination, branch verification, and documentation remain available.
+
+
+## Live blocker update — duplicate A1 writer
+
+- **CLEARED / NEEDS RESULT VALIDATION** — the previously observed duplicate CrowdHuman PIDs `28260` and `19944` both exited on their own before the corrected probe. Exactly 4,370 prefusion files, the final result JSON, and completion marker now exist. No A1 process was killed or restarted; validate hashes/provenance/metrics next.
+- **IN PROGRESS** — official NightOwls ZIP downloader PID `15200` remains active on the isolated E: root; observed ZIP size 13,480,124,416 bytes; no duplicate downloader was started.
+
+
+## A1 CrowdHuman final gate
+
+- **DONE** — result SHA `c09f91ec4c27f28057c8937c84390e10c80cbd16ae56fe3840cbf1363055690a`; marker SHA `23f3cc80df109fc1e0d93851b14f57a6f432e7e02039dd343b9b20e249de5957`; GT/model hashes match frozen provenance.
+- **DONE** — 4,370/4,370 unique selected images and 4,370 prefusion artifacts.
+- **FAIL / REJECT CHALLENGER** — evidence-aware vs hard-NMS: precision +4.447576 pp, recall -0.706668 pp, F1 +3.115044 pp, FP -20,677, bbox IoU +0.007883, fusion mistakes -502. Because the frozen rule required recall not lower, the challenger fails dense safety.
+- **RETAIN CONTROL** — hard-NMS remains the A1 Round-2 fusion policy. No held-out retuning.
+- **A1 NIGHTOWLS CHALLENGER GATE NO LONGER BLOCKING** — there is no surviving new fusion challenger to rescue in this cycle. NightOwls intake remains required for A3 and may be used for hard-NMS baseline characterization only.
+
+
+## A1 specialist handoff synchronization
+
+- **DONE** — A1 branch advanced handoff-only to `3dc31c8fa8b323ce86afc14c3105a0c2247a2c48`.
+- **DONE** — issue #18 records the same CrowdHuman FAIL / hard-NMS retain decision.
+- No production/runtime code was changed by this final handoff update.
+
+
+## A3 pre-NightOwls audit
+
+- **DONE** — existing `a3-round2-weak1.json` re-audited without rerun; SHA `cad760e97e32380ac3da87d66f56bfc5d2a11097839b45e1806b3d9469e291a6`.
+- **LOCKED FINALISTS** — OFF / bilateral / current_adaptive_cached. Sharpen remains excluded before held-out.
+- bilateral: 15 recovered / 30 extra calls / +372 pre-fusion FP.
+- current_adaptive_cached: 101 recovered / 158 extra calls / +2170 pre-fusion FP.
+- **WAITING** — no separate post-fusion A3 result exists in the current runs root; final ON/OFF decision requires A5 frozen NightOwls and identical post-fusion held-out evaluation.
+
+
+## A4 existing-evidence audit
+
+- **DONE** — no new scheduler inference was launched.
+- Canonical Git-recorded RX 5700 XT cost frontier remains valid cost evidence.
+- Supporting local MOT17-04 cost sweep SHA `e1c08a72a7e9cada7a619d112bef3e6674f52e56496cb16e6d17441e268c80cc` confirms bounded <=1 s rediscovery points from 6.0–15.0 calls/source-s, but lacks source-commit binding and is quality-blind.
+- Batch diagnostic SHA `576e78b35529a0c9acafe601f24db005de74657ff6c111e6b149d98062663900`: fixed input batch dimension 1; batch 2/4 unsupported. Artifact lacks standalone model/source-commit binding, so no batching change is authorized.
+- **PARKED** — final A4 quality/discovery-latency validation waits for A3 NightOwls OFF/bilateral/current_adaptive_cached decision, then evaluates only 1–3 configs.
+
+
+## NightOwls held-out plan lock
+
+- **LOCKED BEFORE RESULTS** — use deterministic A5 5,000-frame official validation slice for the A3 held-out gate.
+- planned revision: `nightowls-public-slice5000-r1`
+- seed: `spectratrack-round2-nightowls-v1`
+- logical prefix: `golden/public/nightowls-val-slice`
+- A5 importer HEAD: `6760ac740b9875f2d0754e3cf5870a41b2f52a0e`
+- official SDK commit: `ad0f18fc95e093e86036f055ab210a3de46021b7`
+- **NOT STARTED** — no candidate inference until ZIP integrity, import, validation and frozen slice hash are complete.
+- Sparse slice is detection/enhancement evidence only; tracking is unsupported and it must not be described as full NightOwls validation.
+
+
+- **A5 handoff-only HEAD** — `522e50c45bc3afffa5f03479880c4b9f9d0a676e`; NightOwls slice lock recorded, no code change.
