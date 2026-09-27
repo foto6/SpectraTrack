@@ -1,0 +1,251 @@
+{
+  "schema": "spectratrack-vnext-a3-nightowls-final-v1",
+  "decision": "ENHANCEMENT OFF",
+  "a3_evidence_source_commit": "39e82689e8d9671f365cea4d2f4f440b3ca603ea",
+  "a1_fusion_source_commit": "3dc31c8fa8b323ce86afc14c3105a0c2247a2c48",
+  "a5_final_head": "95d0b389efcd46030634ec6005c0bc18098f4aa5",
+  "corpus": {
+    "revision": "nightowls-public-slice5000-r1",
+    "corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
+    "ground_truth": "E:\\SpectraTrack-data\\imports\\nightowls-public-slice5000-r1\\nightowls-val-slice.jsonl",
+    "ground_truth_sha256": "6cf1533e9c86cf9bc536373c3b707098cc30353b2e264f61c931887d213a9abc",
+    "frozen_manifest": "E:\\SpectraTrack-data\\imports\\nightowls-public-slice5000-r1\\nightowls-public-slice5000-r1.manifest.json",
+    "frozen_manifest_sha256": "6d609998ec12eebe908056ed08019208e6b954befb2fa4cca3974f1bf31990da",
+    "source_root": "E:\\SpectraTrack-data\\public\\NightOwls",
+    "frames": 5000,
+    "positive_frames": 605,
+    "true_negative_frames": 4395,
+    "scored_pedestrians": 969,
+    "official_ignore_objects": 552,
+    "tracking_supported": false
+  },
+  "model": {
+    "path": "E:\\SpectraTrack\\yolo11x.onnx",
+    "sha256": "e84cbad768b218d74ecc85e3e52d84631123719a6951b3ddf6eddc850d5b3f73",
+    "providers": [
+      "DmlExecutionProvider",
+      "CPUExecutionProvider"
+    ]
+  },
+  "locked_configuration": {
+    "selective_gate": "weak-person",
+    "max_enhanced_rois_per_source_frame": 1,
+    "raw_corroboration_required": true,
+    "person_acceptance": 0.12,
+    "raw_probe": 0.08,
+    "corroboration_iou": 0.1,
+    "detector_input_size": 960,
+    "detector_conf": 0.35,
+    "decoder_iou": 0.45,
+    "tile_size": 640,
+    "tile_overlap": 0.2,
+    "fusion": "hard-nms",
+    "fusion_iou": 0.55,
+    "match_iou": 0.5,
+    "heldout_retuning": false
+  },
+  "selection": {
+    "weak_person_frames": 590,
+    "unique_frame_count": 590,
+    "manifest_sha256": "202aa063dc9342618194fbf992878cac3abdfd646517d7f8577bf5910ec1f707",
+    "ground_truth_used_for_selection": false
+  },
+  "candidates": {
+    "off": {
+      "tp": 798,
+      "fp": 1329,
+      "fn": 171,
+      "precision": 0.3751763046544429,
+      "recall": 0.8235294117647058,
+      "f1": 0.5155038759689923,
+      "bbox_localization_iou": 0.7585901679687037,
+      "center_jitter_px": null,
+      "width_jitter_px": null,
+      "height_jitter_px": null,
+      "area_jitter_ratio": null,
+      "temporal_iou": null,
+      "recovered_gt": 0,
+      "lost_gt": 0,
+      "baseline_raw_onnx_calls": 15000,
+      "additional_raw_probe_calls": 0,
+      "extra_enhancement_onnx_calls": 0,
+      "total_onnx_calls": 15000,
+      "benchmark_wall_seconds": 1741.6401758999564,
+      "result_sha256": "8f529444b15e8157c4ac7480628433eddc7aa098228d040a3aff16aba2bcee00",
+      "completion_marker_sha256": "573ba7f3c407f818c2d261a1da0ea2273f7d09ab0796e9232216cc4169481045",
+      "detail_sha256": "6d2e1f6d84f97b9f1d87f81be6ad6a793d73b8a37b42dae9dc7b585a923d8f00"
+    },
+    "bilateral": {
+      "tp": 798,
+      "fp": 1329,
+      "fn": 171,
+      "precision": 0.3751763046544429,
+      "recall": 0.8235294117647058,
+      "f1": 0.5155038759689923,
+      "bbox_localization_iou": 0.7585901679687037,
+      "recovered_gt": 0,
+      "lost_gt": 0,
+      "fp_delta": 0,
+      "selected_weak_rois": 590,
+      "quality_gate_on_rois": 0,
+      "baseline_raw_onnx_calls": 15000,
+      "additional_raw_probe_calls": 0,
+      "extra_enhancement_onnx_calls": 0,
+      "total_onnx_calls": 15000,
+      "recovered_gt_per_extra_enhancement_call": null,
+      "fp_cost_per_recovered_gt": null,
+      "strict_experiment_wall_seconds": 13.541971600032412,
+      "operation_preprocessing_ms": 0,
+      "evidence_sha256": "a5d486937c6770f7c0bdf09bf67ee6c755fcae640717a4c42a04213558e21d32",
+      "apply_manifest_sha256": "a5f6419e876d1aff653bc1676d25ea2f818f434a8b406e932392e9562a932401",
+      "postfusion_result_sha256": "7ed2e0a0d0f43dc9b8d490eb79aabaf49821f457dac5e2ed244926421f50e82b",
+      "completion_marker_sha256": "a3added6613248f7a80090e35f73c7a2e2a6c1b2397183c80fa8cc20299e3771",
+      "detail_sha256": "f2d7c44955f8b77f6b93e3017ab081f79d9bd740fe407fa8589f1f2ebdc9e1c0",
+      "interpretation": "Locked bilateral quality gate activated on zero selected weak-person ROIs; post-fusion output is identical to OFF."
+    },
+    "current_adaptive_cached": {
+      "tp": 797,
+      "fp": 1323,
+      "fn": 172,
+      "precision": 0.3759433962264151,
+      "recall": 0.8224974200206399,
+      "f1": 0.5160246034315312,
+      "bbox_localization_iou": 0.7589744834311853,
+      "delta_vs_off": {
+        "tp": -1,
+        "fp": -6,
+        "fn": 1,
+        "precision": 0.0007670915719721894,
+        "recall": -0.0010319917440659854,
+        "f1": 0.0005207274625389502,
+        "bbox_localization_iou": 0.0003843154624816325
+      },
+      "recovered_gt": 0,
+      "lost_gt": 1,
+      "lost_gt_keys": [
+        "golden/public/nightowls-val-slice/recording-36#647#index:0"
+      ],
+      "selected_weak_rois": 590,
+      "quality_gate_on_rois": 461,
+      "alternate_measurements_replaced": 409,
+      "baseline_raw_onnx_calls": 15000,
+      "additional_raw_probe_calls": 461,
+      "raw_onnx_calls_total": 15461,
+      "extra_enhancement_onnx_calls": 461,
+      "total_onnx_calls": 15922,
+      "extra_total_onnx_calls_vs_off": 922,
+      "incremental_call_fraction_vs_off": 0.06146666666666667,
+      "recovered_gt_per_extra_enhancement_call": 0,
+      "fp_cost_per_recovered_gt": null,
+      "net_fp_delta_per_recovered_gt": null,
+      "strict_experiment_wall_seconds": 119.74712379998527,
+      "incremental_wall_fraction_vs_off": 0.06875537522445384,
+      "operation_preprocessing_ms": 2822.7423006901518,
+      "raw_probe_detector_ms": 51825.793200870976,
+      "enhanced_detector_ms": 51146.147699444555,
+      "evidence_sha256": "fb25cc378db44fb58b7b8a4f92dd1ae2144c9709cec3c3a6959c4ecedd71c9c7",
+      "apply_manifest_sha256": "08ab74bde9da608e17cafda13b90fbb0b57ae10673b57fd1541cc5658a980dbc",
+      "postfusion_result_sha256": "3a93611e99674edd2b568aeb355c95d14bf885f88a6e5ed8b82fec6031422837",
+      "completion_marker_sha256": "49e266f26d67b9e8286f50f557e3fcbdc4f17595f8e42e89e93862b99ff77a2f",
+      "detail_sha256": "4de971c35f4ed02ad134c8e7fac9bb21aa4c2983a4c7b7e00e5f8eee8b5940b6"
+    }
+  },
+  "subgroups": {
+    "low_light": {
+      "source": "official tag night_dark",
+      "off": {
+        "tp": 798,
+        "fn": 171,
+        "recall": 0.8235294117647058
+      },
+      "current_adaptive_cached": {
+        "tp": 797,
+        "fn": 172,
+        "recall": 0.8224974200206399
+      }
+    },
+    "occluded_true": {
+      "source": "official attribute nightowls_occluded_true",
+      "gt": 158,
+      "off": {
+        "tp": 102,
+        "fn": 56,
+        "recall": 0.6455696202531646
+      },
+      "current_adaptive_cached": {
+        "tp": 101,
+        "fn": 57,
+        "recall": 0.6392405063291139
+      }
+    },
+    "size": {
+      "height_lt_24": {
+        "gt": 4,
+        "off_tp": 0,
+        "cached_tp": 0,
+        "off_recall": 0,
+        "cached_recall": 0
+      },
+      "height_24_47": {
+        "gt": 108,
+        "off_tp": 64,
+        "cached_tp": 64,
+        "off_recall": 0.5925925925925926,
+        "cached_recall": 0.5925925925925926
+      },
+      "height_48_95": {
+        "gt": 477,
+        "off_tp": 375,
+        "cached_tp": 374,
+        "off_recall": 0.7861635220125787,
+        "cached_recall": 0.7840670859538784
+      },
+      "height_ge_96": {
+        "gt": 380,
+        "off_tp": 359,
+        "cached_tp": 359,
+        "off_recall": 0.9447368421052632,
+        "cached_recall": 0.9447368421052632
+      }
+    },
+    "blur": {
+      "available": false,
+      "reason": "Frozen A5 NightOwls GT does not expose a dedicated blur tag/attribute; no post-hoc held-out classifier was invented."
+    },
+    "low_contrast": {
+      "available": false,
+      "reason": "Frozen A5 NightOwls GT does not expose a dedicated low-contrast tag/attribute; no post-hoc held-out classifier was invented."
+    }
+  },
+  "invariants": {
+    "same_5000_frames": true,
+    "same_ground_truth": true,
+    "same_model": true,
+    "same_provider": true,
+    "same_detector_settings": true,
+    "same_hard_nms_fusion": true,
+    "max_one_roi_per_frame": true,
+    "raw_corroboration_mandatory": true,
+    "independent_sources_added": 0,
+    "off_has_no_enhancement_work": true,
+    "ground_truth_used_as_runtime_hint": false,
+    "post_heldout_retuning": false
+  },
+  "superseded_or_failed_evidence": [
+    {
+      "artifact": "a3-nightowls-bilateral-evidence.superseded-27fe8562.jsonl",
+      "sha256": "ea08218ecb412cec05ea838fd47dba99041d41132f1f5b37f52611db2f3479d3",
+      "reason": "Superseded after locked raw-probe protocol was corrected to 0.08 and candidate source commit unified."
+    },
+    {
+      "artifact": "a3-nightowls-current-adaptive-cached-evidence.superseded-27fe8562.jsonl",
+      "sha256": "73fb6e577d1a21f55093dc66718e8f32459dc02db9a4c5dbe8a14a53f75d5c2b",
+      "reason": "Superseded before post-fusion scoring after one-to-one same-source replacement bug was discovered."
+    },
+    {
+      "failure": "Initial cached apply failed at recording-34 frame 304 because multiple enhanced detections attempted to replace one frozen weak source measurement.",
+      "resolution": "One-to-one mapping now requires fresh raw corroboration plus IoU>=0.10 with a distinct frozen weak measurement; no threshold/gate/config retuning."
+    }
+  ],
+  "rationale": "Bilateral produced no enhancement work or quality change. Current-adaptive-cached recovered zero GT, lost one occluded GT, reduced FP by six and marginally improved precision/F1/localization, but added 922 ONNX calls and ~119.75 s held-out experiment wall. The quality-per-compute tradeoff is not convincing, so broad/selective enhancement is not retained."
+}
