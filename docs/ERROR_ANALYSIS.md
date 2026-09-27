@@ -13,7 +13,7 @@ Required inputs:
 - a canonical qa_benchmark result JSON for the control;
 - optionally, the candidate result JSON for the same selection.
 
-The frame manifest may be JSON with a frames or selected_frames array, a bare JSON array, or JSONL. Frame rows use {"video":"clip.mp4","frame":123}. A VIDEO#FRAME string is also accepted.
+The frame manifest may be JSON with a frames or selected_frames array, a bare JSON array, JSONL, or A5's `spectratrack-smoke-slice-v1` envelope. Frame rows use {"video":"clip.mp4","frame":123}. A VIDEO#FRAME string is also accepted. For the A5 envelope, A7 verifies `artifacts.ground_truth_sha256` and `selection.frame_count`, then derives the exact canonical selected frame IDs from the frozen smoke JSONL.
 
 For geometry-dependent attribution, pass an optional observation JSONL sidecar for each run. Each row is:
 
@@ -66,4 +66,4 @@ The comparison emits category-count deltas plus bounded factual guidance. For ex
 
 ## Current NightOwls status
 
-No exact A5 smoke400 manifest was available to A7 during implementation, so no real NightOwls smoke scoring is claimed here. Tests and the committed example report use only the existing tiny QA fixture. The reproducible example files are `pc/benchmarks/error_analysis.manifest.example.json`, `pc/benchmarks/error_analysis.control.example.json`, and `pc/benchmarks/error_analysis.report.example.json`. Run the real report only after the exact A5 manifest/hash is published.
+A5 subsequently published `nightowls-public-smoke400-r1` with corpus SHA-256 `70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162`, manifest SHA-256 `3f65339609de78e7ef255e94875727a4bb26c4769231763a2660e1bb8f15905e`, and frozen GT SHA-256 `45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8`. A7 now consumes that exact A5 manifest schema directly. The reproducible committed example files remain `pc/benchmarks/error_analysis.manifest.example.json`, `pc/benchmarks/error_analysis.control.example.json`, and `pc/benchmarks/error_analysis.report.example.json`. A real NightOwls taxonomy report still requires canonical qa_benchmark result JSON for control/candidate on this exact GT; specialist summary artifacts alone are not silently reinterpreted as canonical results.

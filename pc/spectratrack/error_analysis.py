@@ -69,6 +69,9 @@ class ManifestSelection:
     frames: tuple[FrameKey, ...]
     file_sha256: str
     frame_ids_sha256: str
+    schema: str | None = None
+    revision: str | None = None
+    corpus_sha256: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,7 +132,11 @@ def _parse_frame_entry(entry: Any, where: str) -> FrameKey:
     return FrameKey(video, frame)
 
 
-def load_frame_manifest(path: str | Path) -> ManifestSelection:
+def load_frame_manifest(
+    path: str | Path,
+    *,
+    ground_truth_path: str | Path | None = None,
+) -> ManifestSelection:
     source = Path(path)
     raw = source.read_bytes()
     stripped = raw.decode("utf-8-sig").strip()
@@ -137,6 +144,9 @@ def load_frame_manifest(path: str | Path) -> ManifestSelection:
         raise ValueError(f"{source}: empty frame manifest")
 
     entries: list[Any]
+    manifest_schema: str | None = None
+    manifest_revision: str | None = None
+    corpus_sha256: str | None = None
     try:
         parsed = json.loads(stripped)
     except json.JSONDecodeError:
@@ -153,10 +163,45 @@ def load_frame_manifest(path: str | Path) -> ManifestSelection:
         if isinstance(parsed, list):
             entries = parsed
         elif isinstance(parsed, dict):
-            candidates = parsed.get("frames", parsed.get("selected_frames"))
-            if not isinstance(candidates, list):
-                raise ValueError(f"{source}: JSON manifest must contain a frames list")
-            entries = candidates
+            manifest_schema = parsed.get("schema") if isinstance(parsed.get("schema"), str) else None
+            manifest_revision = parsed.get("revision") if isinstance(parsed.get("revision"), str) else None
+            corpus_sha256 = (
+                parsed.get("corpus_sha256") if isinstance(parsed.get("corpus_sha256"), str) else None
+            )
+            if manifest_schema == "spectratrack-smoke-slice-v1":
+                if ground_truth_path is None:
+                    raise ValueError(
+                        f"{source}: spectratrack-smoke-slice-v1 requires the frozen ground-truth JSONL"
+                    )
+                artifacts = parsed.get("artifacts")
+                selection = parsed.get("selection")
+                if not isinstance(artifacts, dict) or not isinstance(selection, dict):
+                    raise ValueError(f"{source}: invalid spectratrack-smoke-slice-v1 envelope")
+                expected_gt_sha = artifacts.get("ground_truth_sha256")
+                if not isinstance(expected_gt_sha, str) or len(expected_gt_sha) != 64:
+                    raise ValueError(f"{source}: smoke manifest ground_truth_sha256 is missing or invalid")
+                actual_gt_sha = _sha256_file(ground_truth_path)
+                if actual_gt_sha != expected_gt_sha:
+                    raise ValueError(
+                        f"{source}: supplied ground truth does not match frozen smoke manifest SHA-256"
+                    )
+                gt_frames = load_ground_truth(ground_truth_path)
+                expected_count = selection.get("frame_count")
+                if (
+                    not isinstance(expected_count, int)
+                    or isinstance(expected_count, bool)
+                    or expected_count <= 0
+                    or len(gt_frames) != expected_count
+                ):
+                    raise ValueError(
+                        f"{source}: smoke manifest frame_count does not match frozen ground truth"
+                    )
+                entries = [{"video": frame.video, "frame": frame.frame} for frame in gt_frames]
+            else:
+                candidates = parsed.get("frames", parsed.get("selected_frames"))
+                if not isinstance(candidates, list):
+                    raise ValueError(f"{source}: JSON manifest must contain a frames list")
+                entries = candidates
         else:
             raise ValueError(f"{source}: manifest must be a JSON object, list, or JSONL")
 
@@ -167,7 +212,14 @@ def load_frame_manifest(path: str | Path) -> ManifestSelection:
         raise ValueError(f"{source}: duplicate frame IDs")
     ordered = tuple(sorted(frames))
     frame_ids_sha256 = _canonical_sha256([item.frame_id for item in ordered])
-    return ManifestSelection(ordered, hashlib.sha256(raw).hexdigest(), frame_ids_sha256)
+    return ManifestSelection(
+        ordered,
+        hashlib.sha256(raw).hexdigest(),
+        frame_ids_sha256,
+        manifest_schema,
+        manifest_revision,
+        corpus_sha256,
+    )
 
 
 def _parse_prediction(entry: Any, where: str) -> PredictedObject:
@@ -700,8 +752,8 @@ def build_error_report(
 ) -> dict[str, Any]:
     if top_k < 1 or top_k > MAX_TOP_K:
         raise ValueError(f"top_k must be in [1, {MAX_TOP_K}]")
-    manifest = load_frame_manifest(manifest_path)
     all_frames = load_ground_truth(ground_truth_path)
+    manifest = load_frame_manifest(manifest_path, ground_truth_path=ground_truth_path)
     selected_frames, all_gt_keys = _selected_ground_truth(all_frames, manifest)
     control_result = _load_result(control_result_path)
     expected_gt_sha = ground_truth_sha256(ground_truth_path)
@@ -725,6 +777,9 @@ def build_error_report(
         "label": label,
         "frame_count": len(manifest.frames),
         "manifest_sha256": manifest.file_sha256,
+        "manifest_schema": manifest.schema,
+        "manifest_revision": manifest.revision,
+        "manifest_corpus_sha256": manifest.corpus_sha256,
         "selected_frame_ids_sha256": manifest.frame_ids_sha256,
         "ground_truth_sha256": expected_gt_sha,
         "input_hashes": {

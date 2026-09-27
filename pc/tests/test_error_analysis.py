@@ -81,6 +81,38 @@ def test_manifest_rejects_duplicate_frames(tmp_path: Path):
         load_frame_manifest(manifest)
 
 
+def test_a5_smoke_manifest_uses_frozen_ground_truth_as_exact_frame_list(tmp_path: Path):
+    gt = _write_jsonl(
+        tmp_path / "smoke.jsonl",
+        [
+            {"video": "a.mp4", "frame": 0, "tags": [], "objects": []},
+            {"video": "b.mp4", "frame": 3, "tags": [], "objects": []},
+        ],
+    )
+    manifest = _write_json(
+        tmp_path / "manifest.json",
+        {
+            "schema": "spectratrack-smoke-slice-v1",
+            "revision": "smoke-r1",
+            "corpus_sha256": "c" * 64,
+            "artifacts": {
+                "ground_truth": "smoke.jsonl",
+                "ground_truth_sha256": ground_truth_sha256(gt),
+            },
+            "selection": {"frame_count": 2},
+        },
+    )
+    selection = load_frame_manifest(manifest, ground_truth_path=gt)
+    assert selection.schema == "spectratrack-smoke-slice-v1"
+    assert selection.revision == "smoke-r1"
+    assert selection.corpus_sha256 == "c" * 64
+    assert [item.frame_id for item in selection.frames] == ["a.mp4#0", "b.mp4#3"]
+
+    gt.write_text(gt.read_text(encoding="utf-8") + " ", encoding="utf-8")
+    with pytest.raises(ValueError, match="does not match frozen smoke manifest"):
+        load_frame_manifest(manifest, ground_truth_path=gt)
+
+
 def test_taxonomy_uses_geometry_and_metadata_without_guessing(tmp_path: Path):
     gt = _write_jsonl(
         tmp_path / "gt.jsonl",

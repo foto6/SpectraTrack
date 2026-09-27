@@ -197,8 +197,11 @@
     "contact_sheet_generation": "not performed",
     "top_k_representatives_per_category": 5
   },
+  "manifest_corpus_sha256": null,
+  "manifest_revision": null,
+  "manifest_schema": null,
   "manifest_sha256": "dec2a41cf3d77de643fff9a32fda1c5acb254410d15f21c519d1363aa9399d70",
-  "report_sha256": "c7ace2540cce71d6d1904c2c1bcedd86ee6102b4d12a3cc17a62960da9a5e741",
+  "report_sha256": "1219ca68fbb47bcb531200e1bbc1ea24cffa9399eb4adb5d4d8b6b5ef349c5ba",
   "schema_version": 1,
   "selected_frame_ids_sha256": "04c4da07a872774ae64cb9321607e6ac21990819655f0d6a3fd71c210aec9ae0"
 }
