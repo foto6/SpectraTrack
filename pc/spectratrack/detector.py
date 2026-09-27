@@ -206,6 +206,9 @@ class YoloOnnxDetector:
         self.iou_threshold = float(iou_threshold)
         self.labels = list(labels or COCO80)
         self.last_stage_ms: dict[str, float] = {}
+        self.last_stage_cpu_ms: dict[str, float] = {}
+        self.last_policy_ms: dict[str, float] = {}
+        self.last_policy_counts: dict[str, int] = {}
         self.last_inference_calls = 0
         self.class_thresholds = {
             str(label).lower(): float(value)
@@ -258,15 +261,32 @@ class YoloOnnxDetector:
 
     def _reset_policy_metrics(self) -> None:
         self.last_stage_ms = {}
+        self.last_stage_cpu_ms = {}
+        self.last_policy_ms = {}
+        self.last_policy_counts = {}
         self.last_inference_calls = 0
 
     def _add_stage_ms(self, name: str, started: float) -> None:
         elapsed_ms = (time.perf_counter() - started) * 1000.0
         self.last_stage_ms[name] = self.last_stage_ms.get(name, 0.0) + elapsed_ms
 
+    def _add_stage_cpu_ms(self, name: str, started: float) -> None:
+        elapsed_ms = (time.process_time() - started) * 1000.0
+        self.last_stage_cpu_ms[name] = self.last_stage_cpu_ms.get(name, 0.0) + elapsed_ms
+
+    def _add_policy_ms(self, name: str, elapsed_ms: float) -> None:
+        self.last_policy_ms[name] = self.last_policy_ms.get(name, 0.0) + float(elapsed_ms)
+
+    def _increment_policy_count(self, name: str, value: int = 1) -> None:
+        self.last_policy_counts[name] = self.last_policy_counts.get(name, 0) + int(value)
+
     def detect(self, frame_bgr: np.ndarray) -> list[Detection]:
         self._reset_policy_metrics()
-        return self._detect_once(frame_bgr, self.class_thresholds)
+        started = time.perf_counter()
+        detections = self._detect_once(frame_bgr, self.class_thresholds)
+        self._add_policy_ms("full_pass", (time.perf_counter() - started) * 1000.0)
+        self.last_policy_counts["full_frame_calls"] = self.last_inference_calls
+        return detections
 
     def detect_people_recall(
         self,
@@ -276,6 +296,7 @@ class YoloOnnxDetector:
         tile_overlap: float = 0.20,
         merge_iou_threshold: float = 0.55,
         enhancement_mode: str = "off",
+        tile_person_only_postprocess: bool = False,
     ) -> list[Detection]:
         if not 0.0 <= person_threshold <= 1.0:
             raise ValueError("person_threshold must be in [0, 1]")
@@ -293,10 +314,14 @@ class YoloOnnxDetector:
         self._reset_policy_metrics()
         thresholds = dict(self.class_thresholds)
         thresholds["person"] = float(person_threshold)
+        full_started = time.perf_counter()
         combined = self._detect_once(frame_bgr, thresholds)
+        self._add_policy_ms("full_pass", (time.perf_counter() - full_started) * 1000.0)
+        self._increment_policy_count("full_frame_calls")
 
         h, w = frame_bgr.shape[:2]
         regions = _tile_regions(w, h, tile_size, tile_overlap)
+        self.last_policy_counts["tile_count"] = len(regions)
         single_full_region = len(regions) == 1 and regions[0] == (0, 0, w, h)
         if single_full_region and enhancement_mode == "off":
             return combined
@@ -305,26 +330,54 @@ class YoloOnnxDetector:
         if not person_ids:
             return combined
 
+        allowed_tile_ids = person_ids if tile_person_only_postprocess else None
         if enhancement_mode == "adaptive":
+            probe_threshold = min(0.08, float(person_threshold))
+
             def detect_at_confidence(tile_bgr: np.ndarray, threshold: float) -> list[Detection]:
                 local_thresholds = dict(self.class_thresholds)
                 local_thresholds["person"] = float(threshold)
-                return self._detect_once(tile_bgr, local_thresholds)
-
-            combined.extend(
-                detect_people_with_adaptive_regions(
-                    frame_bgr,
-                    regions,
-                    detect_at_confidence,
-                    person_conf=float(person_threshold),
-                    probe_conf=min(0.08, float(person_threshold)),
-                    corroboration_iou=0.10,
+                started = time.perf_counter()
+                detections = self._detect_once(
+                    tile_bgr,
+                    local_thresholds,
+                    allowed_class_ids=allowed_tile_ids,
                 )
+                elapsed_ms = (time.perf_counter() - started) * 1000.0
+                if threshold <= probe_threshold + 1e-12:
+                    self._add_policy_ms("raw_roi_passes", elapsed_ms)
+                    self._increment_policy_count("raw_roi_calls")
+                else:
+                    self._add_policy_ms("enhanced_roi_passes", elapsed_ms)
+                    self._increment_policy_count("enhanced_roi_calls")
+                return detections
+
+            helper_started = time.perf_counter()
+            adaptive_detections = detect_people_with_adaptive_regions(
+                frame_bgr,
+                regions,
+                detect_at_confidence,
+                person_conf=float(person_threshold),
+                probe_conf=probe_threshold,
+                corroboration_iou=0.10,
             )
+            helper_ms = (time.perf_counter() - helper_started) * 1000.0
+            detector_ms = self.last_policy_ms.get("raw_roi_passes", 0.0) + self.last_policy_ms.get(
+                "enhanced_roi_passes", 0.0
+            )
+            self._add_policy_ms("enhancement_router_ops", max(0.0, helper_ms - detector_ms))
+            combined.extend(adaptive_detections)
         else:
             for x1, y1, x2, y2 in regions:
                 tile = frame_bgr[y1:y2, x1:x2]
-                tile_detections = self._detect_once(tile, thresholds)
+                roi_started = time.perf_counter()
+                tile_detections = self._detect_once(
+                    tile,
+                    thresholds,
+                    allowed_class_ids=allowed_tile_ids,
+                )
+                self._add_policy_ms("raw_roi_passes", (time.perf_counter() - roi_started) * 1000.0)
+                self._increment_policy_count("raw_roi_calls")
                 for detection in tile_detections:
                     if detection.class_id not in person_ids:
                         continue
@@ -338,26 +391,37 @@ class YoloOnnxDetector:
                             detection.appearance,
                         )
                     )
-        return _merge_detections(combined, merge_iou_threshold)
+        self.last_policy_counts["fusion_inputs"] = len(combined)
+        fusion_started = time.perf_counter()
+        merged = _merge_detections(combined, merge_iou_threshold)
+        self._add_policy_ms("fusion", (time.perf_counter() - fusion_started) * 1000.0)
+        self.last_policy_counts["fusion_outputs"] = len(merged)
+        return merged
 
     def _detect_once(
         self,
         frame_bgr: np.ndarray,
         class_thresholds: Mapping[str, float] | None = None,
+        allowed_class_ids: set[int] | None = None,
     ) -> list[Detection]:
         preprocess_started = time.perf_counter()
+        preprocess_cpu_started = time.process_time()
         image, scale, pad_x, pad_y = self._letterbox(frame_bgr)
         rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         blob = rgb.astype(np.float32) / 255.0
         blob = np.transpose(blob, (2, 0, 1))[None, ...]
         self._add_stage_ms("preprocess", preprocess_started)
+        self._add_stage_cpu_ms("preprocess", preprocess_cpu_started)
 
         inference_started = time.perf_counter()
+        inference_cpu_started = time.process_time()
         outputs = self.session.run(None, {self.input_name: blob})
         self.last_inference_calls += 1
         self._add_stage_ms("inference", inference_started)
+        self._add_stage_cpu_ms("inference", inference_cpu_started)
 
         postprocess_started = time.perf_counter()
+        postprocess_cpu_started = time.process_time()
         pred = np.asarray(outputs[0])
         pred = np.squeeze(pred)
         if pred.ndim != 2:
@@ -376,7 +440,10 @@ class YoloOnnxDetector:
                 scale, pad_x, pad_y, self.labels,
                 self.conf_threshold, self.iou_threshold, class_thresholds,
             )
+            if allowed_class_ids is not None:
+                detections = [item for item in detections if item.class_id in allowed_class_ids]
             self._add_stage_ms("postprocess", postprocess_started)
+            self._add_stage_cpu_ms("postprocess", postprocess_cpu_started)
             return detections
 
         boxes_xywh = pred[:, :4]
@@ -390,8 +457,12 @@ class YoloOnnxDetector:
             self.conf_threshold,
             class_thresholds,
         )
+        if allowed_class_ids is not None:
+            allowed = np.asarray(sorted(allowed_class_ids), dtype=np.int32)
+            mask &= np.isin(class_ids, allowed)
         if not np.any(mask):
             self._add_stage_ms("postprocess", postprocess_started)
+            self._add_stage_cpu_ms("postprocess", postprocess_cpu_started)
             return []
 
         boxes_xywh = boxes_xywh[mask]
@@ -424,4 +495,5 @@ class YoloOnnxDetector:
             label = self.labels[cid] if 0 <= cid < len(self.labels) else f"class_{cid}"
             detections.append(Detection((x1, y1, x2, y2), float(scores[i]), cid, label))
         self._add_stage_ms("postprocess", postprocess_started)
+        self._add_stage_cpu_ms("postprocess", postprocess_cpu_started)
         return detections
