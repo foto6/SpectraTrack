@@ -1,4 +1,6 @@
 import copy
+import json
+from pathlib import Path
 
 import pytest
 
@@ -261,3 +263,37 @@ def test_result_validator_rejects_any_holdout_or_retune_exposure():
     )
     with pytest.raises(ValueError, match="holdout4200_inspected"):
         validate_result_artifact(result)
+
+
+def test_committed_r2_result_binds_exact_frozen_lock_and_r2_provenance():
+    result_path = (
+        Path(__file__).parents[1]
+        / "benchmarks"
+        / "vnext"
+        / "detection"
+        / "r2_result.v1.json"
+    )
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    validated = validate_result_artifact(result)
+
+    assert validated["valid"] is True
+    assert result["source_commit"] == "ea1234e153a689811488e439429472c5b2a698ea"
+    assert result["lock_digest"] == EXPECTED_LOCK_DIGEST
+    assert result["r2"] == {
+        "revision": R2_REVISION,
+        "frame_count": R2_FRAME_COUNT,
+        "corpus_sha256": R2_CORPUS_SHA256,
+        "ground_truth_sha256": R2_GT_SHA256,
+        "manifest_sha256": R2_MANIFEST_SHA256,
+        "selection_proof_sha256": R2_PROOF_SHA256,
+    }
+    assert result["a6_stage_policy"]["commit"] == A6_POLICY_COMMIT
+    assert result["a6_stage_policy"]["holdout4200_inspected"] is False
+    assert result["a6_stage_policy"]["holdout4200_scored"] is False
+    assert result["a6_stage_policy"]["full5000_run"] is False
+    assert result["a6_stage_policy"]["retuned_after_r2"] is False
+    assert result["production_control_changed"] is False
+    assert result["decision"] == "REJECT_R2"
+    assert result["gates"]["hard_reject_reasons"] == [
+        "prefusion_duplicate_increase_gate"
+    ]
