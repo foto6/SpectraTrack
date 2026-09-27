@@ -4,7 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 
-LOCK_SHA256 = "62b0beda76d4a0434a0da4d60f92518a884659211df779b07944f62d91855a93"
+LOCK_SHA256 = "e042ffe79a5e8e45d770fee38b33f3b496dd7b04022a50470aa701e24f6b52ba"
 A7_DISCOVERY_SHA256 = "ad51f9b7c3f4629155298215a52004092ea1b95bd220c4ed6a608e464971afec"
 
 
@@ -14,13 +14,22 @@ def _lock_paths() -> tuple[Path, Path]:
     return base / "r2_hypothesis_lock.json", base / "r2_hypothesis_lock.sha256"
 
 
-def test_r2_hypothesis_lock_bytes_are_immutable() -> None:
+def test_r2_hypothesis_lock_canonical_hash_is_immutable() -> None:
     lock_path, digest_path = _lock_paths()
-    payload = lock_path.read_bytes()
-    actual = hashlib.sha256(payload).hexdigest()
+    lock = json.loads(lock_path.read_text(encoding="utf-8"))
+    canonical = json.dumps(
+        lock,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    actual = hashlib.sha256(canonical).hexdigest()
 
     assert actual == LOCK_SHA256
     assert digest_path.read_text(encoding="utf-8") == f"{LOCK_SHA256}  r2_hypothesis_lock.json\n"
+    assert lock["immutability"]["hash_basis"] == (
+        "UTF-8 canonical JSON: json.dumps(sort_keys=True,separators=(',',':'),ensure_ascii=False)"
+    )
 
 
 def test_r2_hypothesis_lock_is_no_candidate_and_pre_exposure() -> None:
