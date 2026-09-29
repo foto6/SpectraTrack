@@ -19,7 +19,7 @@ FIRST_OBSERVED_A1_R2_RESULT_COMMIT = "58047dbc336d9a9e3468d4afb1b17dc5683a69f4"
 
 FREEZE = {
     "revision": "nightowls-public-smoke400-r2",
-    "bundle_file_sha256": "185c79d00480c05600a7181e0bc514b4a560e4ab27f076bf33081b2e8c3a",
+    "bundle_file_sha256": "185c79d00480c05600a7181e0bc514b4a560e4ab27f27af076bf33081b2e8c3a",
     "bundle_declared_sha256": "9f2afa165f294a4bce1e7c842b8a135a98876e1a0c4db4b0cbd0b8c583151cce",
     "corpus_sha256": "9d145b4dda780052388f3b663203c519ded48f61457adef14654f84fb5549eff",
     "parent_corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
