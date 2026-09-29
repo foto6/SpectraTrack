@@ -1,0 +1,104 @@
+{
+  "schema": "spectratrack-vnext-a3-smoke400-final-v1",
+  "decision": "REJECT",
+  "production_enhancement": "OFF",
+  "candidate": "lime_maxrgb_bounded",
+  "candidate_lock": {
+    "commit": "af6b636ceb1a32b55383bcb5260fdc6af9307440",
+    "sha256": "985d0c097a38cf49a9949071ef38707754ea7eaf41368eaa4d43f74b96d2873d"
+  },
+  "a5_smoke": {
+    "qa_head": "2c40b522433b986a213689f7152834d2933e29c5",
+    "revision": "nightowls-public-smoke400-r1",
+    "manifest_sha256": "3f65339609de78e7ef255e94875727a4bb26c4769231763a2660e1bb8f15905e",
+    "corpus_sha256": "70c29ecd91ede9239ebed2949ea46e4b07b63e842aef630c0752ee41b9620162",
+    "ground_truth_sha256": "45ba10895c8a98f433bc7bad8e488b311a31ad8acf8459656d0cd775fe3fc0e8",
+    "selection_proof_sha256": "0838ecfd1341eb5f0193ad369516098be5a7d8b53d77302f8e2e4a4089c34940",
+    "frames": 400,
+    "sequences": 143,
+    "positive_frames": 109,
+    "scored_person_objects": 183,
+    "tracking_supported": false,
+    "candidate_result_inputs": []
+  },
+  "strict_smoke_intersection": {
+    "selected_weak_rois": 60,
+    "videos": 42,
+    "max_enhanced_rois_per_source_frame": 1,
+    "manifest_sha256": "6773a1f27700080d36bc42a715dcde73afb8b61ab5121093cc0d8e20900bac6c"
+  },
+  "a1_fusion_source_commit": "3dc31c8fa8b323ce86afc14c3105a0c2247a2c48",
+  "off": {
+    "tp": 135,
+    "fp": 126,
+    "fn": 48,
+    "precision": 0.5172413793103449,
+    "recall": 0.7377049180327869,
+    "f1": 0.6081081081081081,
+    "bbox_localization_iou": 0.7136299190022581,
+    "represented_baseline_onnx_calls": 1200
+  },
+  "candidate_result": {
+    "tp": 135,
+    "fp": 125,
+    "fn": 48,
+    "precision": 0.5192307692307693,
+    "recall": 0.7377049180327869,
+    "f1": 0.6094808126410836,
+    "bbox_localization_iou": 0.713737998724073,
+    "recovered_gt": 0,
+    "lost_gt": 0,
+    "fp_delta": -1,
+    "accepted_alternate_measurements": 54,
+    "raw_corroboration_holds": true
+  },
+  "compute": {
+    "actual_provider": "CPUExecutionProvider",
+    "additional_raw_onnx_calls": 60,
+    "extra_enhancement_onnx_calls": 60,
+    "total_onnx_calls_including_represented_baseline": 1320,
+    "extra_call_fraction_vs_off": 0.1,
+    "activation_rate_vs_smoke_frames": 0.15,
+    "activation_rate_vs_selected_weak_rois": 1.0,
+    "accepted_alternate_rate": 0.9,
+    "operation_preprocessing_ms": 5123.143799835816,
+    "raw_probe_detector_ms": 243668.7090001069,
+    "raw_probe_inference_ms": 241350.58379988186,
+    "enhanced_detector_ms": 248589.5052002743,
+    "enhanced_inference_ms": 246401.10519877635,
+    "candidate_experiment_wall_seconds": 500.6381717999466,
+    "recovered_gt_per_extra_enhancement_call": 0.0,
+    "latency_note": "Current research Python exposed CPUExecutionProvider only; timings are measured CPU lab cost, not a production DirectML estimate. ONNX call counts are the provider-independent compute comparison."
+  },
+  "promotion_gate": {
+    "minimum_recovered_gt": 2,
+    "lost_gt_must_equal": 0,
+    "net_tp_gain_minimum": 2,
+    "recall_strictly_greater_than_off": true,
+    "f1_strictly_greater_than_off": true,
+    "precision_not_lower_than_off": true,
+    "fp_delta_must_be_lte": 0,
+    "minimum_recovered_gt_per_extra_enhancement_call": 0.02,
+    "observed": {
+      "minimum_recovered_gt": false,
+      "lost_gt_must_equal": true,
+      "net_tp_gain_minimum": false,
+      "recall_strictly_greater_than_off": false,
+      "f1_strictly_greater_than_off": true,
+      "precision_not_lower_than_off": true,
+      "fp_delta_must_be_lte": true,
+      "minimum_recovered_gt_per_extra_enhancement_call": false
+    },
+    "passed": false
+  },
+  "artifacts": {
+    "off_score_sha256": "e8a8f29ecf869aee6d126753fe9c9161e0eca2c5cb903f662df7d958c5f19dac",
+    "candidate_evidence_sha256": "57e058d5a184274afd85387b3073fd9c50ca93f8c3d8b9736f8482fc3c651a49",
+    "candidate_score_sha256": "21ab0f792f84deee5926b999ade865a4d6e166d8bf469f95dbc832613a0da294"
+  },
+  "full5000": {
+    "requested": false,
+    "run": false,
+    "reason": "Smoke recovered no GT and produced zero recall gain for 120 extra ONNX calls."
+  }
+}
