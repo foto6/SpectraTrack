@@ -1489,3 +1489,123 @@ was performed. Production enhancement remains **OFF**.
 
 Compact canonical evidence:
 `pc/benchmarks/vnext/enhancement/smoke400_lime_result.json`.
+
+
+## A3 blind disjoint R2 smoke400 preflight — final milestone
+
+**Status: BLOCKED_NO_AUTHORIZED_R2_CANDIDATE. Production enhancement: OFF.**
+
+The starting HEAD was independently read after git fetch origin --prune:
+agent/vnext-enhancement @ 2b58192cfdb8c1f9581d93cc32e8651a5ff79398.
+The working tree was clean. No production/integration/main/RC/other-agent
+branch was modified. The existing hypothesis lock files remain byte-identical:
+pc/benchmarks/vnext/enhancement/r2_hypothesis_lock.json (blob f5e452266f8cdc163ad94cb167eb0e4787515355)
+and r2_hypothesis_lock.sha256 (blob 9317edeaef9bd257ce7efe706cea9f8669d42b5a).
+The verified canonical UTF-8 JSON hash is
+e042ffe79a5e8e45d770fee38b33f3b496dd7b04022a50470aa701e24f6b52ba.
+
+### Independent pre-exposure chronology (Git commit metadata)
+
+| Event | Commit | Date/time UTC |
+| --- | --- | --- |
+| Older R1 (not disjoint R2) smoke400 LIME score | 993c4a6574d0a6298774a7937ba3daeca8bc2e30 | 2026-09-27 11:19:06 |
+| A5 disjoint R2 freeze | 2effaa3b9dc0cb5911cb3057b13e6976fbfb9381 | 2026-09-27 11:43:40 |
+| A3 first R2 no-candidate lock | 526be08432dc7a9316ae1f46c37f281d4cb27acc | 2026-09-27 13:37:48 |
+| A3 canonical lock hash finalized | f09b4f2f6aed32a76904fddf9db3c9c65aff152e | 2026-09-27 13:40:32 |
+| First observed published A1 disjoint R2 score | 58047dbc336d9a9e3468d4afb1b17dc5683a69f4 | 2026-09-27 14:13:25 |
+
+Git ancestry tests passed for both A3 lock commits, the older R1 score,
+the cited A5 freeze and the A1 scoring result on its specialist branch.
+No committed disjoint R2 scoring artifact existed in the A3 starting HEAD.
+The A3 lock predates the identified/published R2 scoring evidence; this does
+not purport to exclude unknown uncommitted work elsewhere. A5 corpus freeze
+(availability) is earlier than the lock, but is not scoring exposure.
+The prior smoke400 LIME score is explicitly R1 evidence, not disjoint R2.
+
+### Exact frozen A5 disjoint workload: verified by byte hashes only
+
+Root: E:\SpectraTrack-data\imports\nightowls-public-smoke400-r2
+
+- revision: nightowls-public-smoke400-r2
+- corpus SHA-256: 9d145b4dda780052388f3b663203c519ded48f61457adef14654f84fb5549eff
+- parent corpus SHA-256: 1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8
+- bundle-file SHA-256: 185c79d00480c05600a7181e0bc514b4a560e4ab27f27af076bf33081b2e8c3a
+- published bundle-internal SHA-256: 9f2afa165f294a4bce1e7c842b8a135a98876e1a0c4db4b0cbd0b8c583151cce
+- R2 GT SHA-256: 75eba2c9dc3b36d0a2389bfbb080a709621ef690680ae655d85d8732e7bc6097
+- R2 manifest SHA-256: 9270d46c2776aa531e1b979a1a7ebc16eaed0f6483b2c1095da834af383c4e83
+- R2 A5 selection-proof SHA-256: df11e9dc6ca1f63019cba071ed82420de27c706b41d1d3b46df880bb3ce50faf
+- missing SHA identifiers: none.
+
+All sizes and digests matched the A5 published hash bundle. The published
+A5 disjoint selection proof was checked by digest, NOT parsed for identities.
+No R2 GT rows, images or result content were inspected.
+
+### Why evaluation must remain BLOCKED
+
+The exact immutable A3 lock has decision=NO_NEW_CANDIDATE,
+locked_candidate=null, r2_scoring_allowed=false,
+r2_gt_inspection_allowed=false, r2_image_inspection_allowed=false,
+r2_result_inspection_allowed=false, max_added_detector_calls_for_this_lock=0
+and max_enhanced_rois_per_source_frame_for_this_lock=0.
+
+The existing reserved reject/promotion conditions explicitly apply only to a
+newly versioned lock superseding this one BEFORE R2 exposure. No such A3
+pre-exposure candidate lock exists. Admitting a candidate retroactively,
+recycling the older R1 LIME probe, scoring even OFF on R2, or changing gates
+after exposure would violate the committed protocol. The blocker is policy
+integrity, NOT dataset availability. ENHANCEMENT OFF remains the final
+production decision.
+
+### Deterministic code, evidence, and exact outcome
+
+Own-file additions:
+
+- pc/spectratrack/research/r2_blind_smoke400.py
+- pc/tests/test_vnext_enhancement_r2_blind.py
+- pc/benchmarks/vnext/enhancement/r2_disjoint_smoke400_preflight_blocked.json
+
+Reproducible invocation from the A3 pc worktree:
+
+    C:\Users\foto6\SpectraTrack-env\Scripts\python.exe -m spectratrack.research.r2_blind_smoke400 --repo-root C:\Users\foto6\SpectraTrack-worktrees\a3 --frozen-dir E:\SpectraTrack-data\imports\nightowls-public-smoke400-r2 --output E:\SpectraTrack-data\runs\a3-r2-blind-smoke400-preflight.json
+
+Intentional exit code: 2 (BLOCKED).
+Target-PC evidence SHA-256:
+eb082515248e87dbf198b565feec6cdb5ed0f0ffcf1b25ed4bbdd948e5fdd813.
+
+The committed JSON records the exact hashes, chronology, original immutable
+lock/policy, explicit A5 GT rules and blocked reason. Outcome:
+
+- status: BLOCKED_NO_AUTHORIZED_R2_CANDIDATE
+- integrity and chronology checks: passed
+- R2 semantic GT/image/result inspection: none
+- R2 scoring: false
+- actual R2 detector/ONNX calls: 0
+- R2 OFF/candidate precision, recall, F1, TP, FP, FN: NULL (not measured)
+- positive/negative-frame deltas, extra candidate calls and wall-time: NULL
+- frozen missing SHA identifiers: empty list.
+
+The pure comparison helper requires identical corpus, GT, model, provider,
+frame selection, detector/fusion/scoring policy fingerprints, 400 selected
+frames, canonical A5 scored-pedestrian/ignore/rider rules, positive TP/FN,
+positive+negative FP, cap=1 and mandatory same-source raw corroboration. It
+computes recovered/lost GT, TP/FP/FN, precision/recall/F1, positive/negative
+deltas, raw/extra enhancement ONNX calls, normalized recovered GT and
+incremental wall time. It covers the predeclared reserved gates: >=2
+recovered GT, 0 lost GT, >=2 net TP, strictly greater recall/F1,
+precision drop <=0.005, FP increase <=2, recovery/added call >=0.02.
+All positive/reject-case comparison tests use synthetic data ONLY, not R2.
+
+### Recorded failure and tests
+
+First preflight stopped on an accidental truncated 60-digit pinned copy of
+the bundle-file hash, not on altered A5 bytes. Source corrected in
+4c9f447687b59077835529547f45462d6d27d41b; 64-digit SHA regression
+test added in 1d8db46d222ca5e4058119bdade6d9c53ee1e12a.
+Re-execution gave the expected BLOCKED result above. Targeted R2 tests:
+11 passed in 0.16 s.
+
+No holdout4200/FULL5000 was opened, no R2 candidate was run, no generic
+enhancement sweep/neural restoration occurred, and no post-R2 tuning was
+performed. This R2 partition cannot be retroactively unlocked by rewriting
+the existing lock. A future enhancement experiment would require its own
+new pre-exposure lock and a genuinely unexposed partition.
