@@ -192,7 +192,13 @@ def verify_pair(report: dict[str, Any], lock: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("LOCK_PROVIDER_MISMATCH")
     if report["model_sha256"] != lock["r1_evidence"]["model_sha256"]:
         raise ValueError("LOCK_MODEL_SHA_MISMATCH")
-    if report["settings"] != lock["shared_workload_settings"]:
+    locked_settings = {
+        key: lock["shared_workload"][key] for key in (
+            "input_size", "person_threshold", "tile_size", "tile_overlap",
+            "merge_iou", "enhancement_mode", "label", "matching_iou",
+        )
+    }
+    if report["settings"] != locked_settings:
         raise ValueError("LOCK_SETTINGS_DRIFT")
     if report["control"]["ground_truth_sha256"] != report["candidate"]["ground_truth_sha256"]:
         raise ValueError("PAIR_GT_SHA_MISMATCH")
