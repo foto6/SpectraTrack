@@ -329,11 +329,11 @@ def _validate_input_provenance(
     ):
         if r1_proof[key] != lock["r1_evidence"][locked_key]:
             raise ValueError("R1_DISJOINTNESS_PROOF_UNTRUSTED")
-    r1_sources = {(frame.source.replace("\\", "/"), frame.key) for frame in r1_frames}
+    r1_sources = {(frame.source.replace("\\", "/").casefold(), frame.key) for frame in r1_frames}
     r1_source_paths = {src for src, _ in r1_sources}
     r1_keys = {key for _, key in r1_sources}
     if r1_keys.intersection(frame.key for frame in frames) or r1_source_paths.intersection(
-        frame.source.replace("\\", "/") for frame in frames
+        frame.source.replace("\\", "/").casefold() for frame in frames
     ):
         raise ValueError("R2_R1_FRAME_OR_SOURCE_LEAKAGE")
     if ground_truth_path == r1_ground_truth_path and selection_manifest_path == r1_selection_manifest_path:
@@ -436,6 +436,16 @@ def run_paired_selected_images(
             raise ValueError(f"LOCK_GEOMETRY_MISMATCH: {item.key}")
         ordered_image_hashes.append({"key": item.key, "sha256": input_sha})
 
+        if frame_index == 0:
+            # Equal one-call warmup for both sessions; excluded from scored invocations
+            # and detector-policy wall time, explicitly recorded in the report.
+            control_detector.detect(image)
+            if control_detector.last_inference_calls != 1:
+                raise ValueError("CONTROL_WARMUP_CALL_COUNT_DRIFT")
+            candidate_detector.detect(image)
+            if candidate_detector.last_inference_calls != 1:
+                raise ValueError("CANDIDATE_WARMUP_CALL_COUNT_DRIFT")
+
         per_frame: dict[str, dict[str, Any]] = {}
         chosen_tile = None
         # Deterministic AB/BA order avoids consistently crediting warm host/cache to one policy.
@@ -526,6 +536,7 @@ def run_paired_selected_images(
         "ordered_image_bytes_sha256": digest,
         "paired_frames": paired_frames,
         "calls": counts,
+        "warmup_calls_excluded_from_budget": {"control": 1, "candidate": 1},
         "control": {
             "ground_truth_sha256": selection["ground_truth_sha256"],
             "selection_manifest_sha256": selection["selection_manifest_sha256"],
