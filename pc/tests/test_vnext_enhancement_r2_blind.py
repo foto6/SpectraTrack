@@ -41,6 +41,18 @@ def _candidate(*, tp: int, positive_fp: int, negative_fp: int, fn: int, matches:
     }
 
 
+def test_pinned_r2_digests_are_full_sha256_values() -> None:
+    values = [
+        r2.LOCK_SHA256,
+        r2.FREEZE["bundle_file_sha256"],
+        r2.FREEZE["bundle_declared_sha256"],
+        r2.FREEZE["corpus_sha256"],
+        r2.FREEZE["parent_corpus_sha256"],
+        *(item[1] for item in r2.FREEZE["files"].values()),
+    ]
+    assert all(len(value) == 64 and all(c in "0123456789abcdef" for c in value) for value in values)
+
+
 def test_existing_r2_lock_is_canonically_pinned_and_no_candidate() -> None:
     lock = _lock()
     assert r2.canonical_sha(lock) == r2.LOCK_SHA256
