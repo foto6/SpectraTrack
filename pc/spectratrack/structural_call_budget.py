@@ -160,6 +160,8 @@ def _scored_quality(metrics: dict[str, Any]) -> dict[str, Any]:
 
 def verify_pair(report: dict[str, Any], lock: dict[str, Any]) -> dict[str, Any]:
     """Fail closed on pairing/accounting drift BEFORE calculating candidate gates."""
+    if report.get("candidate_id") != lock["one_candidate"]["id"]:
+        raise ValueError("LOCK_CANDIDATE_ID_MISMATCH")
     entries = report["paired_frames"]
     count = int(report["frames"])
     if count != len(entries) or count <= 0:
@@ -503,7 +505,7 @@ def run_paired_selected_images(
     report = {
         "schema": "spectratrack.a4.structural_detector_call_budget.paired_v1",
         "phase": phase,
-        "candidate": CANDIDATE_ID,
+        "candidate_id": CANDIDATE_ID,
         "scope": "research-only; not production; no tracking GT",
         "lock_git_blob_sha1": LOCK_GIT_BLOB_SHA1,
         "lock_commit": "0f910b6050c40c22e0607d548402389d528592e3",
