@@ -628,3 +628,119 @@ tracking corpus with explicit recall/FN/discovery evidence before speed can just
 No production quality threshold, detector policy, enhancement policy, merge/release branch, or frozen corpus was
 changed.
 
+
+
+## A4 structural detector-call budget milestone — predeclared 2026-09-29
+
+This section supersedes the earlier *future research* proposal, not the already rejected R1 micro-candidate.
+
+Starting branch/head verified before new work:
+
+`agent/vnext-performance @ 5c880267498a18b51b2e5c5f92f6c5360fafc212`
+
+**Immutable R1-only lock was committed FIRST**, before any disjoint R2 scoring:
+
+- pre-data lock commit: `0f910b6050c40c22e0607d548402389d528592e3`
+- immutable lock Git blob SHA-1: `351bae3ce60f7365f79cd989a98551e962049c49`
+- contract: `pc/benchmarks/vnext/performance/R2_STRUCTURAL_BUDGET_LOCK.v1.json`
+- candidate: exactly one, `global_plus_least_supported_one_raw_tile_v1`
+
+### Evidence and one structural hypothesis
+
+Locked A5 R1 Smoke400 `nightowls-public-smoke400-r1`: 400 frames; control 1200 actual
+ONNX invocations = 400 full-frame + 800 raw tiles; enhancement OFF. The two raw tiles
+accounted for 60.9% of measured frame time. R1 control: TP=135, FP=126, FN=48,
+GT=183, precision=0.517241, recall=0.737705, wall=152.009 s with
+`DmlExecutionProvider,CPUExecutionProvider`.
+
+Earlier contiguous-input micro-candidate achieved **1.027x**, below pre-existing
+1.10x gate, and is **REJECTED**, not claimed as an improvement.
+
+The one new structural hypothesis is to retain full-frame global discovery on EVERY image,
+then infer just ONE of the two production raw tiles. After the full-frame inference, count
+its predicted person centers in each tile. Execute the tile with fewer already-explained
+person centers; equal counts use the first SHA-256 byte of UTF-8 `video#frame` modulo 2.
+No ground truth, R2 result, tracking state or prior frame is used for scheduling.
+
+The exact production `_tile_regions`, `_detect_once` decoding/thresholds and
+`_merge_detections` IoU=0.55 are reused without changing production implementations.
+Geometry other than exactly two production regions **BLOCKS**, rather than silently
+falling back or searching alternate tile/overlap thresholds.
+
+### Immutable compute/latency/quality gate
+
+| Metric | Locked CONTROL | Locked candidate | Interpretation |
+| --- | ---: | ---: | --- |
+| Full-frame ONNX calls / selected image | 1 | 1 | global discovery retained every frame |
+| Raw tile ONNX calls / selected image | 2 | 1 | structural reduction |
+| Enhanced ONNX calls | 0 | 0 | A3 OFF decision unchanged |
+| Total calls / selected image | 3 | **2 maximum and exact** | hard fail on mismatch |
+| Total for identical 400 frames | 1200 | **800** | predicted structural calls, not a measured candidate result |
+| Call reduction | — | **33.33%** | from the immutable schedule |
+| Paired detector policy latency | control measured concurrently | must be at most control/1.10 | no hardware/throughput extrapolation |
+| Recall delta and precision delta | A5 scorer | each must be nonnegative | both gates enforced |
+| FN delta and FP delta | A5 scorer | each must be nonpositive | both gates enforced |
+| GT denominator | same immutable GT | exactly equal | TP + FN = GT required |
+
+`verify_pair` fail-closes if input byte digests, ordered frame keys, selected
+manifest/GT/selection hash, model SHA, providers, configuration, per-frame/aggregate
+invocation counters, denominator, precision or recall accounting differ. It uses
+`qa_benchmark.evaluate_frames` with label `person` and IoU 0.5; ignore rules are
+unchanged. A candidate can be `REJECT` on quality even if it saves exactly one
+inference/frame. There is no threshold search and no after-R2 retuning.
+
+### Reproducible research runner
+
+- `pc/spectratrack/structural_call_budget.py`
+- `pc/tests/test_structural_call_budget.py`
+
+The paired runner opens each selected source image only once and runs control and
+candidate on that same decoded array, alternating AB/BA execution order by selected
+frame index. The report includes per-frame input SHA-256, exact source-key order,
+detector wall/stage time, actual low-level ONNX invocation counts, selected tile,
+both detection-output digests, model/provider provenance and canonical A5 TP/FP/FN
+and precision/recall. R1 mode requires the three exact A5 R1 proof hashes.
+
+Future disjoint R2 mode requires three explicit immutable R2 proof hashes AND the
+exact locked R1 GT/selection proof. It rejects overlapping frame keys or source
+paths before model inference. This implementation does **not** authorize a R2 run:
+an independent owner must supply frozen disjoint R2 evidence and explicitly run it.
+
+R1 reference bytes remain external to the repository; no model/video is checked in.
+
+Example **R1-only** invocation on the target PC after attaching the exact external files:
+
+```powershell
+cd pc
+python -m spectratrack.structural_call_budget --phase r1 \
+  --ground-truth <EXACT_R1_GT.jsonl> \
+  --selection-manifest <EXACT_R1_PROOF.json> \
+  --source-root <EXACT_R1_FRAME_ROOT> \
+  --model <EXACT_MODEL_SHA_MATCHING_yolo11x.onnx> \
+  --source-commit <CURRENT_EXACT_RESEARCH_SHA> \
+  --output <R1_PAIRED_REPORT.json>
+```
+
+There is intentionally no predeclared R2 invocation executed by A4 in this milestone.
+Do not inspect or infer on holdout4200/FULL5000; NightOwls remains
+`tracking_supported=false`, so no discovery-latency or identity/track-GT claim.
+
+### Measurement and limitations
+
+From the existing R1 report only:
+
+- control frame wall: 152.009 s / 400 = 380.02 ms/frame (historical, includes full R1 pipeline);
+- full+two-tile structural total: 1200 calls;
+- locked one-tile structural total: 800 calls for 400 two-tile frames;
+- actual new candidate DirectML latency: **UNMEASURED**, requires target model/frame bytes;
+- actual new candidate TP/FP/FN and precision/recall: **UNMEASURED**;
+- GPU usage / VRAM: not measured (no trustworthy per-process DirectML telemetry);
+- source-seconds/processing-seconds ratio: unavailable for sparse selected still images.
+
+**Risk:** the omitted tile can contain a small person missed by the full-frame pass.
+Full-frame every image avoids permanently hiding the whole scene by a track-only ROI,
+but does not guarantee small-person recall. The new GT gates are deliberately strict.
+
+Decision pending R1 paired run and independent disjoint R2: **CONTINUE RESEARCH ONLY**.
+No production policy changes, no other branch merges, no holdout/full inference,
+no release/cutover.
