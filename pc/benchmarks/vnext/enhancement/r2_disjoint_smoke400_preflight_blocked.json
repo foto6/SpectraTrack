@@ -1,0 +1,130 @@
+{
+  "blocker": "Immutable pre-data R2 lock has locked_candidate=null and explicitly forbids R2 scoring/exposure and extra detector calls. No superseding pre-exposure lock exists on this A3 branch.",
+  "chronology": {
+    "a3_r2_scoring_artifacts_at_head": [],
+    "a5_r2_freeze_commit": "2effaa3b9dc0cb5911cb3057b13e6976fbfb9381",
+    "canonical_hash_commit": "f09b4f2f6aed32a76904fddf9db3c9c65aff152e",
+    "commit_times_iso8601": {
+      "a3_lock_first": "2026-09-27T20:37:48+07:00",
+      "a3_lock_hash_final": "2026-09-27T20:40:32+07:00",
+      "a5_r2_freeze": "2026-09-27T18:43:40+07:00",
+      "first_observed_a1_r2_result": "2026-09-27T21:13:25+07:00",
+      "prior_r1_smoke_score": "2026-09-27T18:19:06+07:00"
+    },
+    "first_lock_commit": "526be08432dc7a9316ae1f46c37f281d4cb27acc",
+    "first_observed_a1_r2_result_commit": "58047dbc336d9a9e3468d4afb1b17dc5683a69f4",
+    "git_ancestry_verified": true,
+    "lock_canonical_sha256": "e042ffe79a5e8e45d770fee38b33f3b496dd7b04022a50470aa701e24f6b52ba",
+    "r1_previous_score_commit": "993c4a6574d0a6298774a7937ba3daeca8bc2e30",
+    "scope": "committed A3 history and first published A1 R2 result; not an assertion about unknown uncommitted work",
+    "verified_head_before_this_run": "1d8db46d222ca5e4058119bdade6d9c53ee1e12a"
+  },
+  "expected_r2_revision": "nightowls-public-smoke400-r2",
+  "expected_sha256": {
+    "bundle_declared_sha256": "9f2afa165f294a4bce1e7c842b8a135a98876e1a0c4db4b0cbd0b8c583151cce",
+    "bundle_file_sha256": "185c79d00480c05600a7181e0bc514b4a560e4ab27f27af076bf33081b2e8c3a",
+    "corpus_sha256": "9d145b4dda780052388f3b663203c519ded48f61457adef14654f84fb5549eff",
+    "files": {
+      "ground_truth": [
+        "nightowls-public-smoke400-r2.jsonl",
+        "75eba2c9dc3b36d0a2389bfbb080a709621ef690680ae655d85d8732e7bc6097"
+      ],
+      "manifest": [
+        "nightowls-public-smoke400-r2.manifest.json",
+        "9270d46c2776aa531e1b979a1a7ebc16eaed0f6483b2c1095da834af383c4e83"
+      ],
+      "selection_proof": [
+        "nightowls-public-smoke400-r2.selection-proof.json",
+        "df11e9dc6ca1f63019cba071ed82420de27c706b41d1d3b46df880bb3ce50faf"
+      ]
+    },
+    "parent_corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
+    "revision": "nightowls-public-smoke400-r2"
+  },
+  "freeze": {
+    "bundle_declared_sha256": "9f2afa165f294a4bce1e7c842b8a135a98876e1a0c4db4b0cbd0b8c583151cce",
+    "bundle_file_sha256": "185c79d00480c05600a7181e0bc514b4a560e4ab27f27af076bf33081b2e8c3a",
+    "corpus_sha256": "9d145b4dda780052388f3b663203c519ded48f61457adef14654f84fb5549eff",
+    "disjointness": "A5 published freeze/selection-proof SHA verified; frame identities not opened under NO_NEW_CANDIDATE lock",
+    "files": {
+      "ground_truth": {
+        "bytes": 245453,
+        "name": "nightowls-public-smoke400-r2.jsonl",
+        "sha256": "75eba2c9dc3b36d0a2389bfbb080a709621ef690680ae655d85d8732e7bc6097"
+      },
+      "manifest": {
+        "bytes": 14533,
+        "name": "nightowls-public-smoke400-r2.manifest.json",
+        "sha256": "9270d46c2776aa531e1b979a1a7ebc16eaed0f6483b2c1095da834af383c4e83"
+      },
+      "selection_proof": {
+        "bytes": 347957,
+        "name": "nightowls-public-smoke400-r2.selection-proof.json",
+        "sha256": "df11e9dc6ca1f63019cba071ed82420de27c706b41d1d3b46df880bb3ce50faf"
+      }
+    },
+    "parent_corpus_sha256": "1ba30ef5adad0f6bedba4319d1c3b5f246d4c576c92b26f8b98b68b4b94a0ae8",
+    "revision": "nightowls-public-smoke400-r2",
+    "semantic_gt_or_image_or_result_inspection": false
+  },
+  "gt_rules": {
+    "content_read_at_preflight": false,
+    "ignore": "official ignore objects excluded under A5 scorer; never relabel as GT",
+    "negatives": "negative-frame unmatched predictions contribute to FP, never TP",
+    "positives": "TP and FN from A5 scored pedestrian instances",
+    "riders": "not promoted to scored pedestrian",
+    "runtime_hints": "GT tags/objects/ignore annotations forbidden for ROI routing",
+    "scored_label": "person / official scored pedestrian only",
+    "scorer": "canonical A5 NightOwls detection-only post-fusion scorer",
+    "tracking": "no temporal tracking/jitter claims"
+  },
+  "lock": {
+    "canonical_sha256": "e042ffe79a5e8e45d770fee38b33f3b496dd7b04022a50470aa701e24f6b52ba",
+    "decision": "NO_NEW_CANDIDATE",
+    "execution_policy": {
+      "full5000_scoring_allowed": false,
+      "max_added_detector_calls_for_this_lock": 0,
+      "max_enhanced_rois_per_source_frame_for_this_lock": 0,
+      "production_enable_allowed": false,
+      "r2_gt_inspection_allowed": false,
+      "r2_image_inspection_allowed": false,
+      "r2_result_inspection_allowed": false,
+      "r2_scoring_allowed": false
+    },
+    "locked_candidate": null,
+    "reserved_reject_gates": {
+      "all_accepted_enhanced_measurements_must_be_raw_corroborated": true,
+      "applies_only_if_a_new_pre_exposure_lock_supersedes_this_no-candidate_lock": true,
+      "f1_strictly_greater_than_off": true,
+      "failure_action": "REJECT_WITHOUT_FULL5000",
+      "lost_gt_must_equal": 0,
+      "maximum_absolute_precision_drop": 0.005,
+      "maximum_fp_increase": 2,
+      "minimum_recovered_gt": 2,
+      "minimum_recovered_gt_per_added_detector_call": 0.02,
+      "net_tp_gain_minimum": 2,
+      "recall_strictly_greater_than_off": true,
+      "success_action": "PROMOTE_TO_FULL_REQUEST_ONLY_NO_AUTOMATIC_FULL5000"
+    }
+  },
+  "metrics": {
+    "candidate": null,
+    "extra_onnx_calls": null,
+    "fn": null,
+    "fp": null,
+    "negative_delta": null,
+    "off": null,
+    "positive_delta": null,
+    "precision": null,
+    "recall": null,
+    "tp": null,
+    "wall_seconds": null
+  },
+  "missing_sha256": [],
+  "production_enhancement": "OFF",
+  "r2_detector_calls_executed": 0,
+  "r2_gt_image_result_content_read": false,
+  "r2_scoring_executed": false,
+  "schema": "spectratrack-a3-r2-blind-smoke400-preflight-v1",
+  "status": "BLOCKED_NO_AUTHORIZED_R2_CANDIDATE"
+}
