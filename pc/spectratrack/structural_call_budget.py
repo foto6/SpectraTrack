@@ -31,7 +31,10 @@ CANDIDATE_ID = "global_plus_least_supported_one_raw_tile_v1"
 
 def locked_contract() -> dict[str, Any]:
     raw = LOCK_PATH.read_bytes()
-    blob = b"blob " + str(len(raw)).encode("ascii") + b"\0" + raw
+    # Git stores this authored lock with LF. Windows checkout can materialize CRLF;
+    # reconstruct the canonical committed blob without altering the JSON contract.
+    git_bytes = raw.replace(b"\r\n", b"\n")
+    blob = b"blob " + str(len(git_bytes)).encode("ascii") + b"\0" + git_bytes
     if hashlib.sha1(blob).hexdigest() != LOCK_GIT_BLOB_SHA1:  # noqa: S324 - Git blob integrity
         raise ValueError("pre-R2 immutable A4 lock blob differs from the predeclared commit")
     lock = json.loads(raw)
