@@ -66,6 +66,7 @@ def _synthetic_pair():
              "selected_keys_sha256": "e" * 64}
     return lock, {
         "schema": "spectratrack.a4.structural_detector_call_budget.paired_v1",
+        "candidate_id": lock["one_candidate"]["id"],
         "phase": "r2",
         "frames": 2,
         "frame_keys": keys,
