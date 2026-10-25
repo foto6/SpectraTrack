@@ -1,0 +1,13 @@
+{
+  "schema": "spectratrack-detection-training-manifest-v1",
+  "revision": "a1-train-prelock-r1",
+  "purpose": "detector_finetune",
+  "created_from_commit": "ac658109de255485ce4fa629197b8b1a0b927645",
+  "forbidden_evaluation_sets": [
+    "nightowls-full5000",
+    "nightowls-holdout4200",
+    "nightowls-public-r1",
+    "nightowls-smoke400"
+  ],
+  "items": []
+}
