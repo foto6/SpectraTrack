@@ -2333,3 +2333,52 @@ A5 branch advanced by documentation-only commit:
 `agent/vnext-qa @ 522e50c45bc3afffa5f03479880c4b9f9d0a676e`
 
 Changed only the A5 role handoff to record the pre-result NightOwls 5000-frame slice contract. Issue #22 carries the same lock. No importer/runtime code changed and no candidate result was observed.
+
+
+## 2026-09-27 03:45 +07 — autonomous watch checkpoint
+
+### DONE — target-PC control and NightOwls transfer state re-verified
+
+Remote Desktop Commander substantive file operations are responding again on `DESKTOP-64LCMQ8`.
+
+NightOwls isolated intake root was inspected without starting or restarting any job:
+
+- archive path: `E:\\SpectraTrack-data\\public\\NightOwls\\nightowls_validation.zip`;
+- observed archive bytes: `33,259,331,584 / 57,481,286,834` (~57.86%);
+- archive mtime at probe: `2026-09-26T20:45:21.767Z`;
+- download state still reports `status: downloading`, expected bytes `57,481,286,834`, chunk size `268,435,456`, workers `12`;
+- part files and downloader scripts remain present under the isolated intake root.
+
+A first metadata probe used the wrong filename capitalization/name (`NightOwlsValidation.zip`) and returned ENOENT. This was a path-probe error only; directory inspection immediately identified the canonical `nightowls_validation.zip`. No file was modified and no transfer was restarted.
+
+### IN PROGRESS — preserve the single NightOwls intake and wait for exact completion
+
+Do not extract, hash as final, import, freeze, or start A3 candidate inference while the archive is partial. Continue the already locked post-download sequence only after exact final byte size is observed. No AI-only private annotation may be frozen as GOLDEN.
+
+
+## 2026-09-27 06:43 +07 — autonomous recovery checkpoint
+
+### DONE — target-PC control recovered and NightOwls archive reached exact expected size
+
+Re-read durable Round-2 worklog/status, then inspected the isolated NightOwls intake without restarting any job.
+
+Observed archive `E:\SpectraTrack-data\public\NightOwls\nightowls_validation.zip`: exact bytes `57,481,286,834`, matching the locked expected size. Last-write observed `2026-09-27 04:44:18` target-PC local time.
+
+The downloader state file still says `status: downloading`; byte equality is treated only as transfer-size completion, not archive validation.
+
+### IN PROGRESS — verify NightOwls archive before extraction
+
+Next major step is read-only validation: compute full SHA-256, test ZIP central directory/all members, record entry count/uncompressed bytes/path-safety and free-space. Do not extract/import/freeze or start A3 inference until those checks are persisted. No AI-only private annotation may be frozen as GOLDEN.
+
+
+## 2026-09-27 18:45 +07 — coordinator reconciliation after Smoke400 cycle
+
+Immutable refs verified unchanged: main `2012eaae2f4ffe820a66d12e40346d911616cd03`, integration `3ebc4d50213593cac62b97399447fccf6bbc1755`, vnext-base `d03af3ae6425d3ea2e4d52e25389fecc09957394`. Specialist heads verified: A1 `9362d0db5fd5eca74f2384d93cbb1faf8ebfb612`, A2 `d73b5d5a8268586ee963df9de901d3fd6ff6fcca`, A3 `993c4a6574d0a6298774a7937ba3daeca8bc2e30`, A4 `5c880267498a18b51b2e5c5f92f6c5360fafc212`, A5 `a339da324ea0df682179097d7d6810b6fc250240`. GitHub PC CI SUCCESS on runs 36315654752, 36314505662, 36315347109, 36315968648, 36316779310. Issues #18-#23 remain open.
+
+Target PC DESKTOP-64LCMQ8 substantive control is online. Durable queue/process/artifact state was inspected before restart: old research queue is complete with running=null and blocked=null. No A1/A2/A3 long job was restarted or duplicated.
+
+A1 retains hard-NMS. NightOwls Smoke400 tile512 was rejected: TP +1 but FP +75, precision -11.368 pp and F1 -8.503 pp; no FULL5000 request. A2 retains current tracker; ambiguity guard remains rejected on MOT17 and smoke. Requested DanceTrack association-only current-vs-guard evidence remains absent. A3 remains enhancement OFF; later NightOwls illumination rescue recovered 0 GT for +60 raw probes +60 enhanced calls and was rejected. A4 was evaluated only after A3 OFF: person-only postprocess cannot reach 1.10x by Amdahl ceiling; contiguous input measured 1.027x with identical outputs and was rejected, with no production scheduler change. A5 has frozen/validated the NightOwls FULL5000 parent plus disjoint blind smoke400-r2 and holdout4200 partition; DanceTrack remains frozen.
+
+Architect gate remains locked because the explicit Round-2 request still requires A2 DanceTrack association-only current-vs-ambiguity-guard characterization. NightOwls cannot substitute because tracking_supported=false. Private CCTV remains deferred to reduced final sanity. No main/integration/RC/release modification and no specialist merge occurred.
+
+Persistence note: this checkpoint is written to the local coord worktree. GitHub connector update attempts were blocked by action safety checks, so the coordinator commit/push is not yet durable on origin.

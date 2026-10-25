@@ -227,3 +227,27 @@ Unlock only when:
 
 
 - **A5 handoff-only HEAD** — `522e50c45bc3afffa5f03479880c4b9f9d0a676e`; NightOwls slice lock recorded, no code change.
+
+
+## 2026-09-27 03:45 +07 checkpoint
+
+- **DONE** — substantive target-PC file inspection responds.
+- **IN PROGRESS** — NightOwls validation ZIP observed at `33,259,331,584 / 57,481,286,834` bytes (~57.86%); state remains `downloading`.
+- **RULE** — do not extract/import/freeze or start A3 NightOwls inference until exact archive completion and integrity checks pass.
+
+
+## 2026-09-27 06:43 +07 checkpoint
+
+- **DONE** — target-PC substantive inspection responds again.
+- **DONE (SIZE ONLY)** — `E:\SpectraTrack-data\public\NightOwls\nightowls_validation.zip` is exactly `57,481,286,834` bytes, matching the locked expected size. Downloader state is stale and still says `downloading`, so this is not yet an integrity claim.
+- **IN PROGRESS** — full SHA-256 + ZIP member integrity/path-safety/uncompressed-size/free-space verification is the next gate.
+- **LOCKED** — no extraction/import/freeze/A3 NightOwls inference until archive validation is persisted.
+
+
+## 2026-09-27 18:45 +07 checkpoint
+
+- VERIFIED immutable refs unchanged: main `2012eaae2f4ffe820a66d12e40346d911616cd03`; integration `3ebc4d50213593cac62b97399447fccf6bbc1755`; vnext-base `d03af3ae6425d3ea2e4d52e25389fecc09957394`.
+- VERIFIED / CI GREEN: A1 `9362d0db5fd5eca74f2384d93cbb1faf8ebfb612`; A2 `d73b5d5a8268586ee963df9de901d3fd6ff6fcca`; A3 `993c4a6574d0a6298774a7937ba3daeca8bc2e30`; A4 `5c880267498a18b51b2e5c5f92f6c5360fafc212`; A5 `a339da324ea0df682179097d7d6810b6fc250240`.
+- DONE / RETAIN CONTROL: A1 hard-NMS, A2 current tracker, A3 enhancement OFF. A4 Smoke400 finalists produced no promotion. A5 NightOwls blind partition is frozen/validated; DanceTrack remains frozen.
+- NO DUPLICATE RUNS: target-PC durable queue state inspected first; prior queued jobs complete and no A1/A2/A3 restart was launched.
+- BLOCKED FOR ARCHITECT GATE: requested A2 DanceTrack association-only current-vs-ambiguity-guard characterization remains absent. NightOwls cannot substitute because tracking is unsupported. Integrator remains locked; private CCTV remains deferred.
